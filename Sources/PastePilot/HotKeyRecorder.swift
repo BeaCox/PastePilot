@@ -136,7 +136,7 @@ final class HotKeyRecorderNSView: NSView {
         path.lineWidth = 1
         path.stroke()
 
-        let text = isRecording ? "按下新的快捷键…" : shortcutText
+        let text = isRecording ? "Press a new shortcut…".localized : shortcutText
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 14, weight: .medium),
             .foregroundColor: isRecording

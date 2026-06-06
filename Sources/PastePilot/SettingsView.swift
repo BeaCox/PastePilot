@@ -12,11 +12,11 @@ private enum SettingsTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .general: "通用"
-        case .storage: "存储"
-        case .appearance: "外观"
-        case .ignored: "忽略"
-        case .advanced: "高级"
+        case .general: "General".localized
+        case .storage: "Storage".localized
+        case .appearance: "Appearance".localized
+        case .ignored: "Ignored Apps".localized
+        case .advanced: "Advanced".localized
         }
     }
 
@@ -50,14 +50,14 @@ struct SettingsView: View {
         }
         .frame(width: 700, height: 570)
         .confirmationDialog(
-            "恢复默认设置？",
+            "Reset to Defaults?".localized,
             isPresented: $showsResetConfirmation
         ) {
-            Button("恢复默认设置", role: .destructive) {
+            Button("Reset to Defaults".localized, role: .destructive) {
                 settings.reset()
             }
         } message: {
-            Text("剪贴板历史不会被删除。")
+            Text("Clipboard history will not be deleted.".localized)
         }
     }
 
@@ -117,43 +117,43 @@ struct SettingsView: View {
     }
 
     private var generalPage: some View {
-        SettingsPage(title: "通用") {
+        SettingsPage(title: "General".localized) {
             SettingsSection {
-                Toggle("登录时启动 PastePilot", isOn: $settings.launchAtLogin)
-                Toggle("监听剪贴板", isOn: $settings.monitoringEnabled)
-                SettingsNote("关闭监听后，已有历史仍可搜索和复制。")
+                Toggle("Launch PastePilot at Login".localized, isOn: $settings.launchAtLogin)
+                Toggle("Monitor Clipboard".localized, isOn: $settings.monitoringEnabled)
+                SettingsNote("When disabled, existing history can still be searched and copied.".localized)
             }
 
             SettingsSection {
-                SettingsRow(title: "打开 PastePilot") {
+                SettingsRow(title: "Open PastePilot".localized) {
                     HotKeyRecorder(
                         keyCode: $settings.hotKeyCode,
                         modifiers: $settings.hotKeyModifiers
                     )
                 }
-                SettingsNote("点击快捷键框后录制新组合；按 Delete 恢复默认值。")
+                SettingsNote("Click the shortcut field and press a new combination; press Delete to reset.".localized)
             }
         }
     }
 
     private var storagePage: some View {
-        SettingsPage(title: "存储") {
+        SettingsPage(title: "Storage".localized) {
             SettingsSection {
-                SettingsRow(title: "最多保留") {
+                SettingsRow(title: "Keep up to".localized) {
                     Picker("", selection: $settings.historyLimit) {
-                        Text("50 条").tag(50)
-                        Text("100 条").tag(100)
-                        Text("200 条").tag(200)
-                        Text("500 条").tag(500)
+                        Text("50 items".localized).tag(50)
+                        Text("100 items".localized).tag(100)
+                        Text("200 items".localized).tag(200)
+                        Text("500 items".localized).tag(500)
                     }
                     .labelsHidden()
                     .frame(width: 130)
                 }
-                SettingsNote("固定项目不计入这个数量，也不会被自动清理。")
+                SettingsNote("Pinned items are excluded from this limit and never auto-cleaned.".localized)
             }
 
             SettingsSection {
-                SettingsRow(title: "单张图片上限") {
+                SettingsRow(title: "Image Size Limit".localized) {
                     Picker("", selection: $settings.imageSizeLimitMB) {
                         Text("5 MB").tag(5)
                         Text("10 MB").tag(10)
@@ -163,68 +163,61 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 130)
                 }
-                SettingsRow(title: "数据目录") {
-                    Button("在 Finder 中显示", action: openDataFolder)
+                SettingsRow(title: "Data Folder".localized) {
+                    Button("Show in Finder".localized, action: openDataFolder)
                 }
             }
         }
     }
 
     private var appearancePage: some View {
-        SettingsPage(title: "外观") {
+        SettingsPage(title: "Appearance".localized) {
             SettingsSection {
-                Toggle("悬停显示完整详情", isOn: $settings.hoverPreviewEnabled)
-                SettingsNote("鼠标停留约半秒后显示完整内容、来源应用和元数据。")
+                Toggle("Show Details on Hover".localized, isOn: $settings.hoverPreviewEnabled)
+                SettingsNote("Hover briefly to see full content, source app, and metadata.".localized)
             }
 
             SettingsSection {
-                SettingsRow(title: "菜单栏窗口") {
+                SettingsRow(title: "Menu Bar Window".localized) {
                     Text("400 × 450")
                         .foregroundStyle(.secondary)
                 }
-                SettingsNote("窗口保持紧凑，并自动跟随系统浅色或深色外观。")
+                SettingsNote("Compact window that follows the system light or dark appearance.".localized)
             }
         }
     }
 
     private var ignoredPage: some View {
-        SettingsPage(title: "忽略") {
+        SettingsPage(title: "Ignored Apps".localized) {
             SettingsSection {
-                Text("不记录以下应用")
-                    .font(.headline)
-                TextEditor(text: $settings.ignoredBundleIdentifiers)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(height: 150)
-                    .padding(6)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
-                SettingsNote("每行填写一个 Bundle ID，例如 com.apple.keychainaccess。")
+                IgnoredAppsEditor(settings: settings)
             }
 
             SettingsSection {
-                Label("忽略规则只影响新复制内容，不会删除已有历史。", systemImage: "info.circle")
+                Label("Ignore rules only affect new copies and won't delete existing history.".localized, systemImage: "info.circle")
                     .foregroundStyle(.secondary)
             }
         }
     }
 
     private var advancedPage: some View {
-        SettingsPage(title: "高级") {
+        SettingsPage(title: "Advanced".localized) {
             SettingsSection {
-                SettingsRow(title: "本地数据") {
-                    Button("打开数据目录", action: openDataFolder)
+                SettingsRow(title: "Local Data".localized) {
+                    Button("Open Data Folder".localized, action: openDataFolder)
                 }
-                SettingsRow(title: "历史记录") {
-                    Button("清除未固定记录", role: .destructive, action: clearUnpinnedHistory)
+                SettingsRow(title: "History".localized) {
+                    Button("Clear Unpinned".localized, role: .destructive, action: clearUnpinnedHistory)
                 }
             }
 
             SettingsSection {
-                SettingsRow(title: "偏好设置") {
-                    Button("恢复默认设置…") {
+                SettingsRow(title: "Preferences".localized) {
+                    Button("Reset to Defaults…".localized) {
                         showsResetConfirmation = true
                     }
                 }
-                SettingsNote("恢复设置不会删除剪贴板历史或图片文件。")
+                SettingsNote("Resetting preferences won't delete clipboard history or images.".localized)
             }
         }
     }
@@ -303,6 +296,180 @@ private struct SettingsNote: View {
     }
 }
 
+private struct InstalledApp: Identifiable {
+    let id: String
+    let name: String
+    let icon: NSImage
+
+    static func discover() -> [InstalledApp] {
+        let fm = FileManager.default
+        let searchDirs = [
+            "/Applications",
+            "/System/Applications",
+            NSHomeDirectory() + "/Applications",
+        ]
+        var seen = Set<String>()
+        var apps: [InstalledApp] = []
+
+        for dir in searchDirs {
+            guard let urls = try? fm.contentsOfDirectory(
+                at: URL(fileURLWithPath: dir),
+                includingPropertiesForKeys: nil
+            ) else { continue }
+
+            for url in urls where url.pathExtension == "app" {
+                guard let bundle = Bundle(url: url),
+                      let bundleID = bundle.bundleIdentifier,
+                      !seen.contains(bundleID) else { continue }
+                seen.insert(bundleID)
+                let name = (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+                    ?? (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+                    ?? url.deletingPathExtension().lastPathComponent
+                let icon = NSWorkspace.shared.icon(forFile: url.path)
+                apps.append(InstalledApp(id: bundleID, name: name, icon: icon))
+            }
+        }
+
+        return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+}
+
+private struct IgnoredAppsEditor: View {
+    @ObservedObject var settings: AppSettings
+    @State private var installedApps: [InstalledApp] = []
+    @State private var searchText = ""
+
+    private var ignoredSet: Set<String> {
+        settings.ignoredBundleIdentifierSet
+    }
+
+    private var filteredApps: [InstalledApp] {
+        let ignored = installedApps.filter { ignoredSet.contains($0.id) }
+        let available = installedApps.filter { !ignoredSet.contains($0.id) }
+
+        if searchText.isEmpty {
+            return ignored + available
+        }
+        return (ignored + available).filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+                || $0.id.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Ignore These Apps".localized)
+                    .font(.headline)
+                Spacer()
+                Text("%d ignored".localized(ignoredSet.count))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search apps…".localized, text: $searchText)
+                    .textFieldStyle(.plain)
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 26)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredApps) { app in
+                        AppToggleRow(
+                            app: app,
+                            isIgnored: ignoredSet.contains(app.id),
+                            toggle: { toggleApp(app) }
+                        )
+                        if app.id != filteredApps.last?.id {
+                            Divider().padding(.leading, 40)
+                        }
+                    }
+                }
+            }
+            .frame(height: 200)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
+
+            SettingsNote("Ignore rules only affect new copies and won't delete existing history.".localized)
+        }
+        .onAppear {
+            if installedApps.isEmpty {
+                installedApps = InstalledApp.discover()
+            }
+        }
+    }
+
+    private func toggleApp(_ app: InstalledApp) {
+        var ids = ignoredSet
+        if ids.contains(app.id) {
+            ids.remove(app.id)
+        } else {
+            ids.insert(app.id)
+        }
+        settings.ignoredBundleIdentifiers = ids.sorted().joined(separator: "\n")
+    }
+}
+
+private struct AppToggleRow: View {
+    let app: InstalledApp
+    let isIgnored: Bool
+    let toggle: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(spacing: 10) {
+                Image(nsImage: app.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(app.name)
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                    Text(app.id)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: isIgnored ? "eye.slash.fill" : "eye")
+                    .font(.system(size: 13))
+                    .foregroundStyle(isIgnored ? Color.orange : Color.secondary.opacity(0.4))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+            .background(
+                isHovering ? Color.primary.opacity(0.04) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 5)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.08)) {
+                isHovering = hovering
+            }
+        }
+    }
+}
+
 struct AboutView: View {
     @ObservedObject var settings: AppSettings
     let version: String
@@ -310,41 +477,147 @@ struct AboutView: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            Image(systemName: "clipboard.fill")
-                .font(.system(size: 48, weight: .medium))
-                .foregroundStyle(.tint)
+            Image(nsImage: AppIconRenderer.icon(size: 256))
+                .resizable()
+                .scaledToFit()
                 .frame(width: 84, height: 84)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 20))
 
             VStack(spacing: 5) {
                 Text("PastePilot")
                     .font(.title.bold())
-                Text("开发者的智能剪贴板")
+                Text("Smart Clipboard for Developers".localized)
                     .font(.headline)
                     .foregroundStyle(.secondary)
-                Text("版本 \(version)")
+                Text("Version %@".localized(version))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
 
-            Text("理解 JSON、代码、终端命令、报错、链接和图片，并提供下一步操作。所有数据仅保存在本机。")
+            Text("Understands JSON, code, terminal commands, errors, URLs, and images — suggests the next action. All data stays on your Mac.".localized)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 360)
 
             HStack(spacing: 18) {
                 Label(
-                    "\(HotKeyFormatter.display(keyCode: settings.hotKeyCode, modifiers: settings.hotKeyModifiers)) 呼出",
+                    "%@ to open".localized(
+                        HotKeyFormatter.display(
+                            keyCode: settings.hotKeyCode,
+                            modifiers: settings.hotKeyModifiers
+                        )
+                    ),
                     systemImage: "keyboard"
                 )
-                Label("本地存储", systemImage: "lock")
+                Label("Local Storage".localized, systemImage: "lock")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Button("打开数据文件夹", action: openDataFolder)
+            Button("Open Data Folder".localized, action: openDataFolder)
         }
         .padding(32)
         .frame(width: 460, height: 390)
+    }
+}
+
+struct WelcomeView: View {
+    let shortcut: String
+    let dismiss: () -> Void
+    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var pollTimer: Timer?
+
+    var body: some View {
+        VStack(spacing: 22) {
+            Image(nsImage: AppIconRenderer.icon(size: 256))
+                .resizable()
+                .scaledToFit()
+                .frame(width: 80, height: 80)
+
+            VStack(spacing: 5) {
+                Text("Welcome to PastePilot".localized)
+                    .font(.title2.bold())
+                Text("Smart Clipboard for Developers".localized)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 0) {
+                statusRow(
+                    granted: accessibilityGranted,
+                    symbol: "hand.raised",
+                    title: "Accessibility".localized,
+                    detail: accessibilityGranted
+                        ? "Global shortcut is ready.".localized
+                        : "Required for the global shortcut to work system-wide.".localized
+                )
+                Divider().padding(.leading, 42)
+                statusRow(
+                    granted: true,
+                    symbol: "clipboard",
+                    title: "Clipboard Monitoring".localized,
+                    detail: "Active — no additional permission needed.".localized
+                )
+            }
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+
+            if !accessibilityGranted {
+                Button("Open Accessibility Settings".localized) {
+                    let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+                    NSWorkspace.shared.open(url)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+
+            VStack(spacing: 6) {
+                Text("Press %@ to open PastePilot anytime.".localized(shortcut))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button(accessibilityGranted ? "Get Started".localized : "Skip for Now".localized) {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+            }
+        }
+        .padding(32)
+        .frame(width: 480, height: 420)
+        .onAppear {
+            guard !accessibilityGranted else { return }
+            pollTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+                Task { @MainActor in
+                    let trusted = AXIsProcessTrusted()
+                    if trusted != accessibilityGranted {
+                        withAnimation { accessibilityGranted = trusted }
+                        if trusted { pollTimer?.invalidate() }
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            pollTimer?.invalidate()
+        }
+    }
+
+    private func statusRow(granted: Bool, symbol: String, title: String, detail: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(granted ? .green : .orange)
+                .font(.system(size: 18))
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.callout.weight(.medium))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 }

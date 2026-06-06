@@ -39,12 +39,14 @@ struct PastePilotView: View {
                 detail(for: item)
             } else {
                 ContentUnavailableView(
-                    searchText.isEmpty ? "还没有剪贴板内容" : "没有搜索结果",
+                    searchText.isEmpty
+                        ? "No clipboard content yet".localized
+                        : "No search results".localized,
                     systemImage: searchText.isEmpty ? "clipboard" : "magnifyingglass",
                     description: Text(
                         searchText.isEmpty
-                            ? "复制 JSON、代码、链接、命令或报错，PastePilot 会给出下一步操作。"
-                            : "尝试搜索内容或类型。"
+                            ? "Copy JSON, code, URLs, commands, or errors — PastePilot suggests the next action.".localized
+                            : "Try searching by content or type.".localized
                     )
                 )
             }
@@ -68,7 +70,7 @@ struct PastePilotView: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField("搜索剪贴板历史", text: $searchText)
+                TextField("Search clipboard history".localized, text: $searchText)
                     .textFieldStyle(.plain)
                 if !searchText.isEmpty {
                     Button {
@@ -87,20 +89,20 @@ struct PastePilotView: View {
 
             List(selection: $selection) {
                 if !pinnedItems.isEmpty {
-                    Section("已固定") {
+                    Section("Pinned".localized) {
                         historyRows(pinnedItems)
                     }
                 }
-                Section(!pinnedItems.isEmpty ? "最近项目" : "") {
+                Section(!pinnedItems.isEmpty ? "Recent".localized : "") {
                     historyRows(recentItems)
                 }
             }
             .listStyle(.sidebar)
 
             HStack {
-                Label("\(store.items.count) 条记录", systemImage: "lock")
+                Label("%d items".localized(store.items.count), systemImage: "lock")
                 Spacer()
-                Button("清除未固定记录") {
+                Button("Clear Unpinned".localized) {
                     store.clearUnpinned()
                     selection = store.items.first?.id
                 }
@@ -119,11 +121,11 @@ struct PastePilotView: View {
             HistoryRow(item: item)
                 .tag(item.id)
                 .contextMenu {
-                    Button(item.isPinned ? "取消置顶" : "固定到顶部") {
+                    Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized) {
                         store.togglePinned(item.id)
                     }
                     Divider()
-                    Button("删除", role: .destructive) {
+                    Button("Delete".localized, role: .destructive) {
                         store.delete(item.id)
                     }
                 }
@@ -164,7 +166,7 @@ struct PastePilotView: View {
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("已识别为\(item.kind.localizedTitle)")
+                Text("Recognized as %@".localized(item.kind.localizedTitle))
                     .font(.title2.weight(.semibold))
                 Text(item.kind.explanation)
                     .foregroundStyle(.secondary)
@@ -176,7 +178,7 @@ struct PastePilotView: View {
                 store.togglePinned(item.id)
             } label: {
                 Label(
-                    item.isPinned ? "取消置顶" : "固定到顶部",
+                    item.isPinned ? "Unpin".localized : "Pin to Top".localized,
                     systemImage: item.isPinned ? "pin.fill" : "pin"
                 )
             }
@@ -205,10 +207,10 @@ struct PastePilotView: View {
                 if item.containsSensitiveData {
                     Divider()
                     HStack {
-                        Label("检测到敏感信息，默认已隐藏", systemImage: "eye.slash.fill")
+                        Label("Sensitive data detected and hidden by default".localized, systemImage: "eye.slash.fill")
                             .foregroundStyle(.orange)
                         Spacer()
-                        Toggle("显示原文", isOn: $revealSensitive)
+                        Toggle("Reveal".localized, isOn: $revealSensitive)
                             .toggleStyle(.switch)
                             .controlSize(.small)
                     }
@@ -217,16 +219,16 @@ struct PastePilotView: View {
             }
             .padding(4)
         } label: {
-            Text("剪贴板内容")
+            Text("Clipboard Content".localized)
         }
     }
 
     private func suggestedActions(for item: ClipboardItem) -> some View {
         let actions = ClipboardActionFactory.actions(for: item)
         return VStack(alignment: .leading, spacing: 10) {
-            Text("建议操作")
+            Text("Suggested Actions".localized)
                 .font(.headline)
-            Text("点击后会将处理结果复制到剪贴板；打开链接除外。")
+            Text("Click to copy the processed result; links will open instead.".localized)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -287,6 +289,7 @@ struct MenuBarView: View {
     @State private var selectedID: UUID?
     @State private var expandedID: UUID?
     @State private var notice: String?
+    @State private var needsScrollToSelection = false
     @FocusState private var searchFocused: Bool
 
     private var filteredItems: [ClipboardItem] {
@@ -311,21 +314,21 @@ struct MenuBarView: View {
             Divider()
 
             HStack {
-                Text("\(store.items.count) 条记录")
+                Text("%d items".localized(store.items.count))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("管理全部记录", action: openHistory)
+                Button("Manage All".localized, action: openHistory)
                     .buttonStyle(.plain)
                 Menu {
-                    Button("清除未固定记录") {
+                    Button("Clear Unpinned".localized) {
                         store.clearUnpinned()
                     }
                     Divider()
-                    Button("偏好设置…", action: openSettings)
+                    Button("Preferences…".localized, action: openSettings)
                         .keyboardShortcut(",", modifiers: .command)
-                    Button("关于 PastePilot", action: openAbout)
+                    Button("About PastePilot".localized, action: openAbout)
                     Divider()
-                    Button("退出 PastePilot", action: quit)
+                    Button("Quit PastePilot".localized, action: quit)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -380,7 +383,7 @@ struct MenuBarView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("搜索剪贴板历史", text: $searchText)
+            TextField("Search clipboard history".localized, text: $searchText)
                 .textFieldStyle(.plain)
                 .focused($searchFocused)
                 .onSubmit {
@@ -405,12 +408,14 @@ struct MenuBarView: View {
     private var historyList: some View {
         if filteredItems.isEmpty {
             ContentUnavailableView(
-                store.items.isEmpty ? "等待复制内容" : "没有搜索结果",
+                store.items.isEmpty
+                    ? "Waiting for content".localized
+                    : "No search results".localized,
                 systemImage: store.items.isEmpty ? "clipboard" : "magnifyingglass",
                 description: Text(
                     store.items.isEmpty
-                        ? "复制内容后会自动出现在这里。"
-                        : "尝试搜索其他内容或类型。"
+                        ? "Copied content will appear here automatically.".localized
+                        : "Try searching for other content or types.".localized
                 )
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -421,34 +426,23 @@ struct MenuBarView: View {
                         ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                             if shouldShowPinnedHeader(at: index) {
                                 HistorySectionHeader(
-                                    title: "已固定",
-                                    detail: "始终置顶，清理历史时保留"
+                                    title: "Pinned".localized,
+                                    detail: "Always on top, kept when history is cleared".localized
                                 )
                             } else if shouldShowRecentHeader(at: index) {
                                 HistorySectionHeader(
-                                    title: "最近项目",
+                                    title: "Recent".localized,
                                     detail: nil
                                 )
                             }
                             CompactHistoryItem(
                                 item: item,
+                                store: store,
                                 image: store.image(for: item),
                                 shortcutNumber: index < 9 ? index + 1 : nil,
                                 hoverPreviewEnabled: settings.hoverPreviewEnabled,
                                 isSelected: selectedID == item.id,
-                                isExpanded: expandedID == item.id,
-                                actions: ClipboardActionFactory.compactActions(for: item),
-                                select: {
-                                    selectedID = item.id
-                                    withAnimation(.easeInOut(duration: 0.14)) {
-                                        expandedID = expandedID == item.id ? nil : item.id
-                                    }
-                                },
-                                perform: { action in
-                                    showNotice(
-                                        ClipboardActionFactory.perform(action, using: store)
-                                    )
-                                },
+                                select: { selectedID = item.id },
                                 copy: {
                                     showNotice(
                                         ClipboardActionFactory.perform(
@@ -463,18 +457,16 @@ struct MenuBarView: View {
                                 delete: {
                                     store.delete(item.id)
                                     selectFirstItem(expand: false)
-                                }
+                                },
+                                showNotice: { showNotice($0) }
                             )
                             .id(item.id)
-
-                            if item.id != filteredItems.last?.id {
-                                Divider().padding(.leading, 42)
-                            }
                         }
                     }
                 }
                 .onChange(of: selectedID) {
-                    guard let selectedID else { return }
+                    guard needsScrollToSelection, let selectedID else { return }
+                    needsScrollToSelection = false
                     withAnimation {
                         proxy.scrollTo(selectedID, anchor: .center)
                     }
@@ -525,6 +517,7 @@ struct MenuBarView: View {
         } else {
             nextIndex = min(filteredItems.count - 1, currentIndex + 1)
         }
+        needsScrollToSelection = true
         selectedID = filteredItems[nextIndex].id
         expandedID = selectedID
     }
@@ -545,47 +538,38 @@ struct MenuBarView: View {
 
 private struct CompactHistoryItem: View {
     let item: ClipboardItem
+    let store: ClipboardStore
     let image: NSImage?
     let shortcutNumber: Int?
     let hoverPreviewEnabled: Bool
     let isSelected: Bool
-    let isExpanded: Bool
-    let actions: [ClipboardAction]
     let select: () -> Void
-    let perform: (ClipboardAction) -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
     let delete: () -> Void
-    @State private var isHovering = false
+    let showNotice: (String) -> Void
     @State private var showsDetails = false
     @State private var detailTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Button(action: select) {
-                    HStack(spacing: 9) {
-                        if let image {
-                            Image(nsImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 26, height: 26)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        } else {
-                            Image(systemName: item.kind.symbol)
-                                .font(.system(size: 13))
-                                .foregroundStyle(item.kind == .error ? Color.red : Color.secondary)
-                                .frame(width: 20)
-                        }
-
-                        Text(summary)
-                            .font(.system(.callout, design: item.kind == .text ? .default : .monospaced))
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .contentShape(Rectangle())
+        Button(action: copy) {
+            HStack(spacing: 7) {
+                if let image {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 22, height: 22)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                } else {
+                    Circle()
+                        .fill(item.kind.accentColor)
+                        .frame(width: 6, height: 6)
                 }
-                .buttonStyle(.plain)
+
+                Text(summary)
+                    .font(.system(size: 13, design: item.kind == .text ? .default : .monospaced))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 if item.containsSensitiveData {
                     Image(systemName: "eye.slash.fill")
@@ -593,84 +577,41 @@ private struct CompactHistoryItem: View {
                         .foregroundStyle(.orange)
                 }
 
-                if isHovering {
-                    HStack(spacing: 1) {
-                        RowHoverButton(
-                            symbol: "doc.on.doc",
-                            help: "复制原文",
-                            action: copy
-                        )
-                        RowHoverButton(
-                            symbol: item.isPinned ? "pin.slash" : "pin",
-                            help: item.isPinned ? "取消置顶" : "固定到顶部",
-                            action: togglePinned
-                        )
-                        RowHoverButton(
-                            symbol: "trash",
-                            help: "删除",
-                            role: .destructive,
-                            action: delete
-                        )
-                    }
-                    .transition(.opacity)
-                } else {
-                    if item.isPinned {
-                        Image(systemName: "pin.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    if let shortcutNumber {
-                        Text("⌘\(shortcutNumber)")
-                            .font(.system(.caption2, design: .rounded).weight(.medium))
-                            .foregroundStyle(.tertiary)
-                            .frame(minWidth: 28, alignment: .trailing)
-                    } else {
-                        Text(item.createdAt, style: .relative)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .frame(minWidth: 38, alignment: .trailing)
-                    }
+                if item.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.tertiary)
                 }
-            }
-            .padding(.horizontal, 11)
-            .frame(height: 48)
-            .background(
-                rowBackground,
-                in: RoundedRectangle(cornerRadius: 7)
-            )
-            .padding(.horizontal, 5)
-            .contentShape(Rectangle())
-            .onHover { hovering in
-                withAnimation(.easeOut(duration: 0.1)) {
-                    isHovering = hovering
-                }
-                updateDetailPresentation(isHovering: hovering)
-            }
-            .contextMenu {
-                Button("复制原文", action: copy)
-                Button(item.isPinned ? "取消置顶" : "固定到顶部", action: togglePinned)
-                Divider()
-                Button("删除", role: .destructive, action: delete)
-            }
 
-            if isExpanded, !actions.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(actions) { action in
-                        InlineCommandButton(
-                            title: compactTitle(for: action),
-                            symbol: action.symbol,
-                            help: action.detail
-                        ) {
-                            perform(action)
-                        }
-                    }
+                if let shortcutNumber {
+                    Text("⌘\(shortcutNumber)")
+                        .font(.system(size: 11, design: .rounded).weight(.medium))
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text(item.createdAt, style: .relative)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
                 }
-                .padding(.leading, 39)
-                .padding(.trailing, 12)
-                .padding(.top, 3)
-                .padding(.bottom, 11)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            isSelected ? Color.accentColor.opacity(0.1) : Color.clear,
+            in: RoundedRectangle(cornerRadius: 5)
+        )
+        .padding(.horizontal, 4)
+        .onHover { hovering in
+            if hovering { select() }
+            updateDetailPresentation(isHovering: hovering)
+        }
+        .contextMenu {
+            Button("Copy original".localized, action: copy)
+            Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized, action: togglePinned)
+            Divider()
+            Button("Delete".localized, role: .destructive, action: delete)
         }
         .popover(
             isPresented: $showsDetails,
@@ -679,43 +620,16 @@ private struct CompactHistoryItem: View {
         ) {
             ClipboardDetailPreview(
                 item: item,
+                store: store,
                 image: image,
-                hoverChanged: updatePreviewHover
+                hoverChanged: updatePreviewHover,
+                togglePinned: togglePinned,
+                delete: delete,
+                showNotice: showNotice
             )
         }
         .onDisappear {
             detailTask?.cancel()
-        }
-    }
-
-    private var rowBackground: Color {
-        if isSelected {
-            return Color.accentColor.opacity(0.13)
-        }
-        if isHovering {
-            return Color.primary.opacity(0.055)
-        }
-        return .clear
-    }
-
-    private func compactTitle(for action: ClipboardAction) -> String {
-        switch action.id {
-        case "open-url": "打开"
-        case "format-json": "格式化"
-        case "minify-json": "压缩"
-        case "typescript": "TypeScript"
-        case "uppercase-color": "大写色值"
-        case "quote-command", "escape": "转义"
-        case "markdown-error": "代码块"
-        case "shell-code-block", "extracted-shell-code-block": "代码块"
-        case "extract-shell": "提取命令"
-        case "camel-case": "camelCase"
-        case "snake-case": "snake_case"
-        case "copy-image-markdown": "Markdown"
-        case "copy-image-url": "图片 URL"
-        case "copy-image-path": "文件路径"
-        case "copy-image-cache-path": "缓存路径"
-        default: action.title
         }
     }
 
@@ -734,19 +648,15 @@ private struct CompactHistoryItem: View {
         }
         if isHovering {
             detailTask = Task {
-                try? await Task.sleep(for: .milliseconds(550))
+                try? await Task.sleep(for: .milliseconds(400))
                 guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    showsDetails = true
-                }
+                await MainActor.run { showsDetails = true }
             }
         } else {
             detailTask = Task {
-                try? await Task.sleep(for: .milliseconds(220))
+                try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    showsDetails = false
-                }
+                await MainActor.run { showsDetails = false }
             }
         }
     }
@@ -757,11 +667,9 @@ private struct CompactHistoryItem: View {
             showsDetails = true
         } else {
             detailTask = Task {
-                try? await Task.sleep(for: .milliseconds(220))
+                try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    showsDetails = false
-                }
+                await MainActor.run { showsDetails = false }
             }
         }
     }
@@ -772,39 +680,44 @@ private struct HistorySectionHeader: View {
     let detail: String?
 
     var body: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.system(.caption2, weight: .medium))
+                .textCase(.uppercase)
             if let detail {
                 Text(detail)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.quaternary)
             }
             Spacer()
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.tertiary)
         .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
     }
 }
 
 private struct ClipboardDetailPreview: View {
     let item: ClipboardItem
+    let store: ClipboardStore
     let image: NSImage?
     let hoverChanged: (Bool) -> Void
+    let togglePinned: () -> Void
+    let delete: () -> Void
+    let showNotice: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 sourceIcon
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.sourceAppName ?? "未知来源")
-                        .font(.headline)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.sourceAppName ?? "Unknown Source".localized)
+                        .font(.callout.weight(.medium))
                     Text(item.sourceBundleIdentifier ?? item.kind.localizedTitle)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -812,7 +725,7 @@ private struct ClipboardDetailPreview: View {
                 Spacer()
 
                 Label(item.kind.localizedTitle, systemImage: item.kind.symbol)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
@@ -822,19 +735,17 @@ private struct ClipboardDetailPreview: View {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 300)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
+                    .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 240)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
             } else {
                 ScrollView {
                     Text(previewContent)
-                        .font(.system(.callout, design: previewFontDesign))
+                        .font(.system(.caption, design: previewFontDesign))
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .frame(minHeight: 70, maxHeight: 220)
+                .frame(minHeight: 50, maxHeight: 160)
             }
-
-            Divider()
 
             HStack {
                 Label {
@@ -848,40 +759,97 @@ private struct ClipboardDetailPreview: View {
                     Text("·")
                     Text(byteCount)
                 } else {
-                    Text("\(item.content.count) 字符")
+                    Text("%d characters".localized(item.content.count))
                     Text("·")
-                    Text("\(lineCount) 行")
+                    Text("%d lines".localized(lineCount))
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
 
             if item.containsSensitiveData {
-                Label("敏感内容已隐藏", systemImage: "eye.slash.fill")
-                    .font(.caption)
+                Label("Sensitive content hidden".localized, systemImage: "eye.slash.fill")
+                    .font(.caption2)
                     .foregroundStyle(.orange)
             }
 
             if item.isImage, item.imageSourceURL != nil || item.imageOriginalPath != nil {
-                Divider()
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 3) {
                     if let sourceURL = item.imageSourceURL {
                         Label(sourceURL, systemImage: "link")
-                            .lineLimit(2)
+                            .lineLimit(1)
                     }
                     if let originalPath = item.imageOriginalPath {
                         Label(originalPath, systemImage: "folder")
-                            .lineLimit(2)
+                            .lineLimit(1)
                     }
                 }
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
             }
+
+            Divider()
+
+            actionButtons
         }
-        .padding(16)
-        .frame(width: 360)
+        .padding(14)
+        .frame(width: 340)
         .onHover(perform: hoverChanged)
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        let actions = ClipboardActionFactory.actions(for: item)
+        VStack(spacing: 4) {
+            ForEach(actions) { action in
+                Button {
+                    showNotice(ClipboardActionFactory.perform(action, using: store))
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: action.symbol)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 16)
+                        Text(action.title)
+                            .font(.system(size: 12))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PreviewActionButtonStyle())
+            }
+
+            Divider().padding(.vertical, 2)
+
+            HStack(spacing: 8) {
+                Button {
+                    togglePinned()
+                } label: {
+                    Label(
+                        item.isPinned ? "Unpin".localized : "Pin to Top".localized,
+                        systemImage: item.isPinned ? "pin.slash" : "pin"
+                    )
+                    .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    delete()
+                } label: {
+                    Label("Delete".localized, systemImage: "trash")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red.opacity(0.7))
+            }
+            .padding(.horizontal, 4)
+        }
     }
 
     @ViewBuilder
@@ -923,7 +891,7 @@ private struct ClipboardDetailPreview: View {
 
     private var imageDimensions: String {
         guard let width = item.imageWidth, let height = item.imageHeight else {
-            return "未知尺寸"
+            return "Unknown size".localized
         }
         return "\(width) × \(height)"
     }
@@ -936,70 +904,23 @@ private struct ClipboardDetailPreview: View {
     }
 }
 
-private struct InlineCommandButton: View {
-    let title: String
-    let symbol: String
-    let help: String
-    let action: () -> Void
+private struct PreviewActionButtonStyle: ButtonStyle {
     @State private var isHovering = false
 
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: symbol)
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 15)
-                Text(title)
-                    .font(.caption)
-            }
-            .foregroundStyle(isHovering ? Color.primary : Color.secondary)
-            .padding(.horizontal, 9)
-            .frame(maxWidth: .infinity, minHeight: 29)
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isHovering || configuration.isPressed ? Color.primary : Color.primary.opacity(0.8))
             .background(
-                isHovering ? Color.primary.opacity(0.075) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 6)
+                isHovering || configuration.isPressed
+                    ? Color.primary.opacity(0.08)
+                    : Color.clear,
+                in: RoundedRectangle(cornerRadius: 4)
             )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.08)) {
-                isHovering = hovering
+            .onHover { hovering in
+                withAnimation(.easeOut(duration: 0.08)) {
+                    isHovering = hovering
+                }
             }
-        }
-        .help(help)
-    }
-}
-
-private struct RowHoverButton: View {
-    let symbol: String
-    let help: String
-    var role: ButtonRole?
-    let action: () -> Void
-
-    init(
-        symbol: String,
-        help: String,
-        role: ButtonRole? = nil,
-        action: @escaping () -> Void
-    ) {
-        self.symbol = symbol
-        self.help = help
-        self.role = role
-        self.action = action
-    }
-
-    var body: some View {
-        Button(role: role, action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .medium))
-                .frame(width: 23, height: 23)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(role == .destructive ? Color.red : Color.secondary)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
-        .help(help)
     }
 }
 
@@ -1057,15 +978,15 @@ private struct ActionRow: View {
             }
             Spacer()
             if action.preview != nil {
-                Button(isSelected ? "收起预览" : "预览", action: preview)
+                Button(isSelected ? "Hide Preview".localized : "Preview".localized, action: preview)
                     .buttonStyle(.borderless)
             }
             if action.id == "copy" {
-                Button("复制", action: perform)
+                Button("Copy".localized, action: perform)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             } else {
-                Button(action.id == "open-url" ? "打开" : "复制", action: perform)
+                Button(action.id == "open-url" ? "Open".localized : "Copy".localized, action: perform)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
             }
@@ -1079,7 +1000,7 @@ private struct ResultPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("处理结果预览")
+            Text("Result Preview".localized)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
             ScrollView {

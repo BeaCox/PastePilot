@@ -11,6 +11,12 @@ swift build -c release
 rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp ".build/release/PastePilot" "$CONTENTS/MacOS/PastePilot"
+cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
+
+BUNDLE=$(find "$ROOT/.build" -name 'PastePilot_PastePilot.bundle' -path '*/release/*' 2>/dev/null | head -1)
+if [ -d "$BUNDLE" ]; then
+  cp -R "$BUNDLE" "$CONTENTS/Resources/"
+fi
 
 cat > "$CONTENTS/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -20,6 +26,11 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
 <dict>
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>zh-Hans</string>
+  </array>
   <key>CFBundleExecutable</key>
   <string>PastePilot</string>
   <key>CFBundleIdentifier</key>
@@ -34,6 +45,8 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
   <string>1</string>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>LSUIElement</key>
   <true/>
   <key>NSHumanReadableCopyright</key>

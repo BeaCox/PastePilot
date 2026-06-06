@@ -32,15 +32,15 @@ enum ClipboardActionFactory {
             var imageActions = [
                 ClipboardAction(
                     id: "copy-image",
-                    title: "复制图片",
-                    detail: "将原始图片重新写入剪贴板",
+                    title: "Copy Image".localized,
+                    detail: "Write the original image back to the clipboard".localized,
                     symbol: "doc.on.doc",
                     effect: .copyImage(fileName)
                 ),
                 ClipboardAction(
                     id: "copy-image-markdown",
-                    title: "复制 Markdown",
-                    detail: "优先使用网页 URL，其次使用本地图片路径",
+                    title: "Copy Markdown".localized,
+                    detail: "Prefers web URL, falls back to local file path".localized,
                     symbol: "text.badge.checkmark",
                     effect: .copyImageMarkdown(
                         fileName: fileName,
@@ -53,8 +53,8 @@ enum ClipboardActionFactory {
                 imageActions.append(
                     ClipboardAction(
                         id: "copy-image-url",
-                        title: "复制图片 URL",
-                        detail: "复制网页图片的原始地址",
+                        title: "Copy Image URL".localized,
+                        detail: "Copy the original web image address".localized,
                         symbol: "link",
                         effect: .copy(sourceURL)
                     )
@@ -64,8 +64,8 @@ enum ClipboardActionFactory {
                 imageActions.append(
                     ClipboardAction(
                         id: "copy-image-path",
-                        title: "复制文件路径",
-                        detail: "复制图片原文件的本地路径",
+                        title: "Copy File Path".localized,
+                        detail: "Copy the local path of the original image file".localized,
                         symbol: "folder",
                         effect: .copy(originalPath)
                     )
@@ -74,8 +74,8 @@ enum ClipboardActionFactory {
                 imageActions.append(
                     ClipboardAction(
                         id: "copy-image-cache-path",
-                        title: "复制缓存路径",
-                        detail: "复制 PastePilot 保存的 PNG 路径",
+                        title: "Copy Cache Path".localized,
+                        detail: "Copy the PastePilot-cached PNG path".localized,
                         symbol: "internaldrive",
                         effect: .copyCachedImagePath(fileName)
                     )
@@ -87,8 +87,8 @@ enum ClipboardActionFactory {
         var actions = [
             ClipboardAction(
                 id: "copy",
-                title: "复制原文",
-                detail: "不做修改，重新写入剪贴板",
+                title: "Copy Original".localized,
+                detail: "Copy as-is back to the clipboard".localized,
                 symbol: "doc.on.doc",
                 effect: .copy(item.content)
             )
@@ -102,8 +102,8 @@ enum ClipboardActionFactory {
                 actions.append(
                     ClipboardAction(
                         id: "format-json",
-                        title: "格式化 JSON",
-                        detail: "排序键名并添加缩进，便于阅读",
+                        title: "Format JSON".localized,
+                        detail: "Sort keys and indent for readability".localized,
                         symbol: "increase.indent",
                         effect: .copy(formatted)
                     )
@@ -113,8 +113,8 @@ enum ClipboardActionFactory {
                 actions.append(
                     ClipboardAction(
                         id: "minify-json",
-                        title: "压缩 JSON",
-                        detail: "移除空白，适合请求参数和配置",
+                        title: "Minify JSON".localized,
+                        detail: "Remove whitespace for payloads and configs".localized,
                         symbol: "decrease.indent",
                         effect: .copy(minified)
                     )
@@ -124,8 +124,8 @@ enum ClipboardActionFactory {
                 actions.append(
                     ClipboardAction(
                         id: "typescript",
-                        title: "生成 TypeScript 类型",
-                        detail: "根据字段值推断 interface",
+                        title: "Generate TypeScript Types".localized,
+                        detail: "Infer an interface from field values".localized,
                         symbol: "t.square",
                         effect: .copy(typeScript)
                     )
@@ -136,8 +136,8 @@ enum ClipboardActionFactory {
                 actions.insert(
                     ClipboardAction(
                         id: "open-url",
-                        title: "在浏览器中打开",
-                        detail: url.host ?? "打开这个链接",
+                        title: "Open in Browser".localized,
+                        detail: url.host ?? "Open this link".localized,
                         symbol: "safari",
                         effect: .open(url)
                     ),
@@ -148,8 +148,8 @@ enum ClipboardActionFactory {
             actions.append(
                 ClipboardAction(
                     id: "uppercase-color",
-                    title: "复制大写色值",
-                    detail: "统一十六进制颜色格式",
+                    title: "Copy Uppercased Color".localized,
+                    detail: "Normalize hex color format".localized,
                     symbol: "paintpalette",
                     effect: .copy(item.content.uppercased())
                 )
@@ -159,8 +159,8 @@ enum ClipboardActionFactory {
             actions.append(
                 ClipboardAction(
                     id: "quote-command",
-                    title: "转成可嵌入字符串",
-                    detail: "转义引号、反斜杠和换行",
+                    title: "Escape for String Embedding".localized,
+                    detail: "Escape quotes, backslashes, and newlines".localized,
                     symbol: "quote.opening",
                     effect: .copy(ContentTransformer.escapeString(item.content))
                 )
@@ -172,8 +172,8 @@ enum ClipboardActionFactory {
             actions.append(
                 ClipboardAction(
                     id: "markdown-error",
-                    title: "包成 Markdown 代码块",
-                    detail: "方便粘贴到 Issue 或聊天中",
+                    title: "Wrap in Markdown Code Block".localized,
+                    detail: "Ready to paste into issues or chats".localized,
                     symbol: "text.badge.checkmark",
                     effect: .copy("```\n\(item.content)\n```")
                 )
@@ -198,16 +198,16 @@ enum ClipboardActionFactory {
         if let fileName = item.imageFileName {
             return ClipboardAction(
                 id: "copy-image",
-                title: "复制图片",
-                detail: "将原始图片重新写入剪贴板",
+                title: "Copy Image".localized,
+                detail: "Write the original image back to the clipboard".localized,
                 symbol: "doc.on.doc",
                 effect: .copyImage(fileName)
             )
         }
         return ClipboardAction(
             id: "copy",
-            title: "复制原文",
-            detail: "不做修改，重新写入剪贴板",
+            title: "Copy Original".localized,
+            detail: "Copy as-is back to the clipboard".localized,
             symbol: "doc.on.doc",
             effect: .copy(item.content)
         )
@@ -218,11 +218,11 @@ enum ClipboardActionFactory {
         switch action.effect {
         case let .copy(content):
             store.copy(content)
-            return "已复制：\(action.title)"
+            return "Copied: %@".localized(action.title)
         case let .copyImage(fileName):
             return store.copyImage(fileName: fileName)
-                ? "已复制图片"
-                : "图片文件已丢失"
+                ? "Image copied".localized
+                : "Image file missing".localized
         case let .copyImageMarkdown(fileName, sourceURL, originalPath):
             let reference = sourceURL
                 ?? originalPath
@@ -236,13 +236,13 @@ enum ClipboardActionFactory {
                     altText: altText
                 )
             )
-            return "已复制图片 Markdown"
+            return "Image Markdown copied".localized
         case let .copyCachedImagePath(fileName):
             store.copy(store.imagePath(fileName: fileName))
-            return "已复制缓存路径"
+            return "Cache path copied".localized
         case let .open(url):
             NSWorkspace.shared.open(url)
-            return "已打开链接"
+            return "Link opened".localized
         }
     }
 
@@ -250,22 +250,22 @@ enum ClipboardActionFactory {
         [
             ClipboardAction(
                 id: "camel-case",
-                title: "转换为 camelCase",
-                detail: "适合 JavaScript、Swift 变量名",
-                symbol: "textformat",
+                title: "Convert to camelCase".localized,
+                detail: "For JavaScript and Swift variable names".localized,
+                symbol: "arrow.up.forward",
                 effect: .copy(ContentTransformer.toCamelCase(content))
             ),
             ClipboardAction(
                 id: "snake-case",
-                title: "转换为 snake_case",
-                detail: "适合数据库字段和 Python 变量",
-                symbol: "textformat.abc",
+                title: "Convert to snake_case".localized,
+                detail: "For database fields and Python variables".localized,
+                symbol: "arrow.down.forward",
                 effect: .copy(ContentTransformer.toSnakeCase(content))
             ),
             ClipboardAction(
                 id: "escape",
-                title: "转义为字符串",
-                detail: "处理引号、反斜杠和换行",
+                title: "Escape as String".localized,
+                detail: "Handle quotes, backslashes, and newlines".localized,
                 symbol: "quote.opening",
                 effect: .copy(ContentTransformer.escapeString(content))
             )
@@ -281,8 +281,8 @@ enum ClipboardActionFactory {
         return [
             ClipboardAction(
                 id: "shell-code-block",
-                title: "包成 Shell 代码块",
-                detail: "生成带 sh 语言标记的 Markdown 代码块",
+                title: "Wrap in Shell Code Block".localized,
+                detail: "Generate a Markdown code block with sh language tag".localized,
                 symbol: "chevron.left.forwardslash.chevron.right",
                 effect: .copy(ContentTransformer.shellCodeBlock(content))
             )
@@ -293,15 +293,15 @@ enum ClipboardActionFactory {
         [
             ClipboardAction(
                 id: "extract-shell",
-                title: "提取命令",
-                detail: "移除提示符和终端输出，只保留可复制的命令",
+                title: "Extract Commands".localized,
+                detail: "Strip prompts and output, keep only runnable commands".localized,
                 symbol: "terminal",
                 effect: .copy(extracted)
             ),
             ClipboardAction(
                 id: "extracted-shell-code-block",
-                title: "命令代码块",
-                detail: "将提取出的命令包成 Markdown Shell 代码块",
+                title: "Command Code Block".localized,
+                detail: "Wrap extracted commands in a Markdown shell code block".localized,
                 symbol: "chevron.left.forwardslash.chevron.right",
                 effect: .copy(ContentTransformer.shellCodeBlock(extracted))
             )
@@ -332,29 +332,29 @@ enum ClipboardActionFactory {
 extension ContentKind {
     var localizedTitle: String {
         switch self {
-        case .image: "图片"
-        case .json: "JSON 数据"
-        case .url: "网页链接"
-        case .color: "颜色值"
-        case .command: "终端命令"
-        case .error: "错误信息"
-        case .markdown: "Markdown 文本"
-        case .code: "代码片段"
-        case .text: "纯文本"
+        case .image: "Image".localized
+        case .json: "JSON Data".localized
+        case .url: "URL".localized
+        case .color: "Color".localized
+        case .command: "Command".localized
+        case .error: "Error".localized
+        case .markdown: "Markdown".localized
+        case .code: "Code".localized
+        case .text: "Plain Text".localized
         }
     }
 
     var explanation: String {
         switch self {
-        case .image: "识别到图片，可以预览并重新复制。"
-        case .json: "已解析结构，可以格式化、压缩或生成类型。"
-        case .url: "这是一个可访问的链接，可以直接打开或复制。"
-        case .color: "识别到颜色值，可以统一格式后使用。"
-        case .command: "识别到终端命令，不会自动执行。"
-        case .error: "识别到报错内容，可以整理后发到 Issue 或聊天。"
-        case .markdown: "识别到 Markdown，可以继续处理命名或字符串格式。"
-        case .code: "识别到代码片段，可以复制或转义后嵌入字符串。"
-        case .text: "可以转换变量命名风格或转义为字符串。"
+        case .image: "Image detected. Preview and re-copy available.".localized
+        case .json: "Structure parsed. Format, minify, or generate types.".localized
+        case .url: "A reachable link. Open or copy directly.".localized
+        case .color: "Color value detected. Normalize the format before use.".localized
+        case .command: "Terminal command detected. Never auto-executed.".localized
+        case .error: "Error detected. Clean up and share in an issue or chat.".localized
+        case .markdown: "Markdown detected. Transform naming or string format.".localized
+        case .code: "Code detected. Copy or escape for string embedding.".localized
+        case .text: "Convert naming style or escape as a string.".localized
         }
     }
 }

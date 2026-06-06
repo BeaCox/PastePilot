@@ -1,0 +1,189 @@
+/* ContentKind localized titles */
+"Image" = "图片";
+"JSON Data" = "JSON 数据";
+"URL" = "网页链接";
+"Color" = "颜色值";
+"Command" = "终端命令";
+"Error" = "错误信息";
+"Markdown" = "Markdown 文本";
+"Code" = "代码片段";
+"Plain Text" = "纯文本";
+
+/* ContentKind explanations */
+"Image detected. Preview and re-copy available." = "识别到图片，可以预览并重新复制。";
+"Structure parsed. Format, minify, or generate types." = "已解析结构，可以格式化、压缩或生成类型。";
+"A reachable link. Open or copy directly." = "这是一个可访问的链接，可以直接打开或复制。";
+"Color value detected. Normalize the format before use." = "识别到颜色值，可以统一格式后使用。";
+"Terminal command detected. Never auto-executed." = "识别到终端命令，不会自动执行。";
+"Error detected. Clean up and share in an issue or chat." = "识别到报错内容，可以整理后发到 Issue 或聊天。";
+"Markdown detected. Transform naming or string format." = "识别到 Markdown，可以继续处理命名或字符串格式。";
+"Code detected. Copy or escape for string embedding." = "识别到代码片段，可以复制或转义后嵌入字符串。";
+"Convert naming style or escape as a string." = "可以转换变量命名风格或转义为字符串。";
+
+/* ClipboardStore */
+"Image %d × %d" = "图片 %d × %d";
+
+/* Action titles */
+"Copy Image" = "复制图片";
+"Copy Markdown" = "复制 Markdown";
+"Copy Image URL" = "复制图片 URL";
+"Copy File Path" = "复制文件路径";
+"Copy Cache Path" = "复制缓存路径";
+"Copy Original" = "复制原文";
+"Format JSON" = "格式化 JSON";
+"Minify JSON" = "压缩 JSON";
+"Generate TypeScript Types" = "生成 TypeScript 类型";
+"Open in Browser" = "在浏览器中打开";
+"Copy Uppercased Color" = "复制大写色值";
+"Escape for String Embedding" = "转成可嵌入字符串";
+"Wrap in Markdown Code Block" = "包成 Markdown 代码块";
+"Convert to camelCase" = "转换为 camelCase";
+"Convert to snake_case" = "转换为 snake_case";
+"Escape as String" = "转义为字符串";
+"Wrap in Shell Code Block" = "包成 Shell 代码块";
+"Extract Commands" = "提取命令";
+"Command Code Block" = "命令代码块";
+
+/* Action details */
+"Write the original image back to the clipboard" = "将原始图片重新写入剪贴板";
+"Prefers web URL, falls back to local file path" = "优先使用网页 URL，其次使用本地图片路径";
+"Copy the original web image address" = "复制网页图片的原始地址";
+"Copy the local path of the original image file" = "复制图片原文件的本地路径";
+"Copy the PastePilot-cached PNG path" = "复制 PastePilot 保存的 PNG 路径";
+"Copy as-is back to the clipboard" = "不做修改，重新写入剪贴板";
+"Sort keys and indent for readability" = "排序键名并添加缩进，便于阅读";
+"Remove whitespace for payloads and configs" = "移除空白，适合请求参数和配置";
+"Infer an interface from field values" = "根据字段值推断 interface";
+"Open this link" = "打开这个链接";
+"Normalize hex color format" = "统一十六进制颜色格式";
+"Escape quotes, backslashes, and newlines" = "转义引号、反斜杠和换行";
+"Ready to paste into issues or chats" = "方便粘贴到 Issue 或聊天中";
+"For JavaScript and Swift variable names" = "适合 JavaScript、Swift 变量名";
+"For database fields and Python variables" = "适合数据库字段和 Python 变量";
+"Handle quotes, backslashes, and newlines" = "处理引号、反斜杠和换行";
+"Generate a Markdown code block with sh language tag" = "生成带 sh 语言标记的 Markdown 代码块";
+"Strip prompts and output, keep only runnable commands" = "移除提示符和终端输出，只保留可复制的命令";
+"Wrap extracted commands in a Markdown shell code block" = "将提取出的命令包成 Markdown Shell 代码块";
+
+/* Action perform messages */
+"Copied: %@" = "已复制：%@";
+"Image copied" = "已复制图片";
+"Image file missing" = "图片文件已丢失";
+"Image Markdown copied" = "已复制图片 Markdown";
+"Cache path copied" = "已复制缓存路径";
+"Link opened" = "已打开链接";
+
+/* Compact action titles */
+"Open" = "打开";
+"Format" = "格式化";
+"Minify" = "压缩";
+"Uppercase" = "大写色值";
+"Escape" = "转义";
+"Code Block" = "代码块";
+"Extract" = "提取命令";
+"Image URL" = "图片 URL";
+"File Path" = "文件路径";
+"Cache Path" = "缓存路径";
+
+/* PastePilotView */
+"Search clipboard history" = "搜索剪贴板历史";
+"No clipboard content yet" = "还没有剪贴板内容";
+"No search results" = "没有搜索结果";
+"Copy JSON, code, URLs, commands, or errors — PastePilot suggests the next action." = "复制 JSON、代码、链接、命令或报错，PastePilot 会给出下一步操作。";
+"Try searching by content or type." = "尝试搜索内容或类型。";
+"Pinned" = "已固定";
+"Recent" = "最近项目";
+"%d items" = "%d 条记录";
+"Clear Unpinned" = "清除未固定记录";
+"Unpin" = "取消置顶";
+"Pin to Top" = "固定到顶部";
+"Delete" = "删除";
+"Recognized as %@" = "已识别为%@";
+"Clipboard Content" = "剪贴板内容";
+"Sensitive data detected and hidden by default" = "检测到敏感信息，默认已隐藏";
+"Reveal" = "显示原文";
+"Suggested Actions" = "建议操作";
+"Click to copy the processed result; links will open instead." = "点击后会将处理结果复制到剪贴板；打开链接除外。";
+"Hide Preview" = "收起预览";
+"Preview" = "预览";
+"Copy" = "复制";
+"Result Preview" = "处理结果预览";
+"Manage All" = "管理全部记录";
+"Preferences…" = "偏好设置…";
+"About PastePilot" = "关于 PastePilot";
+"Quit PastePilot" = "退出 PastePilot";
+"Waiting for content" = "等待复制内容";
+"Copied content will appear here automatically." = "复制内容后会自动出现在这里。";
+"Try searching for other content or types." = "尝试搜索其他内容或类型。";
+"Always on top, kept when history is cleared" = "始终置顶，清理历史时保留";
+"Copy original" = "复制原文";
+"Unknown Source" = "未知来源";
+"Sensitive content hidden" = "敏感内容已隐藏";
+"Unknown size" = "未知尺寸";
+"%d characters" = "%d 字符";
+"%d lines" = "%d 行";
+
+/* SettingsView */
+"General" = "通用";
+"Storage" = "存储";
+"Appearance" = "外观";
+"Ignored Apps" = "忽略";
+"Advanced" = "高级";
+"Reset to Defaults?" = "恢复默认设置？";
+"Reset to Defaults" = "恢复默认设置";
+"Clipboard history will not be deleted." = "剪贴板历史不会被删除。";
+"Launch PastePilot at Login" = "登录时启动 PastePilot";
+"Monitor Clipboard" = "监听剪贴板";
+"When disabled, existing history can still be searched and copied." = "关闭监听后，已有历史仍可搜索和复制。";
+"Open PastePilot" = "打开 PastePilot";
+"Click the shortcut field and press a new combination; press Delete to reset." = "点击快捷键框后录制新组合；按 Delete 恢复默认值。";
+"Keep up to" = "最多保留";
+"50 items" = "50 条";
+"100 items" = "100 条";
+"200 items" = "200 条";
+"500 items" = "500 条";
+"Pinned items are excluded from this limit and never auto-cleaned." = "固定项目不计入这个数量，也不会被自动清理。";
+"Image Size Limit" = "单张图片上限";
+"Data Folder" = "数据目录";
+"Show in Finder" = "在 Finder 中显示";
+"Show Details on Hover" = "悬停显示完整详情";
+"Hover briefly to see full content, source app, and metadata." = "鼠标停留片刻后显示完整内容、来源应用和元数据。";
+"Menu Bar Window" = "菜单栏窗口";
+"Compact window that follows the system light or dark appearance." = "窗口保持紧凑，并自动跟随系统浅色或深色外观。";
+"Ignore These Apps" = "不记录以下应用";
+"One Bundle ID per line, e.g. com.apple.keychainaccess." = "每行填写一个 Bundle ID，例如 com.apple.keychainaccess。";
+"Ignore rules only affect new copies and won't delete existing history." = "忽略规则只影响新复制内容，不会删除已有历史。";
+"%d ignored" = "已忽略 %d 个";
+"Search apps…" = "搜索应用…";
+"Local Data" = "本地数据";
+"Open Data Folder" = "打开数据目录";
+"History" = "历史记录";
+"Preferences" = "偏好设置";
+"Reset to Defaults…" = "恢复默认设置…";
+"Resetting preferences won't delete clipboard history or images." = "恢复设置不会删除剪贴板历史或图片文件。";
+
+/* AboutView */
+"Smart Clipboard for Developers" = "开发者的智能剪贴板";
+"Version %@" = "版本 %@";
+"Understands JSON, code, terminal commands, errors, URLs, and images — suggests the next action. All data stays on your Mac." = "理解 JSON、代码、终端命令、报错、链接和图片，并提供下一步操作。所有数据仅保存在本机。";
+"%@ to open" = "%@ 呼出";
+"Local Storage" = "本地存储";
+
+/* AppDelegate */
+"PastePilot Settings" = "PastePilot 设置";
+"PastePilot: Click for clipboard actions" = "PastePilot：点击查看剪贴板快捷操作";
+
+/* HotKeyRecorder */
+"Press a new shortcut…" = "按下新的快捷键…";
+
+/* WelcomeView */
+"Welcome to PastePilot" = "欢迎使用 PastePilot";
+"Accessibility" = "辅助功能";
+"Global shortcut is ready." = "全局快捷键已就绪。";
+"Required for the global shortcut to work system-wide." = "全局快捷键需要此权限才能在系统范围内生效。";
+"Clipboard Monitoring" = "剪贴板监听";
+"Active — no additional permission needed." = "已启用，无需额外权限。";
+"Open Accessibility Settings" = "打开辅助功能设置";
+"Press %@ to open PastePilot anytime." = "随时按 %@ 呼出 PastePilot。";
+"Get Started" = "开始使用";
+"Skip for Now" = "暂时跳过";

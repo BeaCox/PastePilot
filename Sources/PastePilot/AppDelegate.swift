@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Carbon
 import Combine
 import ServiceManagement
@@ -11,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
+    private var welcomeWindow: NSWindow?
     private var popover: NSPopover?
     private var statusItem: NSStatusItem?
     private var hotKeyRef: EventHotKeyRef?
@@ -20,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var isSynchronizingLoginItem = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.applicationIconImage = AppIconRenderer.icon(size: 512)
         NSApp.setActivationPolicy(.accessory)
         configurePanel()
         configureStatusItem()
@@ -31,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.startMonitoring()
             store.captureCurrentClipboard()
         }
+        showWelcomeIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -85,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 clearUnpinnedHistory: { [weak self] in self?.store.clearUnpinned() }
             )
             settingsWindow = makeUtilityWindow(
-                title: "PastePilot 设置",
+                title: "PastePilot Settings".localized,
                 size: NSSize(width: 700, height: 570),
                 content: view
             )
@@ -105,12 +109,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 openDataFolder: { [weak self] in self?.openDataFolder() }
             )
             aboutWindow = makeUtilityWindow(
-                title: "关于 PastePilot",
+                title: "About PastePilot".localized,
                 size: NSSize(width: 460, height: 390),
                 content: view
             )
         }
         showUtilityWindow(aboutWindow)
+    }
+
+    private func showWelcomeIfNeeded() {
+        let key = "hasLaunchedBefore"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+
+        let shortcut = HotKeyFormatter.display(
+            keyCode: settings.hotKeyCode,
+            modifiers: settings.hotKeyModifiers
+        )
+        let view = WelcomeView(shortcut: shortcut) { [weak self] in
+            self?.welcomeWindow?.close()
+            self?.welcomeWindow = nil
+        }
+        welcomeWindow = makeUtilityWindow(
+            title: "PastePilot",
+            size: NSSize(width: 480, height: 420),
+            content: view
+        )
+        showUtilityWindow(welcomeWindow)
     }
 
     private func configurePanel() {
@@ -135,7 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = statusImage(filled: !store.items.isEmpty)
         item.button?.image?.isTemplate = true
-        item.button?.toolTip = "PastePilot：点击查看剪贴板快捷操作"
+        item.button?.toolTip = "PastePilot: Click for clipboard actions".localized
         item.button?.target = self
         item.button?.action = #selector(togglePopover)
         statusItem = item

@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "PastePilot",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v14)
     ],
@@ -13,7 +14,8 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "PastePilot",
-            path: "Sources/PastePilot"
+            path: "Sources/PastePilot",
+            resources: [.copy("Resources/zh-Hans.lproj")]
         )
     ],
     swiftLanguageModes: [.v5]

@@ -168,7 +168,7 @@ final class ClipboardStore: ObservableObject {
         let wasPinned = items.first { $0.imageDigest == digest }?.isPinned ?? false
         let item = ClipboardItem(
             id: id,
-            content: "图片 \(pixelSize.width) × \(pixelSize.height)",
+            content: "Image %d × %d".localized(pixelSize.width, pixelSize.height),
             kind: .image,
             isPinned: wasPinned,
             sourceAppName: source.name,

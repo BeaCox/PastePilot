@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum ContentKind: String, Codable, CaseIterable {
     case image
@@ -36,6 +37,20 @@ enum ContentKind: String, Codable, CaseIterable {
         case .markdown: "text.badge.checkmark"
         case .code: "chevron.left.forwardslash.chevron.right"
         case .text: "doc.text"
+        }
+    }
+
+    var accentColor: Color {
+        switch self {
+        case .image: .purple
+        case .json: .blue
+        case .url: .green
+        case .color: .pink
+        case .command: .orange
+        case .error: .red
+        case .markdown: .teal
+        case .code: .indigo
+        case .text: .secondary.opacity(0.5)
         }
     }
 }
