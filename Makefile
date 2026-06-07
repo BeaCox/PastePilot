@@ -1,7 +1,10 @@
-.PHONY: app build run test
+.PHONY: app dmg build run test
 
 app:
 	sh Scripts/build-app.sh
+
+dmg:
+	sh Scripts/build-dmg.sh
 
 build:
 	swift build

@@ -2,11 +2,13 @@
 
 ## Short Term
 
-- [ ] CI/CD: GitHub Actions for build and test
-- [ ] Code signing + notarization: replace ad-hoc signing, pass Gatekeeper
-- [ ] Homebrew Cask / DMG distribution
+- [x] CI/CD: GitHub Actions for build and test
+- [ ] Code signing + notarization: requires an Apple Developer Program account;
+      donations toward the membership fee would make this possible
+- [x] DMG distribution
+- [ ] Homebrew Cask distribution
 - [ ] Auto-update mechanism (Sparkle or similar)
-- [ ] README screenshots / GIF demo
+- [x] README screenshots / GIF demo
 - [x] CONTRIBUTING.md
 - [ ] CHANGELOG
 

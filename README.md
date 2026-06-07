@@ -1,6 +1,12 @@
 # PastePilot
 
+[![CI](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml)
+
 A lightweight macOS clipboard manager built for developers. PastePilot recognizes what you copied and suggests the next useful action — no plugins, no cloud, everything stays on your Mac.
+
+## Demo
+
+![PastePilot menu bar popover demo](README-assets/pastepilot-demo.gif)
 
 ## Features
 
@@ -41,7 +47,11 @@ Copied images are automatically scanned for text using the macOS Vision framewor
 - Detects and masks API keys, tokens, passwords, and private keys
 - Sensitive content hidden by default with optional reveal
 - All data stored locally — no network access, no telemetry
-- History stored at `~/Library/Application Support/PastePilot/`
+- History is stored as plain JSON at `~/Library/Application Support/PastePilot/history.json`
+- Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
+- Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
+- Sensitive-content masking only hides values in the UI; it does not encrypt data at rest
+- Clear history from PastePilot or delete its Application Support folder to remove stored clipboard data
 
 ### Menu Bar Interface
 
@@ -70,6 +80,7 @@ English and Simplified Chinese. Follows system language automatically.
 ## Requirements
 
 - macOS 14.0 (Sonoma) or later
+- Apple Silicon or Intel Mac (universal binary)
 - Accessibility permission (for the global shortcut)
 
 ## Quick Start
@@ -84,12 +95,48 @@ The app appears in the menu bar. Copy anything to get started.
 
 ## Build
 
-Create a standalone `.app` bundle (ad-hoc signed):
+Create a universal `arm64` + `x86_64` `.app` bundle (ad-hoc signed):
 
 ```sh
 make app
 open dist/PastePilot.app
 ```
+
+Create a compressed DMG with an `Applications` shortcut:
+
+```sh
+make dmg
+open dist/PastePilot-0.1.0.dmg
+```
+
+The default build uses ad-hoc signing and is intended for local testing. For a
+public release, sign with a Developer ID certificate:
+
+> PastePilot is not currently signed or notarized because the maintainer does
+> not yet have an Apple Developer Program account. macOS may therefore warn or
+> block the app when it is downloaded by another user. Donations toward the
+> annual membership fee would make signed and notarized releases possible.
+
+```sh
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+VERSION=0.1.0 BUILD_NUMBER=1 make dmg
+```
+
+To notarize and staple the DMG, first save App Store Connect credentials:
+
+```sh
+xcrun notarytool store-credentials "PastePilot-notary"
+```
+
+Then build with the keychain profile:
+
+```sh
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+NOTARY_PROFILE="PastePilot-notary" \
+VERSION=0.1.0 BUILD_NUMBER=1 make dmg
+```
+
+The release artifact is written to `dist/PastePilot-<version>.dmg`.
 
 ## Test
 
