@@ -43,6 +43,7 @@ swift build \
 rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$FRAMEWORKS"
 cp "$RELEASE/PastePilot" "$CONTENTS/MacOS/PastePilot"
+install_name_tool -add_rpath @loader_path/../Frameworks "$CONTENTS/MacOS/PastePilot"
 lipo "$CONTENTS/MacOS/PastePilot" -verify_arch "$ARCH"
 ditto "$RELEASE/Sparkle.framework" "$FRAMEWORKS/Sparkle.framework"
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
