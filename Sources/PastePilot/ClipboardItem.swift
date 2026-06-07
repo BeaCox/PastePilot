@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 
 enum ContentKind: String, Codable, CaseIterable {
+    case file
+    case richText
     case image
     case json
     case url
@@ -14,6 +16,8 @@ enum ContentKind: String, Codable, CaseIterable {
 
     var title: String {
         switch self {
+        case .file: "File"
+        case .richText: "Rich Text"
         case .image: "Image"
         case .json: "JSON"
         case .url: "URL"
@@ -28,6 +32,8 @@ enum ContentKind: String, Codable, CaseIterable {
 
     var symbol: String {
         switch self {
+        case .file: "doc.on.doc"
+        case .richText: "textformat"
         case .image: "photo"
         case .json: "curlybraces"
         case .url: "link"
@@ -42,6 +48,8 @@ enum ContentKind: String, Codable, CaseIterable {
 
     var accentColor: Color {
         switch self {
+        case .file: .cyan
+        case .richText: .mint
         case .image: .purple
         case .json: .blue
         case .url: .green
@@ -71,6 +79,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let imageDigest: String?
     let imageSourceURL: String?
     let imageOriginalPath: String?
+    let filePaths: [String]?
+    let richTextRTFBase64: String?
+    let richTextHTML: String?
+    var ocrText: String?
 
     init(
         id: UUID = UUID(),
@@ -87,7 +99,11 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         imageByteCount: Int? = nil,
         imageDigest: String? = nil,
         imageSourceURL: String? = nil,
-        imageOriginalPath: String? = nil
+        imageOriginalPath: String? = nil,
+        filePaths: [String]? = nil,
+        richTextRTFBase64: String? = nil,
+        richTextHTML: String? = nil,
+        ocrText: String? = nil
     ) {
         self.id = id
         self.content = content
@@ -104,10 +120,22 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.imageDigest = imageDigest
         self.imageSourceURL = imageSourceURL
         self.imageOriginalPath = imageOriginalPath
+        self.filePaths = filePaths
+        self.richTextRTFBase64 = richTextRTFBase64
+        self.richTextHTML = richTextHTML
+        self.ocrText = ocrText
     }
 
     var isImage: Bool {
         kind == .image && imageFileName != nil
+    }
+
+    var fileURLs: [URL] {
+        (filePaths ?? []).map { URL(fileURLWithPath: $0) }
+    }
+
+    var hasRichText: Bool {
+        richTextRTFBase64 != nil || richTextHTML != nil
     }
 }
 

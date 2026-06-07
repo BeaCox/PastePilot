@@ -76,6 +76,7 @@ struct HotKeyRecorder: NSViewRepresentable {
             keyCode: keyCode,
             modifiers: modifiers
         )
+        view.setAccessibilityValue(view.shortcutText)
     }
 }
 
@@ -90,15 +91,34 @@ final class HotKeyRecorderNSView: NSView {
     override var acceptsFirstResponder: Bool { true }
     override var intrinsicContentSize: NSSize { NSSize(width: 190, height: 34) }
 
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("Open PastePilot Shortcut".localized)
+        setAccessibilityHelp(
+            "Press to record a new shortcut. Press Delete to restore the default.".localized
+        )
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("Open PastePilot Shortcut".localized)
+    }
+
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         isRecording = true
         needsDisplay = true
+        setAccessibilityValue("Press a new shortcut…".localized)
     }
 
     override func resignFirstResponder() -> Bool {
         isRecording = false
         needsDisplay = true
+        setAccessibilityValue(shortcutText)
         return super.resignFirstResponder()
     }
 

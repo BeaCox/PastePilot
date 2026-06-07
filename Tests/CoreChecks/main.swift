@@ -1,8 +1,10 @@
 import Foundation
 
 private var failures: [String] = []
+private var checksRun = 0
 
 private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
+    checksRun += 1
     if !condition() {
         failures.append(message)
     }
@@ -10,6 +12,11 @@ private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 
 check(ContentAnalyzer.analyze(#"{"name":"PastePilot"}"#).kind == .json, "recognizes JSON")
 check(ContentAnalyzer.analyze("git status --short").kind == .command, "recognizes commands")
+check(ContentAnalyzer.analyze("$ npm install").kind == .command, "recognizes $ prompt commands")
+check(ContentAnalyzer.analyze("npx create-react-app my-app").kind == .command, "recognizes npx commands")
+check(ContentAnalyzer.analyze("sudo apt install nginx").kind == .command, "recognizes sudo commands")
+check(ContentAnalyzer.analyze("terraform init").kind == .command, "recognizes infrastructure commands")
+check(ContentAnalyzer.analyze("aws s3 ls").kind == .command, "recognizes cloud CLI commands")
 check(
     ContentAnalyzer.analyze("TypeError: undefined\n at index.js:10").kind == .error,
     "recognizes errors"
@@ -63,6 +70,21 @@ check(
 check(
     ContentTransformer.extractShellCommands("The price is $100") == nil,
     "ignores currency as a shell prompt"
+)
+
+let readmeSnippet = """
+$ git clone https://github.com/user/repo.git
+$ cd repo
+$ npm install
+"""
+check(
+    ContentTransformer.extractShellCommands(readmeSnippet)
+        == "git clone https://github.com/user/repo.git\ncd repo\nnpm install",
+    "extracts $ prompts from README-style commands"
+)
+check(
+    ContentTransformer.extractShellCommands("$ npm install") == "npm install",
+    "strips single $ prompt"
 )
 check(
     ContentTransformer.imageMarkdown(
@@ -138,8 +160,36 @@ let localImageItem = ClipboardItem(
 )
 check(
     ClipboardActionFactory.compactActions(for: localImageItem).map(\.id)
-        == ["copy-image-markdown", "copy-image-path"],
-    "offers local image Markdown and file path actions"
+        == ["quick-look", "reveal-files", "copy-image-markdown"],
+    "prioritizes Quick Look and Finder for local images"
+)
+
+let fileItem = ClipboardItem(
+    content: "one.txt\ntwo.pdf",
+    kind: .file,
+    filePaths: ["/tmp/one.txt", "/tmp/two.pdf"]
+)
+check(fileItem.fileURLs.count == 2, "persists file URLs")
+check(
+    ClipboardActionFactory.actions(for: fileItem).map(\.id)
+        == ["copy-files", "quick-look", "reveal-files"],
+    "offers copy, Quick Look, and Finder actions for files"
+)
+check(
+    ClipboardActionFactory.copyAction(for: fileItem).id == "copy-files",
+    "uses file copy as the primary file action"
+)
+
+let richTextItem = ClipboardItem(
+    content: "Formatted text",
+    kind: .richText,
+    richTextRTFBase64: Data("{\\rtf1 Formatted text}".utf8).base64EncodedString(),
+    richTextHTML: "<b>Formatted text</b>"
+)
+check(richTextItem.hasRichText, "persists rich text metadata")
+check(
+    ClipboardActionFactory.actions(for: richTextItem).map(\.id).contains("copy-html"),
+    "offers HTML source for rich text"
 )
 
 let oldPinned = ClipboardItem(
@@ -209,7 +259,7 @@ check(
 settingsDefaults.removePersistentDomain(forName: settingsSuiteName)
 
 if failures.isEmpty {
-    print("All \(29) core checks passed.")
+    print("All \(checksRun) core checks passed.")
 } else {
     failures.forEach { print("FAIL: \($0)") }
     exit(1)

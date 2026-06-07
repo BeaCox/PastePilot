@@ -9,7 +9,6 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = AppSettings.shared
     private let store = ClipboardStore()
-    private var window: NSWindow?
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
     private var welcomeWindow: NSWindow?
@@ -24,7 +23,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = AppIconRenderer.icon(size: 512)
         NSApp.setActivationPolicy(.accessory)
-        configurePanel()
         configureStatusItem()
         registerHotKey()
         registerPopoverKeyMonitor()
@@ -54,14 +52,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         togglePopover()
     }
 
-    @objc private func showWindow() {
-        popover?.close()
-        guard let window else { return }
-        NSApp.activate(ignoringOtherApps: true)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-    }
-
     @objc private func togglePopover() {
         guard let popover, let button = statusItem?.button else { return }
         if popover.isShown {
@@ -86,11 +76,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let view = SettingsView(
                 settings: settings,
                 openDataFolder: { [weak self] in self?.openDataFolder() },
-                clearUnpinnedHistory: { [weak self] in self?.store.clearUnpinned() }
+                clearUnpinnedHistory: { [weak self] in self?.store.clearUnpinned() },
+                resize: { [weak self] height in
+                    self?.resizeSettingsWindow(height: height)
+                }
             )
             settingsWindow = makeUtilityWindow(
                 title: "PastePilot Settings".localized,
-                size: NSSize(width: 700, height: 570),
+                size: NSSize(width: 640, height: 350),
                 content: view
             )
         }
@@ -110,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             aboutWindow = makeUtilityWindow(
                 title: "About PastePilot".localized,
-                size: NSSize(width: 460, height: 390),
+                size: NSSize(width: 520, height: 390),
                 content: view
             )
         }
@@ -138,24 +131,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showUtilityWindow(welcomeWindow)
     }
 
-    private func configurePanel() {
-        let content = PastePilotView(store: store, settings: settings)
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 860, height: 540),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "PastePilot"
-        window.titlebarAppearsTransparent = false
-        window.isReleasedWhenClosed = false
-        window.collectionBehavior = [.moveToActiveSpace]
-        window.contentView = NSHostingView(rootView: content)
-        window.minSize = NSSize(width: 760, height: 480)
-        window.center()
-        self.window = window
-    }
-
     private func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = statusImage(filled: !store.items.isEmpty)
@@ -173,10 +148,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: MenuBarView(
                 store: store,
                 settings: settings,
-                openHistory: { [weak self] in self?.showWindow() },
                 openSettings: { [weak self] in self?.showSettings() },
                 openAbout: { [weak self] in self?.showAbout() },
-                quit: { [weak self] in self?.quit() }
+                quit: { [weak self] in self?.quit() },
+                resize: { [weak self] size in
+                    self?.resizePopover(size: size)
+                }
             )
         )
         self.popover = popover
@@ -189,6 +166,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.statusItem?.button?.image?.isTemplate = true
             }
             .store(in: &cancellables)
+
+        settings.$menuBarIconStyle
+            .removeDuplicates()
+            .sink { [weak self] styleValue in
+                guard let self else { return }
+                let style = MenuBarIconStyle(rawValue: styleValue) ?? .pastepilot
+                let filled = !self.store.items.isEmpty
+                let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
+                image?.isTemplate = true
+                self.statusItem?.button?.image = image
+            }
+            .store(in: &cancellables)
+    }
+
+    private func resizePopover(size: CGSize) {
+        guard let popover else { return }
+        let contentSize = NSSize(width: size.width, height: size.height)
+        guard popover.contentSize != contentSize else { return }
+        popover.contentSize = contentSize
+    }
+
+    private func resizeSettingsWindow(height: CGFloat) {
+        guard let settingsWindow else { return }
+        let size = NSSize(width: 640, height: height)
+        guard settingsWindow.contentLayoutRect.size != size else { return }
+        settingsWindow.setContentSize(size)
     }
 
     private func configureSettingsObservers() {
@@ -223,6 +226,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .dropFirst()
             .sink { [weak self] _, _ in
                 self?.registerConfiguredHotKey()
+            }
+            .store(in: &cancellables)
+
+        settings.$historyTimeoutSeconds
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.store.purgeExpired()
             }
             .store(in: &cancellables)
     }
@@ -277,11 +287,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func statusImage(filled: Bool) -> NSImage? {
-        let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
-        return NSImage(
-            systemSymbolName: filled ? "clipboard.fill" : "clipboard",
-            accessibilityDescription: "PastePilot"
-        )?.withSymbolConfiguration(configuration)
+        let style = MenuBarIconStyle(rawValue: settings.menuBarIconStyle) ?? .pastepilot
+        let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
+        image?.isTemplate = true
+        return image
     }
 
     private func registerPopoverKeyMonitor() {
@@ -299,12 +308,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
 
+            if flags.contains(.command),
+               !flags.contains(.option),
+               !flags.contains(.control) {
+                switch event.keyCode {
+                case UInt16(kVK_ANSI_P):
+                    NotificationCenter.default.post(name: .pastePilotTogglePinned, object: nil)
+                    return nil
+                case UInt16(kVK_Delete):
+                    NotificationCenter.default.post(name: .pastePilotDeleteItem, object: nil)
+                    return nil
+                default:
+                    break
+                }
+            }
+
             let notification: Notification.Name?
             switch event.keyCode {
             case UInt16(kVK_UpArrow):
                 notification = .pastePilotMoveUp
             case UInt16(kVK_DownArrow):
                 notification = .pastePilotMoveDown
+            case UInt16(kVK_Space):
+                if let editor = self?.popover?.contentViewController?
+                    .view.window?.firstResponder as? NSTextView,
+                   !editor.string.isEmpty {
+                    return event
+                }
+                notification = .pastePilotTogglePreview
             default:
                 notification = nil
             }
@@ -392,4 +423,7 @@ extension Notification.Name {
     static let pastePilotMoveUp = Notification.Name("PastePilotMoveUp")
     static let pastePilotMoveDown = Notification.Name("PastePilotMoveDown")
     static let pastePilotCopyIndex = Notification.Name("PastePilotCopyIndex")
+    static let pastePilotTogglePreview = Notification.Name("PastePilotTogglePreview")
+    static let pastePilotTogglePinned = Notification.Name("PastePilotTogglePinned")
+    static let pastePilotDeleteItem = Notification.Name("PastePilotDeleteItem")
 }

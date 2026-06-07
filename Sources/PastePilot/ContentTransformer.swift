@@ -149,7 +149,7 @@ enum ContentTransformer {
             .filter { !$0.isEmpty }
     }
 
-    private static func promptedCommand(from line: String) -> String? {
+    static func promptedCommand(from line: String) -> String? {
         let patterns = [
             #"^\s*(?:\$|%|❯|➜)\s+(.+)$"#,
             #"^\s*[A-Za-z0-9._-]+@[A-Za-z0-9._-]+(?::[^$#]+)?[$#]\s+(.+)$"#,
@@ -182,16 +182,36 @@ enum ContentTransformer {
         )
     }
 
-    private static func isBareShellCommand(_ line: String) -> Bool {
+    static func isBareShellCommand(_ line: String) -> Bool {
         guard !line.isEmpty, line.count < 2_000 else { return false }
         let commands = [
             "git", "npm", "npx", "pnpm", "yarn", "bun", "node", "deno",
-            "swift", "xcodebuild", "cargo", "rustc", "go", "python", "python3",
-            "pip", "pip3", "ruby", "bundle", "docker", "docker-compose",
-            "kubectl", "helm", "curl", "wget", "brew", "make", "cmake",
-            "cd", "ls", "mkdir", "rm", "cp", "mv", "ssh", "scp", "rsync",
-            "cat", "sed", "awk", "grep", "rg", "find", "chmod", "chown",
-            "export", "source", "echo", "printf"
+            "swift", "swiftc", "xcodebuild", "xcrun", "xcode-select",
+            "cargo", "rustc", "rustup", "go", "python", "python3",
+            "pip", "pip3", "uv", "ruby", "gem", "bundle",
+            "java", "javac", "mvn", "gradle", "dotnet",
+            "docker", "docker-compose", "podman",
+            "kubectl", "helm", "terraform", "ansible", "vagrant",
+            "aws", "gcloud", "az",
+            "curl", "wget", "httpie",
+            "brew", "apt", "apt-get", "dnf", "yum", "apk", "pacman", "snap",
+            "make", "cmake", "ninja",
+            "sudo", "env", "which", "whereis", "command",
+            "cd", "ls", "mkdir", "rm", "cp", "mv", "touch", "ln",
+            "ssh", "scp", "rsync",
+            "cat", "sed", "awk", "grep", "rg", "find", "fd",
+            "head", "tail", "less", "more", "wc", "sort", "uniq",
+            "diff", "xargs", "tee",
+            "chmod", "chown", "chgrp",
+            "tar", "zip", "unzip", "gzip", "gunzip",
+            "export", "source", "eval", "set", "unset",
+            "echo", "printf",
+            "kill", "killall", "pkill",
+            "open", "xdg-open", "pbcopy", "pbpaste",
+            "man", "nvm", "rbenv", "pyenv", "volta", "corepack",
+            "ng", "vue", "vite", "next", "nuxt", "remix",
+            "jest", "vitest", "pytest", "mocha",
+            "eslint", "prettier", "tsc",
         ]
         guard let first = line.split(whereSeparator: \.isWhitespace).first else {
             return false

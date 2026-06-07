@@ -3,3 +3,11 @@
 .DS_Store
 DerivedData/
 dist/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.o
+*.d
+*.swp
+*~
+Resources/AppIcon.iconset/

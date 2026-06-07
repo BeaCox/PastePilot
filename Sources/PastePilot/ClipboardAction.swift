@@ -11,6 +11,10 @@ struct ClipboardAction: Identifiable {
             originalPath: String?
         )
         case copyCachedImagePath(String)
+        case copyFiles([URL])
+        case copyRichText(UUID)
+        case revealFiles([URL])
+        case quickLook([URL])
         case open(URL)
     }
 
@@ -61,6 +65,7 @@ enum ClipboardActionFactory {
                 )
             }
             if let originalPath = item.imageOriginalPath {
+                let originalURL = URL(fileURLWithPath: originalPath)
                 imageActions.append(
                     ClipboardAction(
                         id: "copy-image-path",
@@ -70,6 +75,7 @@ enum ClipboardActionFactory {
                         effect: .copy(originalPath)
                     )
                 )
+                imageActions.append(contentsOf: fileActions(for: [originalURL]))
             } else {
                 imageActions.append(
                     ClipboardAction(
@@ -95,6 +101,30 @@ enum ClipboardActionFactory {
         ]
 
         switch item.kind {
+        case .file:
+            actions = fileActions(for: item.fileURLs)
+        case .richText:
+            actions.insert(
+                ClipboardAction(
+                    id: "copy-rich-text",
+                    title: "Copy with Formatting".localized,
+                    detail: "Preserve fonts, styles, colors, and links".localized,
+                    symbol: "textformat",
+                    effect: .copyRichText(item.id)
+                ),
+                at: 0
+            )
+            if let html = item.richTextHTML {
+                actions.append(
+                    ClipboardAction(
+                        id: "copy-html",
+                        title: "Copy HTML Source".localized,
+                        detail: "Copy the underlying HTML markup".localized,
+                        symbol: "chevron.left.forwardslash.chevron.right",
+                        effect: .copy(html)
+                    )
+                )
+            }
         case .image:
             break
         case .json:
@@ -189,12 +219,37 @@ enum ClipboardActionFactory {
     }
 
     static func compactActions(for item: ClipboardItem) -> [ClipboardAction] {
-        Array(actions(for: item).filter {
-            $0.id != "copy" && $0.id != "copy-image"
-        }.prefix(3))
+        let available = actions(for: item).filter {
+            $0.id != copyAction(for: item).id
+        }
+        if item.kind == .image, item.imageOriginalPath != nil {
+            let preferredIDs = ["quick-look", "reveal-files", "copy-image-markdown"]
+            return preferredIDs.compactMap { id in
+                available.first { $0.id == id }
+            }
+        }
+        return Array(available.prefix(3))
     }
 
     static func copyAction(for item: ClipboardItem) -> ClipboardAction {
+        if item.kind == .file {
+            return ClipboardAction(
+                id: "copy-files",
+                title: "Copy Files".localized,
+                detail: "Write the original files back to the clipboard".localized,
+                symbol: "doc.on.doc",
+                effect: .copyFiles(item.fileURLs)
+            )
+        }
+        if item.kind == .richText, item.hasRichText {
+            return ClipboardAction(
+                id: "copy-rich-text",
+                title: "Copy with Formatting".localized,
+                detail: "Preserve fonts, styles, colors, and links".localized,
+                symbol: "textformat",
+                effect: .copyRichText(item.id)
+            )
+        }
         if let fileName = item.imageFileName {
             return ClipboardAction(
                 id: "copy-image",
@@ -240,6 +295,28 @@ enum ClipboardActionFactory {
         case let .copyCachedImagePath(fileName):
             store.copy(store.imagePath(fileName: fileName))
             return "Cache path copied".localized
+        case let .copyFiles(urls):
+            return store.copyFiles(urls)
+                ? "Files copied".localized
+                : "Files are no longer available".localized
+        case let .copyRichText(id):
+            guard let item = store.items.first(where: { $0.id == id }) else {
+                return "Rich text is no longer available".localized
+            }
+            return store.copyRichText(for: item)
+                ? "Rich text copied".localized
+                : "Rich text is no longer available".localized
+        case let .revealFiles(urls):
+            let existingURLs = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
+            guard !existingURLs.isEmpty else {
+                return "Files are no longer available".localized
+            }
+            NSWorkspace.shared.activateFileViewerSelecting(existingURLs)
+            return "Shown in Finder".localized
+        case let .quickLook(urls):
+            return QuickLookService.shared.preview(urls)
+                ? "Quick Look opened".localized
+                : "Files are no longer available".localized
         case let .open(url):
             NSWorkspace.shared.open(url)
             return "Link opened".localized
@@ -308,6 +385,33 @@ enum ClipboardActionFactory {
         ]
     }
 
+    private static func fileActions(for urls: [URL]) -> [ClipboardAction] {
+        guard !urls.isEmpty else { return [] }
+        return [
+            ClipboardAction(
+                id: "copy-files",
+                title: urls.count == 1 ? "Copy File".localized : "Copy Files".localized,
+                detail: "Write the original files back to the clipboard".localized,
+                symbol: "doc.on.doc",
+                effect: .copyFiles(urls)
+            ),
+            ClipboardAction(
+                id: "quick-look",
+                title: "Quick Look".localized,
+                detail: "Preview using the macOS system viewer".localized,
+                symbol: "eye",
+                effect: .quickLook(urls)
+            ),
+            ClipboardAction(
+                id: "reveal-files",
+                title: "Show in Finder".localized,
+                detail: "Reveal the original file location".localized,
+                symbol: "folder",
+                effect: .revealFiles(urls)
+            )
+        ]
+    }
+
     private static func deduplicated(_ actions: [ClipboardAction]) -> [ClipboardAction] {
         var seenEffects: Set<String> = []
         return actions.filter { action in
@@ -321,6 +425,14 @@ enum ClipboardActionFactory {
                 key = "markdown:\(sourceURL ?? originalPath ?? fileName)"
             case let .copyCachedImagePath(fileName):
                 key = "cache-path:\(fileName)"
+            case let .copyFiles(urls):
+                key = "files:\(urls.map(\.path).joined(separator: "|"))"
+            case let .copyRichText(id):
+                key = "rich-text:\(id.uuidString)"
+            case let .revealFiles(urls):
+                key = "reveal:\(urls.map(\.path).joined(separator: "|"))"
+            case let .quickLook(urls):
+                key = "quick-look:\(urls.map(\.path).joined(separator: "|"))"
             case let .open(url):
                 key = "open:\(url.absoluteString)"
             }
@@ -332,6 +444,8 @@ enum ClipboardActionFactory {
 extension ContentKind {
     var localizedTitle: String {
         switch self {
+        case .file: "Files".localized
+        case .richText: "Rich Text".localized
         case .image: "Image".localized
         case .json: "JSON Data".localized
         case .url: "URL".localized
@@ -346,6 +460,8 @@ extension ContentKind {
 
     var explanation: String {
         switch self {
+        case .file: "Files detected. Copy, preview, or reveal them in Finder.".localized
+        case .richText: "Formatted text detected. Preserve styling or copy as plain text.".localized
         case .image: "Image detected. Preview and re-copy available.".localized
         case .json: "Structure parsed. Format, minify, or generate types.".localized
         case .url: "A reachable link. Open or copy directly.".localized

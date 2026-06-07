@@ -1,52 +1,90 @@
 # PastePilot
 
-A developer-focused macOS clipboard assistant. PastePilot recognizes clipboard
-content and offers the next useful action instead of only keeping history.
+A lightweight macOS clipboard manager built for developers. PastePilot recognizes what you copied and suggests the next useful action — no plugins, no cloud, everything stays on your Mac.
 
-## Current MVP
+## Features
 
-- Detects JSON, URLs, colors, commands, errors, Markdown, code, and plain text
-- Captures screenshots, bitmap clipboard content, and image files copied from Finder
-- Shows image thumbnails, dimensions, file size, source app, and hover previews
-- Copies images as Markdown using the original web URL or local file path
-- Preserves web image URLs and Finder file paths, with cache paths as a fallback
-- Formats and minifies JSON, or converts it to a TypeScript declaration
-- Converts text to `camelCase` or `snake_case`, and escapes strings
-- Detects and masks common API keys, tokens, passwords, and private keys
-- Supports search, pinning, deletion, and local history persistence
-- Pinned items always appear in a dedicated top section and survive automatic cleanup
-- Maccy-style tabbed Preferences control launch at login, monitoring, storage,
-  appearance, ignored apps, custom global shortcut, and advanced cleanup
-- Includes native Preferences and About windows from the menu bar popover
-- Click the menu bar clipboard icon for the latest content and quick actions
-- Configure a global shortcut to open or hide clipboard history
-- Press `Command + 1` through `Command + 9` to copy visible Popover records
+### Smart Content Recognition
 
-## How it works
+PastePilot automatically identifies 11 content types and tailors actions to each:
 
-1. Copy developer content such as JSON, a URL, command, error, or code.
-2. Click the PastePilot icon or use the configurable global shortcut.
-3. Search recent history, use arrow keys to select, and press Return to reuse an item.
-4. Click a history row to reveal its relevant developer actions.
-5. Open the full manager only when you need detailed previews or bulk cleanup.
+| Type | Examples | Actions |
+|------|----------|---------|
+| **Command** | `$ npm install`, `git status`, `sudo apt install` | Strip prompt (`$` / `%` / `❯`), extract from terminal output, wrap in code block |
+| **JSON** | API responses, config files | Format (pretty-print), minify, generate TypeScript interfaces |
+| **URL** | `https://...` | Open in browser, copy |
+| **Code** | Functions, snippets | Escape for string embedding, wrap in Markdown code block |
+| **Error** | Stack traces, crash logs | Clean up for issues/chat, extract embedded commands |
+| **Color** | `#FF5733`, `rgb(...)`, `hsl(...)` | Normalize hex format |
+| **Markdown** | Headings, lists, links | Name conversion, string escape |
+| **Rich Text** | Formatted text from web/editors | Preserve formatting, copy as plain text, copy HTML source |
+| **Image** | Screenshots, copied images | Preview, copy Markdown with web URL or file path, OCR text search |
+| **File** | Files from Finder | Copy, Quick Look, Show in Finder |
+| **Plain Text** | Everything else | Convert to `camelCase` / `snake_case`, escape as string |
 
-Actions copy their processed result back to the clipboard. PastePilot never
-executes terminal commands automatically, and sensitive values are hidden by
-default.
+### Command Intelligence
 
-## Run
+Built for the pain of copying `$ npm install` from a README and having to delete the `$` yourself:
+
+- Recognizes 100+ command-line tools (`git`, `docker`, `kubectl`, `terraform`, `aws`, `brew`, ...)
+- Strips prompt prefixes (`$`, `%`, `❯`, `➜`, `user@host$`, `(venv) $`)
+- Extracts runnable commands from terminal transcripts mixed with output
+- Handles multi-line commands with `\` continuation
+- Parses commands inside fenced code blocks (` ```sh `, ` ```bash `, ` ```console `)
+
+### Image OCR
+
+Copied images are automatically scanned for text using the macOS Vision framework. Recognized text is searchable in history — find a screenshot by typing any word visible in it. Supports Chinese (simplified/traditional), English, Japanese, and Korean.
+
+### Privacy & Security
+
+- Detects and masks API keys, tokens, passwords, and private keys
+- Sensitive content hidden by default with optional reveal
+- All data stored locally — no network access, no telemetry
+- History stored at `~/Library/Application Support/PastePilot/`
+
+### Menu Bar Interface
+
+- **Hover preview** — pause on any item to see full content, source app, and metadata
+- **Keyboard-driven** — `↩` copy, `␣` preview, `⌘P` pin, `⌘⌫` delete, `⌘1`–`⌘9` quick copy
+- **Search** — filter history by content, type, or OCR text
+- **Pin** — pinned items stay at the top and survive cleanup
+- **Drag & drop** — drop files or images directly into the popover
+
+### Preferences
+
+- Launch at login
+- Configurable global shortcut
+- History limit (50 / 100 / 200 / 500 items)
+- Auto-delete timeout (never / 1 hour / 24 hours / 7 days / 30 days)
+- Image size limit
+- Menu bar icon style (PastePilot / Clipboard / Paperplane)
+- Hover preview toggle
+- Per-app ignore list with visual app picker
+- Reset to defaults
+
+### Internationalization
+
+English and Simplified Chinese. Follows system language automatically.
+
+## Requirements
+
+- macOS 14.0 (Sonoma) or later
+- Accessibility permission (for the global shortcut)
+
+## Quick Start
 
 ```sh
+git clone https://github.com/BeaCox/PastePilot.git
+cd PastePilot
 swift run PastePilot
 ```
 
-The app stays in the macOS menu bar. Clipboard history is stored locally at:
+The app appears in the menu bar. Copy anything to get started.
 
-```text
-~/Library/Application Support/PastePilot/history.json
-```
+## Build
 
-To create a double-clickable, ad-hoc signed app:
+Create a standalone `.app` bundle (ad-hoc signed):
 
 ```sh
 make app
@@ -59,5 +97,10 @@ open dist/PastePilot.app
 make test
 ```
 
-The standalone core checks are used because the Command Line Tools-only Swift
-installation does not ship the XCTest or Testing modules.
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project structure, and pull request guidelines.
+
+## License
+
+[MIT](LICENSE)

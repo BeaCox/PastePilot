@@ -2,6 +2,7 @@ import AppKit
 import CryptoKit
 import Foundation
 import UniformTypeIdentifiers
+import Vision
 
 @MainActor
 final class ClipboardStore: ObservableObject {
@@ -13,6 +14,7 @@ final class ClipboardStore: ObservableObject {
     private var timer: Timer?
     private var lastChangeCount: Int
     private var ignoredContent: String?
+    private var lastPurgeCheck: Date = .distantPast
     private static let sourcePasteboardType = NSPasteboard.PasteboardType(
         rawValue: "org.nspasteboard.source"
     )
@@ -63,6 +65,33 @@ final class ClipboardStore: ObservableObject {
         return succeeded
     }
 
+    func copyFiles(_ urls: [URL]) -> Bool {
+        let existingURLs = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !existingURLs.isEmpty else { return false }
+        pasteboard.clearContents()
+        let succeeded = pasteboard.writeObjects(existingURLs as [NSURL])
+        lastChangeCount = pasteboard.changeCount
+        return succeeded
+    }
+
+    func copyRichText(for item: ClipboardItem) -> Bool {
+        pasteboard.clearContents()
+        if let base64 = item.richTextRTFBase64,
+           let data = Data(base64Encoded: base64) {
+            pasteboard.setData(data, forType: .rtf)
+        }
+        if let html = item.richTextHTML {
+            pasteboard.setString(html, forType: .html)
+        }
+        pasteboard.setString(item.content, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+        return item.hasRichText
+    }
+
+    func importFiles(_ urls: [URL]) {
+        captureFiles(urls: urls, source: (nil, nil))
+    }
+
     func image(for item: ClipboardItem) -> NSImage? {
         guard let fileName = item.imageFileName else { return nil }
         return NSImage(contentsOf: imageURL(fileName: fileName))
@@ -97,14 +126,35 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
+    func purgeExpired() {
+        let timeout = AppSettings.shared.historyTimeoutSeconds
+        guard timeout > 0 else { return }
+        let cutoff = Date().addingTimeInterval(-Double(timeout))
+        let expired = items.filter { !$0.isPinned && $0.createdAt < cutoff }
+        guard !expired.isEmpty else { return }
+        expired.forEach(deleteImageFile)
+        items.removeAll { !$0.isPinned && $0.createdAt < cutoff }
+        save()
+    }
+
     var dataDirectoryURL: URL {
         persistenceURL.deletingLastPathComponent()
     }
 
     private func captureIfNeeded() {
+        if Date().timeIntervalSince(lastPurgeCheck) > 60 {
+            lastPurgeCheck = Date()
+            purgeExpired()
+        }
         guard pasteboard.changeCount != lastChangeCount else { return }
         lastChangeCount = pasteboard.changeCount
+        if captureFileURLsIfAvailable() {
+            return
+        }
         if captureImageIfAvailable() {
+            return
+        }
+        if captureRichTextIfAvailable() {
             return
         }
         guard let content = pasteboard.string(forType: .string)?
@@ -138,19 +188,157 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
+    private func captureFileURLsIfAvailable() -> Bool {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [
+            .urlReadingFileURLsOnly: true
+        ]
+        let urls = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: options
+        ) as? [URL] ?? []
+        guard !urls.isEmpty else { return false }
+        captureFiles(urls: urls, source: sourceApplication())
+        return true
+    }
+
+    private func captureFiles(
+        urls: [URL],
+        source: (name: String?, bundleIdentifier: String?)
+    ) {
+        let normalized = urls
+            .filter(\.isFileURL)
+            .map(\.standardizedFileURL)
+        guard !normalized.isEmpty,
+              !isIgnored(bundleIdentifier: source.bundleIdentifier) else {
+            return
+        }
+
+        if normalized.count == 1,
+           let url = normalized.first,
+           isImageFile(url),
+           captureImageFile(url, source: source) {
+            return
+        }
+
+        let paths = normalized.map(\.path)
+        guard items.first?.filePaths != paths else { return }
+        let previous = items.first { $0.filePaths == paths }
+        items.removeAll { $0.filePaths == paths }
+        let content = normalized.map(\.lastPathComponent).joined(separator: "\n")
+        items.insert(
+            ClipboardItem(
+                content: content,
+                kind: .file,
+                isPinned: previous?.isPinned ?? false,
+                sourceAppName: source.name,
+                sourceBundleIdentifier: source.bundleIdentifier,
+                filePaths: paths
+            ),
+            at: 0
+        )
+        trimHistory(limit: AppSettings.shared.historyLimit)
+        save()
+    }
+
+    private func captureImageFile(
+        _ url: URL,
+        source: (name: String?, bundleIdentifier: String?)
+    ) -> Bool {
+        guard let image = NSImage(contentsOf: url) else { return false }
+        return saveImage(
+            image,
+            source: source,
+            remoteURL: nil,
+            originalPath: url.path
+        )
+    }
+
+    private func captureRichTextIfAvailable() -> Bool {
+        let rtfData = pasteboard.data(forType: .rtf)
+        let html = pasteboard.string(forType: .html)
+        guard rtfData != nil || html != nil else { return false }
+
+        let attributedString: NSAttributedString?
+        if let rtfData {
+            attributedString = try? NSAttributedString(
+                data: rtfData,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )
+        } else if let html,
+                  let data = html.data(using: .utf8) {
+            attributedString = try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.html],
+                documentAttributes: nil
+            )
+        } else {
+            attributedString = nil
+        }
+
+        let plainText = attributedString?.string
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let plainText, !plainText.isEmpty else { return false }
+        let source = sourceApplication()
+        guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
+        let rtfBase64 = rtfData?.base64EncodedString()
+        guard items.first?.content != plainText
+                || items.first?.richTextRTFBase64 != rtfBase64
+                || items.first?.richTextHTML != html else {
+            return true
+        }
+
+        let previous = items.first {
+            $0.content == plainText && $0.kind == .richText
+        }
+        items.removeAll {
+            $0.content == plainText && $0.kind == .richText
+        }
+        items.insert(
+            ClipboardItem(
+                content: plainText,
+                kind: .richText,
+                isPinned: previous?.isPinned ?? false,
+                sourceAppName: source.name,
+                sourceBundleIdentifier: source.bundleIdentifier,
+                richTextRTFBase64: rtfBase64,
+                richTextHTML: html
+            ),
+            at: 0
+        )
+        trimHistory(limit: AppSettings.shared.historyLimit)
+        save()
+        return true
+    }
+
     private func captureImageIfAvailable() -> Bool {
-        guard let image = clipboardImage(),
-              let pngData = pngData(for: image),
+        guard let image = clipboardImage() else {
+            return false
+        }
+        let source = sourceApplication()
+        let imageOrigin = imageOriginMetadata()
+        return saveImage(
+            image,
+            source: source,
+            remoteURL: imageOrigin.remoteURL,
+            originalPath: imageOrigin.localPath
+        )
+    }
+
+    private func saveImage(
+        _ image: NSImage,
+        source: (name: String?, bundleIdentifier: String?),
+        remoteURL: String?,
+        originalPath: String?
+    ) -> Bool {
+        guard let pngData = pngData(for: image),
               pngData.count <= AppSettings.shared.imageSizeLimitMB * 1_024 * 1_024 else {
             return false
         }
-
         let digest = SHA256.hash(data: pngData).map { String(format: "%02x", $0) }.joined()
         guard items.first?.imageDigest != digest else { return true }
 
-        let source = sourceApplication()
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
-        let imageOrigin = imageOriginMetadata()
         let id = UUID()
         let fileName = "\(id.uuidString).png"
         do {
@@ -178,14 +366,16 @@ final class ClipboardStore: ObservableObject {
             imageHeight: pixelSize.height,
             imageByteCount: pngData.count,
             imageDigest: digest,
-            imageSourceURL: imageOrigin.remoteURL,
-            imageOriginalPath: imageOrigin.localPath
+            imageSourceURL: remoteURL,
+            imageOriginalPath: originalPath,
+            filePaths: originalPath.map { [$0] }
         )
         items.filter { $0.imageDigest == digest }.forEach(deleteImageFile)
         items.removeAll { $0.imageDigest == digest }
         items.insert(item, at: 0)
         trimHistory(limit: AppSettings.shared.historyLimit)
         save()
+        performOCR(on: image, itemID: id)
         return true
     }
 
@@ -200,6 +390,13 @@ final class ClipboardStore: ObservableObject {
             return nil
         }
         return NSImage(contentsOf: url)
+    }
+
+    private func isImageFile(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else {
+            return false
+        }
+        return type.conforms(to: .image)
     }
 
     private func imageOriginMetadata() -> (remoteURL: String?, localPath: String?) {
@@ -326,6 +523,7 @@ final class ClipboardStore: ObservableObject {
         }
         items = decoded
         sortItems()
+        purgeExpired()
     }
 
     private func decodeItems(from data: Data) -> [ClipboardItem]? {
@@ -355,5 +553,33 @@ final class ClipboardStore: ObservableObject {
     private func deleteImageFile(for item: ClipboardItem) {
         guard let fileName = item.imageFileName else { return }
         try? FileManager.default.removeItem(at: imageURL(fileName: fileName))
+    }
+
+    private func performOCR(on image: NSImage, itemID: UUID) {
+        guard let cgImage = image.cgImage(
+            forProposedRect: nil, context: nil, hints: nil
+        ) else { return }
+
+        Task.detached(priority: .utility) {
+            let request = VNRecognizeTextRequest()
+            request.recognitionLevel = .accurate
+            request.recognitionLanguages = ["zh-Hans", "zh-Hant", "en-US", "ja", "ko"]
+            request.usesLanguageCorrection = true
+
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            try? handler.perform([request])
+
+            let observations = request.results ?? []
+            let text = observations
+                .compactMap { $0.topCandidates(1).first?.string }
+                .joined(separator: "\n")
+            guard !text.isEmpty else { return }
+
+            await MainActor.run {
+                guard let index = self.items.firstIndex(where: { $0.id == itemID }) else { return }
+                self.items[index].ocrText = text
+                self.save()
+            }
+        }
     }
 }

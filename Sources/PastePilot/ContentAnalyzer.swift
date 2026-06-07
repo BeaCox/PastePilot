@@ -73,12 +73,8 @@ enum ContentAnalyzer {
             return ContentTransformer.extractShellCommands(text) != nil
         }
         guard text.count < 500 else { return false }
-        let prefixes = [
-            "$ ", "git ", "npm ", "pnpm ", "yarn ", "bun ", "swift ",
-            "cargo ", "go ", "docker ", "kubectl ", "curl ", "brew ",
-            "cd ", "ls ", "mkdir ", "rm ", "cp ", "mv ", "ssh "
-        ]
-        return prefixes.contains(where: text.hasPrefix)
+        return ContentTransformer.promptedCommand(from: text) != nil
+            || ContentTransformer.isBareShellCommand(text)
     }
 
     private static func looksLikeMarkdown(_ text: String) -> Bool {

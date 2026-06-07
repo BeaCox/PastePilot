@@ -12,6 +12,8 @@ final class AppSettings: ObservableObject {
         static let ignoredBundleIdentifiers = "ignoredBundleIdentifiers"
         static let hotKeyCode = "hotKeyCode"
         static let hotKeyModifiers = "hotKeyModifiers"
+        static let menuBarIconStyle = "menuBarIconStyle"
+        static let historyTimeoutSeconds = "historyTimeoutSeconds"
     }
 
     private let defaults: UserDefaults
@@ -53,6 +55,14 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(Int(hotKeyModifiers), forKey: Key.hotKeyModifiers) }
     }
 
+    @Published var menuBarIconStyle: String {
+        didSet { defaults.set(menuBarIconStyle, forKey: Key.menuBarIconStyle) }
+    }
+
+    @Published var historyTimeoutSeconds: Int {
+        didSet { defaults.set(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
@@ -63,7 +73,9 @@ final class AppSettings: ObservableObject {
             Key.imageSizeLimitMB: 25,
             Key.ignoredBundleIdentifiers: "",
             Key.hotKeyCode: 49,
-            Key.hotKeyModifiers: 2_048
+            Key.hotKeyModifiers: 2_048,
+            Key.menuBarIconStyle: MenuBarIconStyle.pastepilot.rawValue,
+            Key.historyTimeoutSeconds: 0
         ])
         monitoringEnabled = defaults.bool(forKey: Key.monitoringEnabled)
         hoverPreviewEnabled = defaults.bool(forKey: Key.hoverPreviewEnabled)
@@ -75,6 +87,9 @@ final class AppSettings: ObservableObject {
         ) ?? ""
         hotKeyCode = defaults.integer(forKey: Key.hotKeyCode)
         hotKeyModifiers = UInt32(defaults.integer(forKey: Key.hotKeyModifiers))
+        menuBarIconStyle = defaults.string(forKey: Key.menuBarIconStyle)
+            ?? MenuBarIconStyle.pastepilot.rawValue
+        historyTimeoutSeconds = defaults.integer(forKey: Key.historyTimeoutSeconds)
     }
 
     var ignoredBundleIdentifierSet: Set<String> {
@@ -95,5 +110,7 @@ final class AppSettings: ObservableObject {
         ignoredBundleIdentifiers = ""
         hotKeyCode = 49
         hotKeyModifiers = 2_048
+        menuBarIconStyle = MenuBarIconStyle.pastepilot.rawValue
+        historyTimeoutSeconds = 0
     }
 }

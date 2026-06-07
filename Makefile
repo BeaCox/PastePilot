@@ -19,7 +19,9 @@ test:
 		Sources/PastePilot/AppSettings.swift \
 		Sources/PastePilot/HotKeyRecorder.swift \
 		Sources/PastePilot/ClipboardStore.swift \
+		Sources/PastePilot/QuickLookService.swift \
 		Sources/PastePilot/ClipboardAction.swift \
+		Sources/PastePilot/AppIconRenderer.swift \
 		Tests/CoreChecks/main.swift \
 		-o .build/checks/PastePilotCoreChecks
 	.build/checks/PastePilotCoreChecks

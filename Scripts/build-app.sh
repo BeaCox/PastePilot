@@ -12,6 +12,8 @@ rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp ".build/release/PastePilot" "$CONTENTS/MacOS/PastePilot"
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
+cp "$ROOT/Resources/AppIconSource.png" "$CONTENTS/Resources/AppIconSource.png"
+cp "$ROOT/Resources/MenuBarIconTemplate.png" "$CONTENTS/Resources/MenuBarIconTemplate.png"
 
 BUNDLE=$(find "$ROOT/.build" -name 'PastePilot_PastePilot.bundle' -path '*/release/*' 2>/dev/null | head -1)
 if [ -d "$BUNDLE" ]; then

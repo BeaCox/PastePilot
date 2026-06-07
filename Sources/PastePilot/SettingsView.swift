@@ -35,8 +35,20 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     let openDataFolder: () -> Void
     let clearUnpinnedHistory: () -> Void
+    let resize: (CGFloat) -> Void
     @State private var selectedTab: SettingsTab = .general
     @State private var showsResetConfirmation = false
+    @State private var showsClearHistoryConfirmation = false
+
+    private var preferredHeight: CGFloat {
+        switch selectedTab {
+        case .general: 350
+        case .storage: 390
+        case .appearance: 330
+        case .ignored: 500
+        case .advanced: 380
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,11 +56,17 @@ struct SettingsView: View {
             Divider()
             ScrollView {
                 page
-                    .padding(.horizontal, 38)
-                    .padding(.vertical, 30)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 22)
             }
         }
-        .frame(width: 700, height: 570)
+        .frame(width: 640, height: preferredHeight)
+        .onAppear {
+            resize(preferredHeight)
+        }
+        .onChange(of: selectedTab) {
+            resize(preferredHeight)
+        }
         .confirmationDialog(
             "Reset to Defaults?".localized,
             isPresented: $showsResetConfirmation
@@ -59,44 +77,56 @@ struct SettingsView: View {
         } message: {
             Text("Clipboard history will not be deleted.".localized)
         }
+        .confirmationDialog(
+            "Clear Unpinned History?".localized,
+            isPresented: $showsClearHistoryConfirmation
+        ) {
+            Button("Clear Unpinned".localized, role: .destructive) {
+                clearUnpinnedHistory()
+            }
+        } message: {
+            Text("Pinned items will be kept. This action cannot be undone.".localized)
+        }
     }
 
     private var tabBar: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 6) {
             ForEach(SettingsTab.allCases) { tab in
                 Button {
                     selectedTab = tab
                 } label: {
-                    VStack(spacing: 5) {
+                    VStack(spacing: 3) {
                         Image(systemName: tab.symbol)
-                            .font(.system(size: 29, weight: .regular))
-                            .frame(height: 32)
+                            .font(.system(size: 17, weight: .medium))
+                            .frame(height: 20)
                         Text(tab.title)
-                            .font(.callout)
+                            .font(.caption)
                     }
                     .foregroundStyle(
                         selectedTab == tab ? Color.accentColor : Color.secondary
                     )
-                    .frame(width: 78, height: 76)
+                    .frame(width: 82, height: 44)
                     .background(
                         selectedTab == tab
                             ? Color.primary.opacity(0.06)
                             : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 12)
+                        in: RoundedRectangle(cornerRadius: 8)
                     )
                     .overlay {
                         if selectedTab == tab {
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.primary.opacity(0.08))
                         }
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .background(.bar)
     }
 
@@ -117,7 +147,7 @@ struct SettingsView: View {
     }
 
     private var generalPage: some View {
-        SettingsPage(title: "General".localized) {
+        SettingsPage {
             SettingsSection {
                 Toggle("Launch PastePilot at Login".localized, isOn: $settings.launchAtLogin)
                 Toggle("Monitor Clipboard".localized, isOn: $settings.monitoringEnabled)
@@ -137,7 +167,7 @@ struct SettingsView: View {
     }
 
     private var storagePage: some View {
-        SettingsPage(title: "Storage".localized) {
+        SettingsPage {
             SettingsSection {
                 SettingsRow(title: "Keep up to".localized) {
                     Picker("", selection: $settings.historyLimit) {
@@ -149,7 +179,18 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 130)
                 }
-                SettingsNote("Pinned items are excluded from this limit and never auto-cleaned.".localized)
+                SettingsRow(title: "Auto-delete After".localized) {
+                    Picker("", selection: $settings.historyTimeoutSeconds) {
+                        Text("Never".localized).tag(0)
+                        Text("1 hour".localized).tag(3600)
+                        Text("24 hours".localized).tag(86400)
+                        Text("7 days".localized).tag(604800)
+                        Text("30 days".localized).tag(2592000)
+                    }
+                    .labelsHidden()
+                    .frame(width: 130)
+                }
+                SettingsNote("Pinned items are excluded from this limit and never auto-deleted.".localized)
             }
 
             SettingsSection {
@@ -171,7 +212,25 @@ struct SettingsView: View {
     }
 
     private var appearancePage: some View {
-        SettingsPage(title: "Appearance".localized) {
+        SettingsPage {
+            SettingsSection {
+                SettingsRow(title: "Menu Bar Icon".localized) {
+                    Picker("", selection: $settings.menuBarIconStyle) {
+                        ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { style in
+                            Label {
+                                Text(style.displayName)
+                            } icon: {
+                                Image(nsImage: style.previewImage)
+                                    .renderingMode(.template)
+                            }
+                                .tag(style.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+            }
+
             SettingsSection {
                 Toggle("Show Details on Hover".localized, isOn: $settings.hoverPreviewEnabled)
                 SettingsNote("Hover briefly to see full content, source app, and metadata.".localized)
@@ -179,16 +238,16 @@ struct SettingsView: View {
 
             SettingsSection {
                 SettingsRow(title: "Menu Bar Window".localized) {
-                    Text("400 × 450")
+                    Text("Adaptive".localized)
                         .foregroundStyle(.secondary)
                 }
-                SettingsNote("Compact window that follows the system light or dark appearance.".localized)
+                SettingsNote("The window grows with your results and follows the system light or dark appearance.".localized)
             }
         }
     }
 
     private var ignoredPage: some View {
-        SettingsPage(title: "Ignored Apps".localized) {
+        SettingsPage {
             SettingsSection {
                 IgnoredAppsEditor(settings: settings)
             }
@@ -201,13 +260,15 @@ struct SettingsView: View {
     }
 
     private var advancedPage: some View {
-        SettingsPage(title: "Advanced".localized) {
+        SettingsPage {
             SettingsSection {
                 SettingsRow(title: "Local Data".localized) {
                     Button("Open Data Folder".localized, action: openDataFolder)
                 }
                 SettingsRow(title: "History".localized) {
-                    Button("Clear Unpinned".localized, role: .destructive, action: clearUnpinnedHistory)
+                    Button("Clear Unpinned".localized, role: .destructive) {
+                        showsClearHistoryConfirmation = true
+                    }
                 }
             }
 
@@ -224,20 +285,14 @@ struct SettingsView: View {
 }
 
 private struct SettingsPage<Content: View>: View {
-    let title: String
     @ViewBuilder let content: Content
 
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
+    init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(title)
-                .font(.title2.bold())
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 24)
+        VStack(alignment: .leading, spacing: 14) {
             content
         }
     }
@@ -255,10 +310,8 @@ private struct SettingsSection<Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 20)
-        .overlay(alignment: .top) {
-            Divider()
-        }
+        .padding(16)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -380,6 +433,7 @@ private struct IgnoredAppsEditor: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.tertiary)
+                    .accessibilityLabel("Clear Search".localized)
                 }
             }
             .padding(.horizontal, 8)
@@ -452,6 +506,7 @@ private struct AppToggleRow: View {
                 Image(systemName: isIgnored ? "eye.slash.fill" : "eye")
                     .font(.system(size: 13))
                     .foregroundStyle(isIgnored ? Color.orange : Color.secondary.opacity(0.4))
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -462,6 +517,10 @@ private struct AppToggleRow: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(app.name)
+        .accessibilityValue(isIgnored ? "Ignored".localized : "Recorded".localized)
+        .accessibilityHint("Toggles whether clipboard content from this app is recorded.".localized)
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.08)) {
                 isHovering = hovering
@@ -476,47 +535,114 @@ struct AboutView: View {
     let openDataFolder: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(nsImage: AppIconRenderer.icon(size: 256))
-                .resizable()
-                .scaledToFit()
-                .frame(width: 84, height: 84)
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 18) {
+                Image(nsImage: AppIconRenderer.icon(size: 256))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 92, height: 92)
+                    .shadow(color: Color.accentColor.opacity(0.22), radius: 14, y: 7)
+                    .accessibilityHidden(true)
 
-            VStack(spacing: 5) {
-                Text("PastePilot")
-                    .font(.title.bold())
-                Text("Smart Clipboard for Developers".localized)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Text("Version %@".localized(version))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("PastePilot")
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                    Text("Smart Clipboard for Developers".localized)
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Version %@".localized(version))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.quaternary, in: Capsule())
+                }
+
+                Spacer()
             }
+            .padding(.bottom, 20)
 
-            Text("Understands JSON, code, terminal commands, errors, URLs, and images — suggests the next action. All data stays on your Mac.".localized)
-                .multilineTextAlignment(.center)
+            Text("Understands developer text, rich text, images, and files — suggests the next action. All data stays on your Mac.".localized)
+                .multilineTextAlignment(.leading)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: 360)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 18)
 
-            HStack(spacing: 18) {
-                Label(
-                    "%@ to open".localized(
-                        HotKeyFormatter.display(
-                            keyCode: settings.hotKeyCode,
-                            modifiers: settings.hotKeyModifiers
-                        )
-                    ),
-                    systemImage: "keyboard"
+            HStack(spacing: 10) {
+                AboutFeature(
+                    symbol: "keyboard",
+                    title: "Quick Access".localized,
+                    detail: HotKeyFormatter.display(
+                        keyCode: settings.hotKeyCode,
+                        modifiers: settings.hotKeyModifiers
+                    )
                 )
-                Label("Local Storage".localized, systemImage: "lock")
+                AboutFeature(
+                    symbol: "lock.shield",
+                    title: "Private by Design".localized,
+                    detail: "Local Storage".localized
+                )
+                AboutFeature(
+                    symbol: "wand.and.stars",
+                    title: "Developer Actions".localized,
+                    detail: "Built In".localized
+                )
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .padding(.bottom, 18)
 
-            Button("Open Data Folder".localized, action: openDataFolder)
+            Divider()
+
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Designed & Built by".localized)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("BeaCox")
+                        .font(.headline.weight(.semibold))
+                }
+
+                Spacer()
+
+                Button(action: openDataFolder) {
+                    Label("Data Folder".localized, systemImage: "folder")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(.top, 16)
         }
-        .padding(32)
-        .frame(width: 460, height: 390)
+        .padding(30)
+        .frame(width: 520, height: 390)
+    }
+}
+
+private struct AboutFeature: View {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 30, height: 30)
+                .background(Color.accentColor.opacity(0.11), in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -532,6 +658,7 @@ struct WelcomeView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 80, height: 80)
+                .accessibilityHidden(true)
 
             VStack(spacing: 5) {
                 Text("Welcome to PastePilot".localized)
@@ -619,5 +746,6 @@ struct WelcomeView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
     }
 }
