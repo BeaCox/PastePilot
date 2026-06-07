@@ -45,11 +45,32 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           VERSION="$VERSION" BUILD_NUMBER="$GITHUB_RUN_NUMBER" make dmg
 
+      - name: Generate signed appcast
+        shell: bash
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          test -n "$SPARKLE_PRIVATE_KEY"
+          UPDATES=".build/updates-${ARCH}"
+          rm -rf "$UPDATES"
+          mkdir -p "$UPDATES"
+          cp "dist/PastePilot-${GITHUB_REF_NAME#v}-${ARCH}.dmg" "$UPDATES/"
+          TOOL="$(find .build/artifacts -type f -name generate_appcast -print -quit)"
+          test -x "$TOOL"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$TOOL" \
+            --ed-key-file - \
+            --download-url-prefix \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            -o "${GITHUB_WORKSPACE}/dist/appcast-${ARCH}.xml" \
+            "$UPDATES"
+
       - name: Upload release artifact
         uses: actions/upload-artifact@v7
         with:
           name: PastePilot-macos-${{ matrix.arch }}
-          path: dist/PastePilot-*-${{ matrix.arch }}.dmg
+          path: |
+            dist/PastePilot-*-${{ matrix.arch }}.dmg
+            dist/appcast-${{ matrix.arch }}.xml
           if-no-files-found: error
           retention-days: 7
 
@@ -71,6 +92,7 @@ jobs:
       - name: Generate checksums
         run: |
           test "$(find dist -maxdepth 1 -name '*.dmg' | wc -l)" -eq 2
+          test "$(find dist -maxdepth 1 -name 'appcast-*.xml' | wc -l)" -eq 2
           cd dist
           sha256sum *.dmg > SHA256SUMS.txt
 
@@ -80,6 +102,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             dist/*.dmg \
+            dist/appcast-*.xml \
             dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \

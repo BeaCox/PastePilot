@@ -9,6 +9,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = AppSettings.shared
     private let store = ClipboardStore()
+    private let updateController = UpdateController()
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
     private var welcomeWindow: NSWindow?
@@ -28,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registerPopoverKeyMonitor()
         settings.launchAtLogin = SMAppService.mainApp.status == .enabled
         configureSettingsObservers()
+        updateController.start()
         if settings.monitoringEnabled {
             store.startMonitoring()
             store.captureCurrentClipboard()
@@ -77,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 settings: settings,
                 openDataFolder: { [weak self] in self?.openDataFolder() },
                 clearUnpinnedHistory: { [weak self] in self?.store.clearUnpinned() },
+                updateController: updateController,
                 resize: { [weak self] height in
                     self?.resizeSettingsWindow(height: height)
                 }
@@ -99,7 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let view = AboutView(
                 settings: settings,
                 version: version,
-                openDataFolder: { [weak self] in self?.openDataFolder() }
+                openDataFolder: { [weak self] in self?.openDataFolder() },
+                checkForUpdates: { [weak self] in
+                    self?.updateController.checkForUpdates()
+                }
             )
             aboutWindow = makeUtilityWindow(
                 title: "About PastePilot".localized,
@@ -150,6 +156,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 settings: settings,
                 openSettings: { [weak self] in self?.showSettings() },
                 openAbout: { [weak self] in self?.showAbout() },
+                checkForUpdates: { [weak self] in
+                    self?.updateController.checkForUpdates()
+                },
                 quit: { [weak self] in self?.quit() },
                 resize: { [weak self] size in
                     self?.resizePopover(size: size)

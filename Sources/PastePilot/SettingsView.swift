@@ -35,6 +35,7 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     let openDataFolder: () -> Void
     let clearUnpinnedHistory: () -> Void
+    let updateController: UpdateController
     let resize: (CGFloat) -> Void
     @State private var selectedTab: SettingsTab = .general
     @State private var showsResetConfirmation = false
@@ -270,6 +271,22 @@ struct SettingsView: View {
                         showsClearHistoryConfirmation = true
                     }
                 }
+            }
+
+            SettingsSection {
+                SettingsRow(title: "Updates".localized) {
+                    Button("Check for Updates…".localized) {
+                        updateController.checkForUpdates()
+                    }
+                    .disabled(!updateController.canCheckForUpdates)
+                }
+                Toggle(
+                    "Automatically Check for Updates".localized,
+                    isOn: Binding(
+                        get: { updateController.automaticallyChecksForUpdates },
+                        set: { updateController.automaticallyChecksForUpdates = $0 }
+                    )
+                )
             }
 
             SettingsSection {
@@ -533,6 +550,7 @@ struct AboutView: View {
     @ObservedObject var settings: AppSettings
     let version: String
     let openDataFolder: () -> Void
+    let checkForUpdates: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -607,6 +625,12 @@ struct AboutView: View {
                     Label("Data Folder".localized, systemImage: "folder")
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Button(action: checkForUpdates) {
+                    Label("Check for Updates…".localized, systemImage: "arrow.triangle.2.circlepath")
+                }
+                .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             }
             .padding(.top, 16)

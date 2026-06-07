@@ -5,6 +5,7 @@ struct MenuBarView: View {
     @ObservedObject var settings: AppSettings
     let openSettings: () -> Void
     let openAbout: () -> Void
+    let checkForUpdates: () -> Void
     let quit: () -> Void
     let resize: (CGSize) -> Void
     @State private var searchText = ""
@@ -148,6 +149,7 @@ struct MenuBarView: View {
                     .keyboardShortcut(",", modifiers: .command)
                 Button("About PastePilot".localized, action: openAbout)
                     .keyboardShortcut("a", modifiers: [.command, .option])
+                Button("Check for Updates…".localized, action: checkForUpdates)
                 Divider()
                 Button("Quit PastePilot".localized, action: quit)
                     .keyboardShortcut("q", modifiers: .command)

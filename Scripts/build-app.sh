@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARCH="${ARCH:-$(uname -m)}"
 APP="${APP_PATH:-$ROOT/dist/PastePilot-$ARCH.app}"
 CONTENTS="$APP/Contents"
+FRAMEWORKS="$CONTENTS/Frameworks"
 BUILD_ROOT="$ROOT/.build/$ARCH"
 RELEASE="$BUILD_ROOT/$ARCH-apple-macosx/release"
 VERSION="${VERSION:-0.1.0}"
@@ -40,9 +41,10 @@ swift build \
   --triple "$ARCH-apple-macosx14.0"
 
 rm -rf "$APP"
-mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
+mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$FRAMEWORKS"
 cp "$RELEASE/PastePilot" "$CONTENTS/MacOS/PastePilot"
 lipo "$CONTENTS/MacOS/PastePilot" -verify_arch "$ARCH"
+ditto "$RELEASE/Sparkle.framework" "$FRAMEWORKS/Sparkle.framework"
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
 cp "$ROOT/Resources/AppIconSource.png" "$CONTENTS/Resources/AppIconSource.png"
 cp "$ROOT/Resources/MenuBarIconTemplate.png" "$CONTENTS/Resources/MenuBarIconTemplate.png"
@@ -83,6 +85,10 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
   <string>AppIcon</string>
   <key>LSUIElement</key>
   <true/>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUPublicEDKey</key>
+  <string>Cm3lFikkHbq9yccPqIT4UdO8Al75R/J8BORLEYvSWeI=</string>
   <key>NSHumanReadableCopyright</key>
   <string>Copyright 2026 BeaCox</string>
 </dict>

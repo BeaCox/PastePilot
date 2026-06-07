@@ -46,7 +46,8 @@ Copied images are automatically scanned for text using the macOS Vision framewor
 
 - Detects and masks API keys, tokens, passwords, and private keys
 - Sensitive content hidden by default with optional reveal
-- All data stored locally — no network access, no telemetry
+- Clipboard data stays local and no telemetry is collected
+- Network access is limited to checking and downloading updates from GitHub Releases
 - History is stored as plain JSON at `~/Library/Application Support/PastePilot/history.json`
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
 - Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
@@ -71,6 +72,7 @@ Copied images are automatically scanned for text using the macOS Vision framewor
 - Menu bar icon style (PastePilot / Clipboard / Paperplane)
 - Hover preview toggle
 - Per-app ignore list with visual app picker
+- Automatic update checks with a manual **Check for Updates…** action
 - Reset to defaults
 
 ### Internationalization
@@ -146,6 +148,11 @@ VERSION=0.1.0 BUILD_NUMBER=1 make dmg
 Release artifacts are written to
 `dist/PastePilot-<version>-<architecture>.dmg`.
 
+Sparkle checks the architecture-specific appcast attached to the latest GitHub
+Release. Update archives and appcasts are signed with a dedicated Ed25519 key;
+the private key is stored in the maintainer's keychain and the
+`SPARKLE_PRIVATE_KEY` GitHub Actions secret.
+
 ## Release
 
 Push a stable version tag to build both architectures and publish a GitHub
@@ -165,6 +172,10 @@ make test
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project structure, and pull request guidelines.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 
