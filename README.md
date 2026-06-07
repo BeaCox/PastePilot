@@ -80,7 +80,7 @@ English and Simplified Chinese. Follows system language automatically.
 ## Requirements
 
 - macOS 14.0 (Sonoma) or later
-- Apple Silicon or Intel Mac (universal binary)
+- Apple Silicon (`arm64`) or Intel (`x86_64`) Mac
 - Accessibility permission (for the global shortcut)
 
 ## Quick Start
@@ -95,19 +95,22 @@ The app appears in the menu bar. Copy anything to get started.
 
 ## Build
 
-Create a universal `arm64` + `x86_64` `.app` bundle (ad-hoc signed):
+Create an architecture-specific `.app` bundle (ad-hoc signed):
 
 ```sh
 make app
-open dist/PastePilot.app
+open "dist/PastePilot-$(uname -m).app"
 ```
 
 Create a compressed DMG with an `Applications` shortcut:
 
 ```sh
 make dmg
-open dist/PastePilot-0.1.0.dmg
+open "dist/PastePilot-0.1.0-$(uname -m).dmg"
 ```
+
+Set `ARCH=arm64` or `ARCH=x86_64` explicitly when cross-building. GitHub
+Releases provide separate downloads for Apple Silicon and Intel Macs.
 
 The default build uses ad-hoc signing and is intended for local testing. For a
 public release, sign with a Developer ID certificate:
@@ -136,7 +139,8 @@ NOTARY_PROFILE="PastePilot-notary" \
 VERSION=0.1.0 BUILD_NUMBER=1 make dmg
 ```
 
-The release artifact is written to `dist/PastePilot-<version>.dmg`.
+Release artifacts are written to
+`dist/PastePilot-<version>-<architecture>.dmg`.
 
 ## Test
 

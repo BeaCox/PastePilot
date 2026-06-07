@@ -49,6 +49,11 @@ struct MenuBarView: View {
     }
 
     var body: some View {
+        notificationHandlingPanel
+            .onExitCommand(perform: handleExitCommand)
+    }
+
+    private var panelContent: some View {
         VStack(spacing: 0) {
             searchBar
             Divider()
@@ -58,6 +63,10 @@ struct MenuBarView: View {
         }
         .frame(width: preferredSize.width, height: preferredSize.height)
         .background(.regularMaterial)
+    }
+
+    private var dropHandlingPanel: some View {
+        panelContent
         .dropDestination(for: URL.self) { urls, _ in
             store.importFiles(urls)
             return !urls.isEmpty
@@ -69,6 +78,10 @@ struct MenuBarView: View {
         .overlay {
             FileDropOverlay(isTargeted: isFileDropTargeted)
         }
+    }
+
+    private var stateHandlingPanel: some View {
+        dropHandlingPanel
         .onHover(perform: handlePanelHover)
         .onAppear {
             handleAppear()
@@ -85,6 +98,10 @@ struct MenuBarView: View {
         .onChange(of: selectedID) {
             handleSelectionChange()
         }
+    }
+
+    private var notificationHandlingPanel: some View {
+        stateHandlingPanel
         .onMoveCommand(perform: moveSelection)
         .onReceive(NotificationCenter.default.publisher(for: .pastePilotMoveUp)) { _ in
             moveSelection(.up)
@@ -107,7 +124,6 @@ struct MenuBarView: View {
             store.delete(item.id)
             selectFirstItem()
         }
-        .onExitCommand(perform: handleExitCommand)
     }
 
     private var footer: some View {

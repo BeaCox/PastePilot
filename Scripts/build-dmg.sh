@@ -2,8 +2,9 @@
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="$ROOT/dist/PastePilot.app"
-STAGING="$ROOT/.build/dmg-root"
+ARCH="${ARCH:-$(uname -m)}"
+APP="${APP_PATH:-$ROOT/dist/PastePilot-$ARCH.app}"
+STAGING="$ROOT/.build/dmg-root-$ARCH"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 
@@ -17,8 +18,8 @@ sh "$ROOT/Scripts/build-app.sh"
 VERSION=$(/usr/libexec/PlistBuddy \
   -c 'Print :CFBundleShortVersionString' \
   "$APP/Contents/Info.plist")
-DMG="${DMG_PATH:-$ROOT/dist/PastePilot-$VERSION.dmg}"
-VOLUME_NAME="${VOLUME_NAME:-PastePilot $VERSION}"
+DMG="${DMG_PATH:-$ROOT/dist/PastePilot-$VERSION-$ARCH.dmg}"
+VOLUME_NAME="${VOLUME_NAME:-PastePilot $VERSION ($ARCH)}"
 
 mkdir -p "$(dirname "$DMG")"
 rm -rf "$STAGING"

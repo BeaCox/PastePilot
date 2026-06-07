@@ -16,9 +16,19 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Build and test
-    runs-on: macos-15
-    timeout-minutes: 20
+    name: Build and test (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-15-intel
+    env:
+      ARCH: ${{ matrix.arch }}
 
     steps:
       - name: Check out repository
@@ -28,6 +38,8 @@ jobs:
 
       - name: Show toolchain versions
         run: |
+          uname -m
+          test "$(uname -m)" = "$ARCH"
           xcodebuild -version
           swift --version
 
@@ -42,19 +54,20 @@ jobs:
 
       - name: Verify app bundle
         run: |
-          test -x dist/PastePilot.app/Contents/MacOS/PastePilot
-          lipo dist/PastePilot.app/Contents/MacOS/PastePilot -verify_arch arm64 x86_64
-          codesign --verify --deep --strict --verbose=2 dist/PastePilot.app
+          APP="dist/PastePilot-${ARCH}.app"
+          test -x "$APP/Contents/MacOS/PastePilot"
+          lipo "$APP/Contents/MacOS/PastePilot" -verify_arch "$ARCH"
+          codesign --verify --deep --strict --verbose=2 "$APP"
 
-      - name: Package app artifact
+      - name: Build DMG
         if: github.event_name != 'pull_request'
-        run: tar -czf PastePilot-macos-universal.tar.gz -C dist PastePilot.app
+        run: make dmg
 
-      - name: Upload app artifact
+      - name: Upload DMG artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: PastePilot-macos-universal-${{ github.sha }}
-          path: PastePilot-macos-universal.tar.gz
+          name: PastePilot-macos-${{ matrix.arch }}-${{ github.sha }}
+          path: dist/PastePilot-*-${{ matrix.arch }}.dmg
           if-no-files-found: error
           retention-days: 7

@@ -2,16 +2,22 @@
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="$ROOT/dist/PastePilot.app"
+ARCH="${ARCH:-$(uname -m)}"
+APP="${APP_PATH:-$ROOT/dist/PastePilot-$ARCH.app}"
 CONTENTS="$APP/Contents"
-BUILD_ROOT="$ROOT/.build/universal"
-ARM64_BUILD="$BUILD_ROOT/arm64"
-X86_64_BUILD="$BUILD_ROOT/x86_64"
-ARM64_RELEASE="$ARM64_BUILD/arm64-apple-macosx/release"
-X86_64_RELEASE="$X86_64_BUILD/x86_64-apple-macosx/release"
+BUILD_ROOT="$ROOT/.build/$ARCH"
+RELEASE="$BUILD_ROOT/$ARCH-apple-macosx/release"
 VERSION="${VERSION:-0.1.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+
+case "$ARCH" in
+  arm64|x86_64) ;;
+  *)
+    printf 'ARCH must be arm64 or x86_64: %s\n' "$ARCH" >&2
+    exit 1
+    ;;
+esac
 
 case "$VERSION" in
   *[!0-9A-Za-z.-]*|'')
@@ -30,25 +36,18 @@ esac
 cd "$ROOT"
 swift build \
   -c release \
-  --scratch-path "$ARM64_BUILD" \
-  --triple arm64-apple-macosx14.0
-swift build \
-  -c release \
-  --scratch-path "$X86_64_BUILD" \
-  --triple x86_64-apple-macosx14.0
+  --scratch-path "$BUILD_ROOT" \
+  --triple "$ARCH-apple-macosx14.0"
 
 rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
-lipo -create \
-  "$ARM64_RELEASE/PastePilot" \
-  "$X86_64_RELEASE/PastePilot" \
-  -output "$CONTENTS/MacOS/PastePilot"
-lipo "$CONTENTS/MacOS/PastePilot" -verify_arch arm64 x86_64
+cp "$RELEASE/PastePilot" "$CONTENTS/MacOS/PastePilot"
+lipo "$CONTENTS/MacOS/PastePilot" -verify_arch "$ARCH"
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
 cp "$ROOT/Resources/AppIconSource.png" "$CONTENTS/Resources/AppIconSource.png"
 cp "$ROOT/Resources/MenuBarIconTemplate.png" "$CONTENTS/Resources/MenuBarIconTemplate.png"
 
-BUNDLE="$ARM64_RELEASE/PastePilot_PastePilot.bundle"
+BUNDLE="$RELEASE/PastePilot_PastePilot.bundle"
 if [ -d "$BUNDLE" ]; then
   cp -R "$BUNDLE" "$CONTENTS/Resources/"
 fi
@@ -108,5 +107,5 @@ else
 fi
 
 codesign --verify --deep --strict --verbose=2 "$APP"
-printf 'Built %s (version %s, build %s, signed with %s)\n' \
-  "$APP" "$VERSION" "$BUILD_NUMBER" "$SIGNING_DESCRIPTION"
+printf 'Built %s for %s (version %s, build %s, signed with %s)\n' \
+  "$APP" "$ARCH" "$VERSION" "$BUILD_NUMBER" "$SIGNING_DESCRIPTION"
