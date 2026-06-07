@@ -96,32 +96,52 @@ English and Simplified Chinese. Follows system language automatically.
 ```sh
 git clone https://github.com/BeaCox/PastePilot.git
 cd PastePilot
-swift run PastePilot
+make run
 ```
 
 The app appears in the menu bar. Copy anything to get started.
 
 ## Build
 
-Create an architecture-specific `.app` bundle (ad-hoc signed):
+PastePilot uses Swift Package Manager and ships architecture-specific builds
+for Apple Silicon (`arm64`) and Intel (`x86_64`). The Makefile wraps all build
+steps:
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Compile the debug executable with SwiftPM |
+| `make run` | Build and launch PastePilot |
+| `make app` | Build a release `.app` bundle into `dist/` (ad-hoc signed) |
+| `make dmg` | Build a compressed DMG with an `Applications` shortcut |
+| `make test` | Run the core check suite |
+
+### App bundle
 
 ```sh
 make app
 open "dist/PastePilot-$(uname -m).app"
 ```
 
-Create a compressed DMG with an `Applications` shortcut:
+### DMG
 
 ```sh
 make dmg
-open "dist/PastePilot-0.1.0-$(uname -m).dmg"
+# Output: dist/PastePilot-<version>-<arch>.dmg
 ```
 
-Set `ARCH=arm64` or `ARCH=x86_64` explicitly when cross-building. GitHub
-Releases provide separate downloads for Apple Silicon and Intel Macs.
+### Environment variables
 
-The default build uses ad-hoc signing and is intended for local testing. For a
-public release, sign with a Developer ID certificate:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ARCH` | Host architecture | Target architecture (`arm64` or `x86_64`) |
+| `VERSION` | `0.1.0` | CFBundleShortVersionString |
+| `BUILD_NUMBER` | `1` | CFBundleVersion |
+| `SIGN_IDENTITY` | `-` (ad-hoc) | Code signing identity |
+| `NOTARY_PROFILE` | *(empty)* | Keychain profile for notarization |
+
+### Code signing and notarization
+
+The default build uses ad-hoc signing and is intended for local development.
 
 > PastePilot is not currently signed or notarized because the maintainer does
 > not yet have an Apple Developer Program account. macOS may therefore warn or
@@ -132,27 +152,26 @@ To open an unsigned release, move PastePilot to `Applications`, Control-click
 the app, choose **Open**, then confirm **Open**. If macOS still blocks it, use
 **System Settings → Privacy & Security → Open Anyway**.
 
+To produce a signed release DMG:
+
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 VERSION=0.1.0 BUILD_NUMBER=1 make dmg
 ```
 
-To notarize and staple the DMG, first save App Store Connect credentials:
+To also notarize and staple:
 
 ```sh
+# Save credentials once
 xcrun notarytool store-credentials "PastePilot-notary"
-```
 
-Then build with the keychain profile:
-
-```sh
+# Build, sign, notarize, and staple
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="PastePilot-notary" \
 VERSION=0.1.0 BUILD_NUMBER=1 make dmg
 ```
 
-Release artifacts are written to
-`dist/PastePilot-<version>-<architecture>.dmg`.
+### Automatic updates
 
 Sparkle checks the architecture-specific appcast attached to the latest GitHub
 Release. Update archives and appcasts are signed with a dedicated Ed25519 key;
@@ -161,8 +180,9 @@ the private key is stored in the maintainer's keychain and the
 
 ## Release
 
-Push a stable version tag to build both architectures and publish a GitHub
-Release with DMGs and SHA-256 checksums:
+Push a semver tag to trigger CI, which builds both architectures, generates
+signed appcasts, and publishes a GitHub Release with DMGs and SHA-256
+checksums:
 
 ```sh
 git tag v0.1.0
