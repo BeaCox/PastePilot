@@ -1,3 +1,5 @@
+<div align="center">
+
 # PastePilot
 
 <img src="README-assets/AppIconSource.png" width="128" />
@@ -5,6 +7,8 @@
 [![CI](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml)
 
 A lightweight macOS clipboard manager built for developers. PastePilot recognizes what you copied and suggests the next useful action — no plugins, no cloud, everything stays on your Mac.
+
+</div>
 
 ## Demo
 
