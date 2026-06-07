@@ -761,19 +761,6 @@ private struct ClipboardDetailPreview: View {
                     .padding(.top, 6)
                 }
 
-                if let ocrText = item.ocrText, !ocrText.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Recognized Text".localized, systemImage: "text.viewfinder")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        Text(ocrText)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(6)
-                            .textSelection(.enabled)
-                    }
-                    .padding(.top, 6)
-                }
             }
             .padding(10)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
@@ -1088,6 +1075,7 @@ private struct StablePopover<Content: View>: NSViewRepresentable {
                 hosting.rootView = content()
             } else {
                 let hosting = NSHostingController(rootView: content())
+                hosting.sizingOptions = .preferredContentSize
                 coordinator.hosting = hosting
                 coordinator.popover?.contentViewController = hosting
             }
