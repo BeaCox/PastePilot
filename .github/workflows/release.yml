@@ -55,7 +55,7 @@ jobs:
           rm -rf "$UPDATES"
           mkdir -p "$UPDATES"
           cp "dist/PastePilot-${GITHUB_REF_NAME#v}-${ARCH}.dmg" "$UPDATES/"
-          TOOL="$(find .build/artifacts -type f -name generate_appcast -print -quit)"
+          TOOL="$(find ".build/${ARCH}/artifacts" -type f -name generate_appcast -print -quit)"
           test -x "$TOOL"
           printf '%s' "$SPARKLE_PRIVATE_KEY" | "$TOOL" \
             --ed-key-file - \
