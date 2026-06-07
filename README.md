@@ -1,6 +1,6 @@
 # PastePilot
 
-<img src="README-assets/AppIconSource.png" style="zoom:25%;" />
+<img src="README-assets/AppIconSource.png" width="128" />
 
 [![CI](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml)
 
