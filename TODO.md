@@ -3,6 +3,7 @@
 ## Short Term
 
 - [x] CI/CD: GitHub Actions for build and test
+- [x] Automated GitHub Releases for version tags
 - [ ] Code signing + notarization: requires an Apple Developer Program account;
       donations toward the membership fee would make this possible
 - [x] DMG distribution

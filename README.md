@@ -120,6 +120,10 @@ public release, sign with a Developer ID certificate:
 > block the app when it is downloaded by another user. Donations toward the
 > annual membership fee would make signed and notarized releases possible.
 
+To open an unsigned release, move PastePilot to `Applications`, Control-click
+the app, choose **Open**, then confirm **Open**. If macOS still blocks it, use
+**System Settings → Privacy & Security → Open Anyway**.
+
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 VERSION=0.1.0 BUILD_NUMBER=1 make dmg
@@ -141,6 +145,16 @@ VERSION=0.1.0 BUILD_NUMBER=1 make dmg
 
 Release artifacts are written to
 `dist/PastePilot-<version>-<architecture>.dmg`.
+
+## Release
+
+Push a stable version tag to build both architectures and publish a GitHub
+Release with DMGs and SHA-256 checksums:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## Test
 
