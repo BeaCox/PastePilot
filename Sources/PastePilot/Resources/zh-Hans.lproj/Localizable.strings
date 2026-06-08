@@ -181,10 +181,14 @@
 "Choose a different shortcut; both global actions currently use the same keys." = "请选择其他快捷键；两个全局操作当前使用了相同的按键。";
 "Removes fonts, colors, links, and other rich-text formatting before pasting. Requires Accessibility permission." = "粘贴前移除字体、颜色、链接及其他富文本格式。需要辅助功能权限。";
 "Opening PastePilot does not require Accessibility permission. Paste as Plain Text requires it to send Command-V to the active app." = "呼出 PastePilot 不需要辅助功能权限；粘贴为纯文本需要此权限向当前应用发送 Command-V。";
+"Only Paste as Plain Text requires Accessibility permission." = "只有粘贴为纯文本需要辅助功能权限。";
 "Permission Granted" = "权限已生效";
 "Permission Not Granted" = "权限未生效";
 "Accessibility Permission Granted" = "辅助功能权限已生效";
 "After installing or updating an unsigned build, macOS may require permission again. Keep only one PastePilot copy in Applications and close old DMGs before authorizing." = "安装或更新未签名版本后，macOS 可能要求重新授权。授权前请只保留“应用程序”中的 PastePilot，并关闭旧 DMG。";
+"Permission stopped working after an update?" = "更新后权限失效？";
+"1. Select the old PastePilot in Accessibility settings, then click the minus button at the bottom." = "1. 在辅助功能列表中选中旧 PastePilot，再点击底部的减号按钮。";
+"2. Close old DMGs, then add and enable /Applications/PastePilot.app again." = "2. 关闭旧 DMG，再重新添加并启用 /Applications/PastePilot.app。";
 "Keep up to" = "最多保留";
 "50 items" = "50 条";
 "100 items" = "100 条";
@@ -264,6 +268,7 @@
 "PastePilot needs permission to send the paste shortcut to other apps. If macOS does not show a prompt, the Accessibility settings page will open." = "PastePilot 需要权限向其他应用发送粘贴快捷键。如果 macOS 没有显示授权提示，将自动打开辅助功能设置页。";
 "Global Shortcut Permission" = "全局快捷键权限";
 "Open PastePilot works without this permission. Paste as Plain Text needs Accessibility permission to send Command-V to other apps. After an unsigned app update, macOS may require permission again; keep only the copy in Applications and close old DMGs." = "呼出 PastePilot 无需此权限；粘贴为纯文本需要辅助功能权限向其他应用发送 Command-V。更新未签名应用后，macOS 可能要求重新授权；请只保留“应用程序”中的副本并关闭旧 DMG。";
+"Paste as Plain Text needs Accessibility permission.\n\nIf permission stopped working after an update, select the old PastePilot in Accessibility settings and click the minus button. Close old DMGs, then add /Applications/PastePilot.app again." = "粘贴为纯文本需要辅助功能权限。\n\n如果更新后权限失效，请在辅助功能列表中选中旧 PastePilot 并点击减号。关闭旧 DMG，再重新添加 /Applications/PastePilot.app。";
 "Not Now" = "暂不处理";
 "Press %@ to open PastePilot anytime." = "随时按 %@ 呼出 PastePilot。";
 "Press %@ to paste without formatting." = "按 %@ 即可粘贴并移除格式。";

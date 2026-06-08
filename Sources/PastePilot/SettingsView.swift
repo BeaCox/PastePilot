@@ -45,7 +45,7 @@ struct SettingsView: View {
 
     private var preferredHeight: CGFloat {
         switch selectedTab {
-        case .general: 490
+        case .general: 540
         case .storage: 390
         case .appearance: 330
         case .ignored: 500
@@ -200,39 +200,42 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
                 } else {
                     SettingsNote(
-                        "Opening PastePilot does not require Accessibility permission. Paste as Plain Text requires it to send Command-V to the active app.".localized
+                        "Only Paste as Plain Text requires Accessibility permission.".localized
                     )
                 }
+            }
 
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label(
-                            accessibilityGranted
-                                ? "Accessibility Permission Granted".localized
-                                : "Accessibility Permission Required".localized,
-                            systemImage: accessibilityGranted
-                                ? "checkmark.circle.fill"
-                                : "exclamationmark.triangle.fill"
-                        )
-                        .foregroundStyle(accessibilityGranted ? .green : .orange)
-                        Spacer()
-                        if !accessibilityGranted {
-                            Button("Request Permission".localized) {
-                                requestEventPostingPermission()
-                            }
+            SettingsSection {
+                HStack {
+                    Label(
+                        accessibilityGranted
+                            ? "Accessibility Permission Granted".localized
+                            : "Accessibility Permission Required".localized,
+                        systemImage: accessibilityGranted
+                            ? "checkmark.circle.fill"
+                            : "exclamationmark.triangle.fill"
+                    )
+                    .font(.headline)
+                    .foregroundStyle(accessibilityGranted ? .green : .orange)
+                    Spacer()
+                    if !accessibilityGranted {
+                        Button("Open Accessibility Settings".localized) {
+                            requestEventPostingPermission()
                         }
                     }
-
-                    if !accessibilityGranted {
-                        Text("After installing or updating an unsigned build, macOS may require permission again. Keep only one PastePilot copy in Applications and close old DMGs before authorizing.".localized)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
-                .font(.caption)
+
+                if !accessibilityGranted {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Permission stopped working after an update?".localized)
+                            .font(.caption.weight(.semibold))
+                        Text("1. Select the old PastePilot in Accessibility settings, then click the minus button at the bottom.".localized)
+                        Text("2. Close old DMGs, then add and enable /Applications/PastePilot.app again.".localized)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

@@ -520,8 +520,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = "Global Shortcut Permission".localized
-        alert.informativeText = "Open PastePilot works without this permission. Paste as Plain Text needs Accessibility permission to send Command-V to other apps. After an unsigned app update, macOS may require permission again; keep only the copy in Applications and close old DMGs.".localized
-        alert.addButton(withTitle: "Request Permission".localized)
+        alert.informativeText = "Paste as Plain Text needs Accessibility permission.\n\nIf permission stopped working after an update, select the old PastePilot in Accessibility settings and click the minus button. Close old DMGs, then add /Applications/PastePilot.app again.".localized
+        alert.addButton(withTitle: "Open Accessibility Settings".localized)
         alert.addButton(withTitle: "Not Now".localized)
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn,

@@ -2,6 +2,15 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.2.3] - 2026-06-09
+
+### Changed
+
+- Split global shortcut configuration and Accessibility permission guidance
+  into separate Settings cards.
+- Add concise steps for removing the old PastePilot permission entry after an
+  unsigned update.
+
 ## [0.2.2] - 2026-06-09
 
 ### Fixed
