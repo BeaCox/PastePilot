@@ -34,8 +34,7 @@ struct PlainTextPasteServiceTests {
         #expect(pasteboard.string(forType: .string) == "Formatted text")
         #expect(pasteboard.string(forType: .html) == nil)
 
-        try await Task.sleep(for: .milliseconds(30))
-        #expect(didComplete)
+        #expect(await waitUntil { didComplete })
         #expect(Set(pasteboard.types ?? []) == originalTypes)
         #expect(
             pasteboard.string(forType: .html) == "<b>Formatted text</b>"
@@ -61,8 +60,13 @@ struct PlainTextPasteServiceTests {
             restoreDelay: .milliseconds(10)
         )
 
-        #expect(service.paste(completion: {}) == .pasted)
-        try await Task.sleep(for: .milliseconds(30))
+        var didComplete = false
+        #expect(
+            service.paste {
+                didComplete = true
+            } == .pasted
+        )
+        #expect(await waitUntil { didComplete })
         #expect(pasteboard.string(forType: .string) == "New copy")
     }
 
@@ -83,5 +87,19 @@ struct PlainTextPasteServiceTests {
 
         #expect(service.paste(completion: {}) == .accessibilityRequired)
         #expect(pasteboard.string(forType: .string) == "Original")
+    }
+
+    @MainActor
+    private func waitUntil(
+        timeout: Duration = .seconds(1),
+        condition: () -> Bool
+    ) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while !condition() {
+            guard clock.now < deadline else { return false }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return true
     }
 }
