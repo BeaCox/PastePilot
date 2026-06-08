@@ -2,6 +2,20 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.2.2] - 2026-06-09
+
+### Fixed
+
+- Use the Quartz event-posting permission API for plain-text paste instead of
+  the broader Accessibility API, fixing false "permission not granted" status
+  on newer macOS versions.
+- Open Accessibility settings when macOS no longer presents the initial
+  event-posting permission prompt.
+- Group both global shortcuts with one shared permission status, and explain
+  that only paste-as-plain-text requires Accessibility access.
+- Remind users once after an unsigned app update when Accessibility permission
+  must be granted again, including guidance to close old DMGs.
+
 ## [0.2.1] - 2026-06-08
 
 ### Fixed

@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import Carbon
 import Combine
 import ServiceManagement
@@ -41,7 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.startMonitoring()
             store.captureCurrentClipboard()
         }
-        showWelcomeIfNeeded()
+        if !showWelcomeIfNeeded() {
+            showPermissionReminderIfNeeded()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -121,9 +122,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showUtilityWindow(aboutWindow)
     }
 
-    private func showWelcomeIfNeeded() {
+    @discardableResult
+    private func showWelcomeIfNeeded() -> Bool {
         let key = "hasLaunchedBefore"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard !UserDefaults.standard.bool(forKey: key) else { return false }
         UserDefaults.standard.set(true, forKey: key)
 
         let shortcut = HotKeyFormatter.display(
@@ -147,6 +149,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             content: view
         )
         showUtilityWindow(welcomeWindow)
+        return true
+    }
+
+    private func showPermissionReminderIfNeeded() {
+        guard !EventPostingPermission.isGranted else { return }
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "unknown"
+        let key = "lastPermissionReminderVersion"
+        guard UserDefaults.standard.string(forKey: key) != version else { return }
+        UserDefaults.standard.set(version, forKey: key)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.showAccessibilityRequiredAlert()
+        }
     }
 
     private func configureStatusItem() {
@@ -502,16 +519,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "Accessibility Permission Required".localized
-        alert.informativeText = "Enable the currently installed PastePilot in System Settings, then quit and reopen the app. Unsigned development builds may need permission again after replacement.".localized
-        alert.addButton(withTitle: "Open Accessibility Settings".localized)
+        alert.messageText = "Global Shortcut Permission".localized
+        alert.informativeText = "Open PastePilot works without this permission. Paste as Plain Text needs Accessibility permission to send Command-V to other apps. After an unsigned app update, macOS may require permission again; keep only the copy in Applications and close old DMGs.".localized
+        alert.addButton(withTitle: "Request Permission".localized)
         alert.addButton(withTitle: "Not Now".localized)
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn,
-           let url = URL(
-               string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-           ) {
-            NSWorkspace.shared.open(url)
+           EventPostingPermission.request() {
+            didShowAccessibilityAlert = false
         }
     }
 

@@ -40,12 +40,12 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .general
     @State private var showsResetConfirmation = false
     @State private var showsClearHistoryConfirmation = false
-    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var accessibilityGranted = EventPostingPermission.isGranted
     @State private var accessibilityPollTimer: Timer?
 
     private var preferredHeight: CGFloat {
         switch selectedTab {
-        case .general: 450
+        case .general: 490
         case .storage: 390
         case .appearance: 330
         case .ignored: 500
@@ -174,16 +174,15 @@ struct SettingsView: View {
             }
 
             SettingsSection {
+                Text("Global Shortcuts".localized)
+                    .font(.headline)
+
                 SettingsRow(title: "Open PastePilot".localized) {
                     HotKeyRecorder(
                         keyCode: $settings.hotKeyCode,
                         modifiers: $settings.hotKeyModifiers
                     )
                 }
-                SettingsNote("Click the shortcut field and press a new combination; press Delete to reset.".localized)
-            }
-
-            SettingsSection {
                 SettingsRow(title: "Paste as Plain Text".localized) {
                     HotKeyRecorder(
                         keyCode: $settings.plainTextHotKeyCode,
@@ -193,6 +192,7 @@ struct SettingsView: View {
                         accessibilityLabel: "Paste as Plain Text Shortcut".localized
                     )
                 }
+                SettingsNote("Click a shortcut field and press a new combination; press Delete to reset.".localized)
                 if shortcutsConflict {
                     SettingsNote(
                         "Choose a different shortcut; both global actions currently use the same keys.".localized
@@ -200,24 +200,36 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
                 } else {
                     SettingsNote(
-                        "Removes fonts, colors, links, and other rich-text formatting before pasting. Requires Accessibility permission.".localized
+                        "Opening PastePilot does not require Accessibility permission. Paste as Plain Text requires it to send Command-V to the active app.".localized
                     )
                 }
-                HStack {
-                    Label(
-                        accessibilityGranted
-                            ? "Permission Granted".localized
-                            : "Permission Not Granted".localized,
-                        systemImage: accessibilityGranted
-                            ? "checkmark.circle.fill"
-                            : "exclamationmark.triangle.fill"
-                    )
-                    .foregroundStyle(accessibilityGranted ? .green : .orange)
-                    Spacer()
-                    if !accessibilityGranted {
-                        Button("Open Accessibility Settings".localized) {
-                            openAccessibilitySettings()
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label(
+                            accessibilityGranted
+                                ? "Accessibility Permission Granted".localized
+                                : "Accessibility Permission Required".localized,
+                            systemImage: accessibilityGranted
+                                ? "checkmark.circle.fill"
+                                : "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(accessibilityGranted ? .green : .orange)
+                        Spacer()
+                        if !accessibilityGranted {
+                            Button("Request Permission".localized) {
+                                requestEventPostingPermission()
+                            }
                         }
+                    }
+
+                    if !accessibilityGranted {
+                        Text("After installing or updating an unsigned build, macOS may require permission again. Keep only one PastePilot copy in Applications and close old DMGs before authorizing.".localized)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .font(.caption)
@@ -231,16 +243,11 @@ struct SettingsView: View {
     }
 
     private func refreshAccessibilityStatus() {
-        accessibilityGranted = AXIsProcessTrusted()
+        accessibilityGranted = EventPostingPermission.isGranted
     }
 
-    private func openAccessibilitySettings() {
-        guard let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-        ) else {
-            return
-        }
-        NSWorkspace.shared.open(url)
+    private func requestEventPostingPermission() {
+        accessibilityGranted = EventPostingPermission.request()
     }
 
     private var storagePage: some View {
@@ -750,7 +757,7 @@ struct WelcomeView: View {
     let shortcut: String
     let plainTextShortcut: String
     let dismiss: () -> Void
-    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var accessibilityGranted = EventPostingPermission.isGranted
     @State private var pollTimer: Timer?
 
     var body: some View {
@@ -773,10 +780,10 @@ struct WelcomeView: View {
                 statusRow(
                     granted: accessibilityGranted,
                     symbol: "hand.raised",
-                    title: "Accessibility".localized,
+                    title: "Global Shortcuts".localized,
                     detail: accessibilityGranted
-                        ? "Paste as plain text is ready.".localized
-                        : "Required to paste as plain text in other apps.".localized
+                        ? "Both shortcuts are ready.".localized
+                        : "Open PastePilot works now; paste as plain text needs Accessibility permission.".localized
                 )
                 Divider().padding(.leading, 42)
                 statusRow(
@@ -789,9 +796,8 @@ struct WelcomeView: View {
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
 
             if !accessibilityGranted {
-                Button("Open Accessibility Settings".localized) {
-                    let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                    NSWorkspace.shared.open(url)
+                Button("Request Permission".localized) {
+                    accessibilityGranted = EventPostingPermission.request()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -822,7 +828,7 @@ struct WelcomeView: View {
             guard !accessibilityGranted else { return }
             pollTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                 Task { @MainActor in
-                    let trusted = AXIsProcessTrusted()
+                    let trusted = EventPostingPermission.isGranted
                     if trusted != accessibilityGranted {
                         withAnimation { accessibilityGranted = trusted }
                         if trusted { pollTimer?.invalidate() }

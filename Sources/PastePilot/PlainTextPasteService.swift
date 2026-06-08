@@ -1,6 +1,24 @@
 import AppKit
-import ApplicationServices
 import Carbon
+import CoreGraphics
+
+enum EventPostingPermission {
+    static var isGranted: Bool {
+        CGPreflightPostEventAccess()
+    }
+
+    @discardableResult
+    static func request() -> Bool {
+        let granted = CGRequestPostEventAccess()
+        if !granted,
+           let url = URL(
+               string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+           ) {
+            NSWorkspace.shared.open(url)
+        }
+        return granted
+    }
+}
 
 struct PasteboardSnapshot {
     private let items: [[NSPasteboard.PasteboardType: Data]]
@@ -48,7 +66,7 @@ final class PlainTextPasteService {
     init(
         pasteboard: NSPasteboard = .general,
         isAccessibilityGranted: @escaping () -> Bool = {
-            AXIsProcessTrusted()
+            EventPostingPermission.isGranted
         },
         postPasteShortcut: @escaping () -> Void = {
             PlainTextPasteService.postCommandV()

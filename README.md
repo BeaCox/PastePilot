@@ -55,12 +55,12 @@ clipboard text without fonts, colors, links, or other rich-text formatting.
 PastePilot restores the original clipboard contents immediately afterward, so
 images, files, and rich text remain available for normal pasting.
 
-This action requires Accessibility permission because PastePilot sends a paste
-keystroke to the active app. Ad-hoc signed builds have no stable signing
-identity, so replacing the app may invalidate the previous permission. Remove
-the old PastePilot entry from **System Settings → Privacy & Security →
-Accessibility**, add the current `/Applications/PastePilot.app`, then quit and
-reopen PastePilot.
+Both global shortcuts are managed together in General settings. Opening
+PastePilot does not require Accessibility permission; pasting as plain text
+does, because it sends a paste keystroke to the active app. Click **Request
+Permission** to authorize it. Ad-hoc signed builds may need permission again
+after an update, so close old DMGs and keep only the installed copy in
+`/Applications`.
 
 ### Privacy & Security
 
@@ -153,7 +153,7 @@ make dmg
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ARCH` | Host architecture | Target architecture (`arm64` or `x86_64`) |
-| `VERSION` | `0.2.1` | CFBundleShortVersionString |
+| `VERSION` | `0.2.2` | CFBundleShortVersionString |
 | `BUILD_NUMBER` | `1` | CFBundleVersion |
 | `SIGN_IDENTITY` | `-` (ad-hoc) | Code signing identity |
 | `NOTARY_PROFILE` | *(empty)* | Keychain profile for notarization |
@@ -175,7 +175,7 @@ To produce a signed release DMG:
 
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-VERSION=0.2.1 BUILD_NUMBER=1 make dmg
+VERSION=0.2.2 BUILD_NUMBER=1 make dmg
 ```
 
 To also notarize and staple:
@@ -187,7 +187,7 @@ xcrun notarytool store-credentials "PastePilot-notary"
 # Build, sign, notarize, and staple
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="PastePilot-notary" \
-VERSION=0.2.1 BUILD_NUMBER=1 make dmg
+VERSION=0.2.2 BUILD_NUMBER=1 make dmg
 ```
 
 ### Automatic updates
@@ -204,8 +204,8 @@ signed appcasts, and publishes a GitHub Release with DMGs and SHA-256
 checksums:
 
 ```sh
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 ## Test
