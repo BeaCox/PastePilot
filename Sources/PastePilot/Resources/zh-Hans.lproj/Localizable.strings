@@ -171,7 +171,11 @@
 "Monitor Clipboard" = "监听剪贴板";
 "When disabled, existing history can still be searched and copied." = "关闭监听后，已有历史仍可搜索和复制。";
 "Open PastePilot" = "打开 PastePilot";
+"Paste as Plain Text" = "粘贴为纯文本";
+"Paste as Plain Text Shortcut" = "粘贴为纯文本的快捷键";
 "Click the shortcut field and press a new combination; press Delete to reset." = "点击快捷键框后录制新组合；按 Delete 恢复默认值。";
+"Choose a different shortcut; both global actions currently use the same keys." = "请选择其他快捷键；两个全局操作当前使用了相同的按键。";
+"Removes fonts, colors, links, and other rich-text formatting before pasting. Requires Accessibility permission." = "粘贴前移除字体、颜色、链接及其他富文本格式。需要辅助功能权限。";
 "Keep up to" = "最多保留";
 "50 items" = "50 条";
 "100 items" = "100 条";
@@ -239,11 +243,12 @@
 /* WelcomeView */
 "Welcome to PastePilot" = "欢迎使用 PastePilot";
 "Accessibility" = "辅助功能";
-"Global shortcut is ready." = "全局快捷键已就绪。";
-"Required for the global shortcut to work system-wide." = "全局快捷键需要此权限才能在系统范围内生效。";
+"Paste as plain text is ready." = "粘贴为纯文本已就绪。";
+"Required to paste as plain text in other apps." = "在其他应用中粘贴为纯文本需要此权限。";
 "Clipboard Monitoring" = "剪贴板监听";
 "Active — no additional permission needed." = "已启用，无需额外权限。";
 "Open Accessibility Settings" = "打开辅助功能设置";
 "Press %@ to open PastePilot anytime." = "随时按 %@ 呼出 PastePilot。";
+"Press %@ to paste without formatting." = "按 %@ 即可粘贴并移除格式。";
 "Get Started" = "开始使用";
 "Skip for Now" = "暂时跳过";

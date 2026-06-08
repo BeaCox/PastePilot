@@ -2,6 +2,27 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.2.0] - 2026-06-08
+
+### Added
+
+- Configurable global paste-as-plain-text shortcut, defaulting to `⌥⇧⌘V`.
+- Safe clipboard restoration after plain-text paste, without overwriting
+  clipboard changes made by another app during the operation.
+- Standard SwiftPM test target using Swift Testing, including storage and
+  pasteboard lifecycle coverage.
+
+### Changed
+
+- Split versioned history persistence, cached image management, and OCR into
+  dedicated services that can be injected in tests.
+
+### Fixed
+
+- Added recovery from the last valid history backup.
+- Prevented unreadable history files from triggering destructive orphan-image
+  cleanup.
+
 ## [0.1.1] - 2026-06-08
 
 ### Fixed

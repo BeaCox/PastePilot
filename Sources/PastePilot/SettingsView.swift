@@ -43,7 +43,7 @@ struct SettingsView: View {
 
     private var preferredHeight: CGFloat {
         switch selectedTab {
-        case .general: 350
+        case .general: 450
         case .storage: 390
         case .appearance: 330
         case .ignored: 500
@@ -164,7 +164,34 @@ struct SettingsView: View {
                 }
                 SettingsNote("Click the shortcut field and press a new combination; press Delete to reset.".localized)
             }
+
+            SettingsSection {
+                SettingsRow(title: "Paste as Plain Text".localized) {
+                    HotKeyRecorder(
+                        keyCode: $settings.plainTextHotKeyCode,
+                        modifiers: $settings.plainTextHotKeyModifiers,
+                        defaultKeyCode: AppSettings.defaultPlainTextHotKeyCode,
+                        defaultModifiers: AppSettings.defaultPlainTextHotKeyModifiers,
+                        accessibilityLabel: "Paste as Plain Text Shortcut".localized
+                    )
+                }
+                if shortcutsConflict {
+                    SettingsNote(
+                        "Choose a different shortcut; both global actions currently use the same keys.".localized
+                    )
+                    .foregroundStyle(.red)
+                } else {
+                    SettingsNote(
+                        "Removes fonts, colors, links, and other rich-text formatting before pasting. Requires Accessibility permission.".localized
+                    )
+                }
+            }
         }
+    }
+
+    private var shortcutsConflict: Bool {
+        settings.hotKeyCode == settings.plainTextHotKeyCode
+            && settings.hotKeyModifiers == settings.plainTextHotKeyModifiers
     }
 
     private var storagePage: some View {
@@ -672,6 +699,7 @@ private struct AboutFeature: View {
 
 struct WelcomeView: View {
     let shortcut: String
+    let plainTextShortcut: String
     let dismiss: () -> Void
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var pollTimer: Timer?
@@ -698,8 +726,8 @@ struct WelcomeView: View {
                     symbol: "hand.raised",
                     title: "Accessibility".localized,
                     detail: accessibilityGranted
-                        ? "Global shortcut is ready.".localized
-                        : "Required for the global shortcut to work system-wide.".localized
+                        ? "Paste as plain text is ready.".localized
+                        : "Required to paste as plain text in other apps.".localized
                 )
                 Divider().padding(.leading, 42)
                 statusRow(
@@ -724,6 +752,13 @@ struct WelcomeView: View {
                 Text("Press %@ to open PastePilot anytime.".localized(shortcut))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text(
+                    "Press %@ to paste without formatting.".localized(
+                        plainTextShortcut
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
                 Button(accessibilityGranted ? "Get Started".localized : "Skip for Now".localized) {
                     dismiss()

@@ -1,3 +1,7 @@
+DEVELOPER_DIR := $(shell xcode-select -p)
+TESTING_FRAMEWORK_DIR := $(DEVELOPER_DIR)/Library/Developer/Frameworks
+TESTING_LIBRARY_DIR := $(DEVELOPER_DIR)/Library/Developer/usr/lib
+
 .PHONY: app dmg build run test
 
 app:
@@ -13,18 +17,8 @@ run:
 	swift run PastePilot
 
 test:
-	@mkdir -p .build/checks
-	swiftc \
-		Sources/PastePilot/Localization.swift \
-		Sources/PastePilot/ClipboardItem.swift \
-		Sources/PastePilot/ContentAnalyzer.swift \
-		Sources/PastePilot/ContentTransformer.swift \
-		Sources/PastePilot/AppSettings.swift \
-		Sources/PastePilot/HotKeyRecorder.swift \
-		Sources/PastePilot/ClipboardStore.swift \
-		Sources/PastePilot/QuickLookService.swift \
-		Sources/PastePilot/ClipboardAction.swift \
-		Sources/PastePilot/AppIconRenderer.swift \
-		Tests/CoreChecks/main.swift \
-		-o .build/checks/PastePilotCoreChecks
-	.build/checks/PastePilotCoreChecks
+	swift test --enable-swift-testing \
+		-Xswiftc -F -Xswiftc "$(TESTING_FRAMEWORK_DIR)" \
+		-Xlinker -F -Xlinker "$(TESTING_FRAMEWORK_DIR)" \
+		-Xlinker -rpath -Xlinker "$(TESTING_FRAMEWORK_DIR)" \
+		-Xlinker -rpath -Xlinker "$(TESTING_LIBRARY_DIR)"

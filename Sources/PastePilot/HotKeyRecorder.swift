@@ -52,6 +52,9 @@ enum HotKeyFormatter {
 struct HotKeyRecorder: NSViewRepresentable {
     @Binding var keyCode: Int
     @Binding var modifiers: UInt32
+    var defaultKeyCode = AppSettings.defaultOpenHotKeyCode
+    var defaultModifiers = AppSettings.defaultOpenHotKeyModifiers
+    var accessibilityLabel = "Open PastePilot Shortcut".localized
 
     func makeNSView(context: Context) -> HotKeyRecorderNSView {
         let view = HotKeyRecorderNSView()
@@ -60,9 +63,10 @@ struct HotKeyRecorder: NSViewRepresentable {
             modifiers = flags
         }
         view.onReset = {
-            keyCode = kVK_Space
-            modifiers = UInt32(optionKey)
+            keyCode = defaultKeyCode
+            modifiers = defaultModifiers
         }
+        view.setAccessibilityLabel(accessibilityLabel)
         update(view)
         return view
     }
@@ -95,7 +99,6 @@ final class HotKeyRecorderNSView: NSView {
         super.init(frame: frameRect)
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        setAccessibilityLabel("Open PastePilot Shortcut".localized)
         setAccessibilityHelp(
             "Press to record a new shortcut. Press Delete to restore the default.".localized
         )
@@ -105,7 +108,6 @@ final class HotKeyRecorderNSView: NSView {
         super.init(coder: coder)
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
-        setAccessibilityLabel("Open PastePilot Shortcut".localized)
     }
 
     override func mouseDown(with event: NSEvent) {

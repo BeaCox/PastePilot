@@ -7,15 +7,21 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private enum GlobalHotKey: UInt32 {
+        case openPanel = 1
+        case pastePlainText = 2
+    }
+
     private let settings = AppSettings.shared
     private let store = ClipboardStore()
     private let updateController = UpdateController()
+    private let plainTextPasteService = PlainTextPasteService()
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
     private var welcomeWindow: NSWindow?
     private var popover: NSPopover?
     private var statusItem: NSStatusItem?
-    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyRefs: [GlobalHotKey: EventHotKeyRef] = [:]
     private var hotKeyHandler: EventHandlerRef?
     private var keyEventMonitor: Any?
     private var cancellables: Set<AnyCancellable> = []
@@ -39,9 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         store.stopMonitoring()
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-        }
+        unregisterHotKeys()
         if let hotKeyHandler {
             RemoveEventHandler(hotKeyHandler)
         }
@@ -98,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if aboutWindow == nil {
             let version = Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
-            ) as? String ?? "0.1.0"
+            ) as? String ?? "0.2.0"
             let view = AboutView(
                 settings: settings,
                 version: version,
@@ -125,7 +129,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyCode: settings.hotKeyCode,
             modifiers: settings.hotKeyModifiers
         )
-        let view = WelcomeView(shortcut: shortcut) { [weak self] in
+        let plainTextShortcut = HotKeyFormatter.display(
+            keyCode: settings.plainTextHotKeyCode,
+            modifiers: settings.plainTextHotKeyModifiers
+        )
+        let view = WelcomeView(
+            shortcut: shortcut,
+            plainTextShortcut: plainTextShortcut
+        ) { [weak self] in
             self?.welcomeWindow?.close()
             self?.welcomeWindow = nil
         }
@@ -234,7 +245,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .combineLatest(settings.$hotKeyModifiers)
             .dropFirst()
             .sink { [weak self] _, _ in
-                self?.registerConfiguredHotKey()
+                self?.registerConfiguredHotKeys()
+            }
+            .store(in: &cancellables)
+
+        settings.$plainTextHotKeyCode
+            .combineLatest(settings.$plainTextHotKeyModifiers)
+            .dropFirst()
+            .sink { [weak self] _, _ in
+                self?.registerConfiguredHotKeys()
             }
             .store(in: &cancellables)
 
@@ -356,27 +375,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func registerHotKey() {
         installHotKeyHandler()
-        registerConfiguredHotKey()
+        registerConfiguredHotKeys()
     }
 
-    private func registerConfiguredHotKey() {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
+    private func registerConfiguredHotKeys() {
+        unregisterHotKeys()
+        registerHotKey(
+            .openPanel,
+            keyCode: settings.hotKeyCode,
+            modifiers: settings.hotKeyModifiers
+        )
+        registerHotKey(
+            .pastePlainText,
+            keyCode: settings.plainTextHotKeyCode,
+            modifiers: settings.plainTextHotKeyModifiers
+        )
+    }
+
+    private func registerHotKey(
+        _ hotKey: GlobalHotKey,
+        keyCode: Int,
+        modifiers: UInt32
+    ) {
         let signature = OSType(0x50504C54) // PPLT
-        let hotKeyID = EventHotKeyID(signature: signature, id: 1)
+        let hotKeyID = EventHotKeyID(signature: signature, id: hotKey.rawValue)
+        var reference: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            UInt32(settings.hotKeyCode),
-            settings.hotKeyModifiers,
+            UInt32(keyCode),
+            modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,
-            &hotKeyRef
+            &reference
         )
-        if status != noErr {
-            NSLog("PastePilot failed to register hot key: \(status)")
+        if status == noErr, let reference {
+            hotKeyRefs[hotKey] = reference
+        } else {
+            NSLog(
+                "PastePilot failed to register hot key \(hotKey.rawValue): \(status)"
+            )
         }
+    }
+
+    private func unregisterHotKeys() {
+        for reference in hotKeyRefs.values {
+            UnregisterEventHotKey(reference)
+        }
+        hotKeyRefs.removeAll()
     }
 
     private func installHotKeyHandler() {
@@ -400,9 +445,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     nil,
                     &receivedID
                 )
-                guard receivedID.id == 1 else { return noErr }
                 let delegate = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
-                Task { @MainActor in delegate.togglePopover() }
+                guard let hotKey = GlobalHotKey(rawValue: receivedID.id) else {
+                    return noErr
+                }
+                Task { @MainActor in
+                    switch hotKey {
+                    case .openPanel:
+                        delegate.togglePopover()
+                    case .pastePlainText:
+                        delegate.pasteAsPlainText()
+                    }
+                }
                 return noErr
             },
             1,
@@ -410,6 +464,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pointer,
             &hotKeyHandler
         )
+    }
+
+    private func pasteAsPlainText() {
+        var didPauseMonitoring = false
+        let result = plainTextPasteService.paste(
+            willWrite: { [weak self] in
+                guard let self, self.settings.monitoringEnabled else { return }
+                self.store.stopMonitoring()
+                didPauseMonitoring = true
+            },
+            completion: { [weak self] in
+                guard let self else { return }
+                self.store.acknowledgeCurrentClipboard()
+                if self.settings.monitoringEnabled {
+                    self.store.startMonitoring()
+                }
+            }
+        )
+
+        guard result != .pasted else { return }
+        if didPauseMonitoring {
+            store.acknowledgeCurrentClipboard()
+            if settings.monitoringEnabled {
+                store.startMonitoring()
+            }
+        }
+        if result == .accessibilityRequired {
+            let options = [
+                kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
+            ] as CFDictionary
+            AXIsProcessTrustedWithOptions(options)
+        }
     }
 
     private static func shortcutNumber(for keyCode: UInt16) -> Int? {

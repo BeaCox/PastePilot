@@ -2,15 +2,16 @@ import AppKit
 import CryptoKit
 import Foundation
 import UniformTypeIdentifiers
-import Vision
 
 @MainActor
 final class ClipboardStore: ObservableObject {
     @Published private(set) var items: [ClipboardItem] = []
 
     private let pasteboard: NSPasteboard
-    private let persistenceURL: URL
-    private let imagesDirectoryURL: URL
+    private let settings: AppSettings
+    private let historyRepository: HistoryRepository
+    private let imageStore: ClipboardImageStore
+    private let ocrService: any OCRService
     private var timer: Timer?
     private var lastChangeCount: Int
     private var ignoredContent: String?
@@ -19,16 +20,21 @@ final class ClipboardStore: ObservableObject {
         rawValue: "org.nspasteboard.source"
     )
 
-    init(pasteboard: NSPasteboard = .general) {
+    init(
+        pasteboard: NSPasteboard = .general,
+        settings: AppSettings = .shared,
+        dataDirectoryURL: URL? = nil,
+        ocrService: any OCRService = VisionOCRService()
+    ) {
+        let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
         self.pasteboard = pasteboard
+        self.settings = settings
+        self.historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
+        self.imageStore = ClipboardImageStore(
+            directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
+        )
+        self.ocrService = ocrService
         self.lastChangeCount = pasteboard.changeCount
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        persistenceURL = support
-            .appendingPathComponent("PastePilot", isDirectory: true)
-            .appendingPathComponent("history.json")
-        imagesDirectoryURL = persistenceURL
-            .deletingLastPathComponent()
-            .appendingPathComponent("images", isDirectory: true)
         load()
     }
 
@@ -49,6 +55,10 @@ final class ClipboardStore: ObservableObject {
         captureIfNeeded()
     }
 
+    func acknowledgeCurrentClipboard() {
+        lastChangeCount = pasteboard.changeCount
+    }
+
     func copy(_ content: String) {
         ignoredContent = content
         pasteboard.clearContents()
@@ -57,8 +67,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     func copyImage(fileName: String) -> Bool {
-        let url = imageURL(fileName: fileName)
-        guard let image = NSImage(contentsOf: url) else { return false }
+        guard let image = imageStore.image(fileName: fileName) else { return false }
         pasteboard.clearContents()
         let succeeded = pasteboard.writeObjects([image])
         lastChangeCount = pasteboard.changeCount
@@ -94,11 +103,11 @@ final class ClipboardStore: ObservableObject {
 
     func image(for item: ClipboardItem) -> NSImage? {
         guard let fileName = item.imageFileName else { return nil }
-        return NSImage(contentsOf: imageURL(fileName: fileName))
+        return imageStore.image(fileName: fileName)
     }
 
     func imagePath(fileName: String) -> String {
-        imageURL(fileName: fileName).path
+        imageStore.path(fileName: fileName)
     }
 
     func togglePinned(_ id: UUID) {
@@ -127,7 +136,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     func purgeExpired() {
-        let timeout = AppSettings.shared.historyTimeoutSeconds
+        let timeout = settings.historyTimeoutSeconds
         guard timeout > 0 else { return }
         let cutoff = Date().addingTimeInterval(-Double(timeout))
         let expired = items.filter { !$0.isPinned && $0.createdAt < cutoff }
@@ -138,7 +147,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     var dataDirectoryURL: URL {
-        persistenceURL.deletingLastPathComponent()
+        historyRepository.dataDirectoryURL
     }
 
     private func captureIfNeeded() {
@@ -184,7 +193,7 @@ final class ClipboardStore: ObservableObject {
             ),
             at: 0
         )
-        trimHistory(limit: AppSettings.shared.historyLimit)
+        trimHistory(limit: settings.historyLimit)
         save()
     }
 
@@ -236,7 +245,7 @@ final class ClipboardStore: ObservableObject {
             ),
             at: 0
         )
-        trimHistory(limit: AppSettings.shared.historyLimit)
+        trimHistory(limit: settings.historyLimit)
         save()
     }
 
@@ -306,7 +315,7 @@ final class ClipboardStore: ObservableObject {
             ),
             at: 0
         )
-        trimHistory(limit: AppSettings.shared.historyLimit)
+        trimHistory(limit: settings.historyLimit)
         save()
         return true
     }
@@ -332,7 +341,7 @@ final class ClipboardStore: ObservableObject {
         originalPath: String?
     ) -> Bool {
         guard let pngData = pngData(for: image),
-              pngData.count <= AppSettings.shared.imageSizeLimitMB * 1_024 * 1_024 else {
+              pngData.count <= settings.imageSizeLimitMB * 1_024 * 1_024 else {
             return false
         }
         let digest = SHA256.hash(data: pngData).map { String(format: "%02x", $0) }.joined()
@@ -342,11 +351,7 @@ final class ClipboardStore: ObservableObject {
         let id = UUID()
         let fileName = "\(id.uuidString).png"
         do {
-            try FileManager.default.createDirectory(
-                at: imagesDirectoryURL,
-                withIntermediateDirectories: true
-            )
-            try pngData.write(to: imageURL(fileName: fileName), options: .atomic)
+            try imageStore.save(pngData, fileName: fileName)
         } catch {
             NSLog("PastePilot failed to save image: \(error)")
             return false
@@ -373,7 +378,7 @@ final class ClipboardStore: ObservableObject {
         items.filter { $0.imageDigest == digest }.forEach(deleteImageFile)
         items.removeAll { $0.imageDigest == digest }
         items.insert(item, at: 0)
-        trimHistory(limit: AppSettings.shared.historyLimit)
+        trimHistory(limit: settings.historyLimit)
         save()
         performOCR(on: image, itemID: id)
         return true
@@ -500,7 +505,7 @@ final class ClipboardStore: ObservableObject {
 
     private func isIgnored(bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
-        return AppSettings.shared.ignoredBundleIdentifierSet.contains(bundleIdentifier)
+        return settings.ignoredBundleIdentifierSet.contains(bundleIdentifier)
     }
 
     private func sortItems() {
@@ -517,42 +522,41 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func load() {
-        guard let data = try? Data(contentsOf: persistenceURL),
-              let decoded = decodeItems(from: data) else {
-            return
+        let result = historyRepository.load()
+        items = result.items
+        switch result.source {
+        case .primary:
+            removeOrphanedImages()
+        case .backup:
+            NSLog("PastePilot recovered clipboard history from backup")
+            save()
+            removeOrphanedImages()
+        case .unrecoverable:
+            NSLog("PastePilot could not decode clipboard history or its backup")
+        case .empty:
+            break
         }
-        items = decoded
         sortItems()
         purgeExpired()
     }
 
-    private func decodeItems(from data: Data) -> [ClipboardItem]? {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode([ClipboardItem].self, from: data)
+    private func removeOrphanedImages() {
+        imageStore.removeOrphans(
+            retaining: Set(items.compactMap(\.imageFileName))
+        )
     }
 
     private func save() {
         do {
-            try FileManager.default.createDirectory(
-                at: persistenceURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            try encoder.encode(items).write(to: persistenceURL, options: .atomic)
+            try historyRepository.save(items)
         } catch {
             NSLog("PastePilot failed to save history: \(error)")
         }
     }
 
-    private func imageURL(fileName: String) -> URL {
-        imagesDirectoryURL.appendingPathComponent(fileName)
-    }
-
     private func deleteImageFile(for item: ClipboardItem) {
         guard let fileName = item.imageFileName else { return }
-        try? FileManager.default.removeItem(at: imageURL(fileName: fileName))
+        imageStore.delete(fileName: fileName)
     }
 
     private func performOCR(on image: NSImage, itemID: UUID) {
@@ -560,26 +564,20 @@ final class ClipboardStore: ObservableObject {
             forProposedRect: nil, context: nil, hints: nil
         ) else { return }
 
-        Task.detached(priority: .utility) {
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["zh-Hans", "zh-Hant", "en-US", "ja", "ko"]
-            request.usesLanguageCorrection = true
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            try? handler.perform([request])
-
-            let observations = request.results ?? []
-            let text = observations
-                .compactMap { $0.topCandidates(1).first?.string }
-                .joined(separator: "\n")
-            guard !text.isEmpty else { return }
-
-            await MainActor.run {
-                guard let index = self.items.firstIndex(where: { $0.id == itemID }) else { return }
-                self.items[index].ocrText = text
-                self.save()
+        Task {
+            guard let text = await ocrService.recognizeText(in: cgImage),
+                  let index = items.firstIndex(where: { $0.id == itemID }) else {
+                return
             }
+            items[index].ocrText = text
+            save()
         }
+    }
+
+    private static var defaultDataDirectoryURL: URL {
+        FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0].appendingPathComponent("PastePilot", isDirectory: true)
     }
 }

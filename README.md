@@ -48,13 +48,21 @@ Built for the pain of copying `$ npm install` from a README and having to delete
 
 Copied images are automatically scanned for text using the macOS Vision framework. Recognized text is searchable in history — find a screenshot by typing any word visible in it. Supports Chinese (simplified/traditional), English, Japanese, and Korean.
 
+### Paste as Plain Text
+
+Press the configurable global shortcut (default: `⌥⇧⌘V`) to paste the current
+clipboard text without fonts, colors, links, or other rich-text formatting.
+PastePilot restores the original clipboard contents immediately afterward, so
+images, files, and rich text remain available for normal pasting.
+
 ### Privacy & Security
 
 - Detects and masks API keys, tokens, passwords, and private keys
 - Sensitive content hidden by default with optional reveal
 - Clipboard data stays local and no telemetry is collected
 - Network access is limited to checking and downloading updates from GitHub Releases
-- History is stored as plain JSON at `~/Library/Application Support/PastePilot/history.json`
+- History is stored as versioned plain JSON at `~/Library/Application Support/PastePilot/history.json`
+- The last valid history file is retained as `history.backup.json` for recovery
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
 - Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
 - Sensitive-content masking only hides values in the UI; it does not encrypt data at rest
@@ -71,7 +79,7 @@ Copied images are automatically scanned for text using the macOS Vision framewor
 ### Preferences
 
 - Launch at login
-- Configurable global shortcut
+- Configurable shortcuts for opening PastePilot and pasting as plain text
 - History limit (50 / 100 / 200 / 500 items)
 - Auto-delete timeout (never / 1 hour / 24 hours / 7 days / 30 days)
 - Image size limit
@@ -89,7 +97,7 @@ English and Simplified Chinese. Follows system language automatically.
 
 - macOS 14.0 (Sonoma) or later
 - Apple Silicon (`arm64`) or Intel (`x86_64`) Mac
-- Accessibility permission (for the global shortcut)
+- Accessibility permission (for pasting as plain text into other apps)
 
 ## Quick Start
 
@@ -113,7 +121,7 @@ steps:
 | `make run` | Build and launch PastePilot |
 | `make app` | Build a release `.app` bundle into `dist/` (ad-hoc signed) |
 | `make dmg` | Build a compressed DMG with an `Applications` shortcut |
-| `make test` | Run the core check suite |
+| `make test` | Run the standard SwiftPM test suite |
 
 `make dmg` uses pinned `dmgbuild` tooling, installed into `.build/`, to create
 the branded Finder layout without depending on the build machine's Finder
@@ -138,7 +146,7 @@ make dmg
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ARCH` | Host architecture | Target architecture (`arm64` or `x86_64`) |
-| `VERSION` | `0.1.1` | CFBundleShortVersionString |
+| `VERSION` | `0.2.0` | CFBundleShortVersionString |
 | `BUILD_NUMBER` | `1` | CFBundleVersion |
 | `SIGN_IDENTITY` | `-` (ad-hoc) | Code signing identity |
 | `NOTARY_PROFILE` | *(empty)* | Keychain profile for notarization |
@@ -160,7 +168,7 @@ To produce a signed release DMG:
 
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-VERSION=0.1.1 BUILD_NUMBER=1 make dmg
+VERSION=0.2.0 BUILD_NUMBER=1 make dmg
 ```
 
 To also notarize and staple:
@@ -172,7 +180,7 @@ xcrun notarytool store-credentials "PastePilot-notary"
 # Build, sign, notarize, and staple
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="PastePilot-notary" \
-VERSION=0.1.1 BUILD_NUMBER=1 make dmg
+VERSION=0.2.0 BUILD_NUMBER=1 make dmg
 ```
 
 ### Automatic updates
@@ -189,8 +197,8 @@ signed appcasts, and publishes a GitHub Release with DMGs and SHA-256
 checksums:
 
 ```sh
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 ## Test
@@ -198,6 +206,11 @@ git push origin v0.1.1
 ```sh
 make test
 ```
+
+Tests use Swift Testing through a standard SwiftPM test target. The suite covers
+content analysis and transforms, action generation, settings persistence,
+history format compatibility and backup recovery, image cleanup, expiry, and
+history limits.
 
 ## Contributing
 

@@ -25,6 +25,11 @@ let package = Package(
             ],
             path: "Sources/PastePilot",
             resources: [.copy("Resources/zh-Hans.lproj")]
+        ),
+        .testTarget(
+            name: "PastePilotTests",
+            dependencies: ["PastePilot"],
+            path: "Tests/PastePilotTests"
         )
     ],
     swiftLanguageModes: [.v5]

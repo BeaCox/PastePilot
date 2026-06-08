@@ -1,7 +1,14 @@
+import Carbon
 import Foundation
 
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    static let defaultOpenHotKeyCode = kVK_Space
+    static let defaultOpenHotKeyModifiers = UInt32(optionKey)
+    static let defaultPlainTextHotKeyCode = kVK_ANSI_V
+    static let defaultPlainTextHotKeyModifiers = UInt32(
+        optionKey | shiftKey | cmdKey
+    )
 
     private enum Key {
         static let monitoringEnabled = "monitoringEnabled"
@@ -12,6 +19,8 @@ final class AppSettings: ObservableObject {
         static let ignoredBundleIdentifiers = "ignoredBundleIdentifiers"
         static let hotKeyCode = "hotKeyCode"
         static let hotKeyModifiers = "hotKeyModifiers"
+        static let plainTextHotKeyCode = "plainTextHotKeyCode"
+        static let plainTextHotKeyModifiers = "plainTextHotKeyModifiers"
         static let menuBarIconStyle = "menuBarIconStyle"
         static let historyTimeoutSeconds = "historyTimeoutSeconds"
     }
@@ -55,6 +64,19 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(Int(hotKeyModifiers), forKey: Key.hotKeyModifiers) }
     }
 
+    @Published var plainTextHotKeyCode: Int {
+        didSet { defaults.set(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode) }
+    }
+
+    @Published var plainTextHotKeyModifiers: UInt32 {
+        didSet {
+            defaults.set(
+                Int(plainTextHotKeyModifiers),
+                forKey: Key.plainTextHotKeyModifiers
+            )
+        }
+    }
+
     @Published var menuBarIconStyle: String {
         didSet { defaults.set(menuBarIconStyle, forKey: Key.menuBarIconStyle) }
     }
@@ -72,8 +94,10 @@ final class AppSettings: ObservableObject {
             Key.launchAtLogin: false,
             Key.imageSizeLimitMB: 25,
             Key.ignoredBundleIdentifiers: "",
-            Key.hotKeyCode: 49,
-            Key.hotKeyModifiers: 2_048,
+            Key.hotKeyCode: Self.defaultOpenHotKeyCode,
+            Key.hotKeyModifiers: Self.defaultOpenHotKeyModifiers,
+            Key.plainTextHotKeyCode: Self.defaultPlainTextHotKeyCode,
+            Key.plainTextHotKeyModifiers: Self.defaultPlainTextHotKeyModifiers,
             Key.menuBarIconStyle: MenuBarIconStyle.pastepilot.rawValue,
             Key.historyTimeoutSeconds: 0
         ])
@@ -87,6 +111,10 @@ final class AppSettings: ObservableObject {
         ) ?? ""
         hotKeyCode = defaults.integer(forKey: Key.hotKeyCode)
         hotKeyModifiers = UInt32(defaults.integer(forKey: Key.hotKeyModifiers))
+        plainTextHotKeyCode = defaults.integer(forKey: Key.plainTextHotKeyCode)
+        plainTextHotKeyModifiers = UInt32(
+            defaults.integer(forKey: Key.plainTextHotKeyModifiers)
+        )
         menuBarIconStyle = defaults.string(forKey: Key.menuBarIconStyle)
             ?? MenuBarIconStyle.pastepilot.rawValue
         historyTimeoutSeconds = defaults.integer(forKey: Key.historyTimeoutSeconds)
@@ -108,8 +136,10 @@ final class AppSettings: ObservableObject {
         launchAtLogin = false
         imageSizeLimitMB = 25
         ignoredBundleIdentifiers = ""
-        hotKeyCode = 49
-        hotKeyModifiers = 2_048
+        hotKeyCode = Self.defaultOpenHotKeyCode
+        hotKeyModifiers = Self.defaultOpenHotKeyModifiers
+        plainTextHotKeyCode = Self.defaultPlainTextHotKeyCode
+        plainTextHotKeyModifiers = Self.defaultPlainTextHotKeyModifiers
         menuBarIconStyle = MenuBarIconStyle.pastepilot.rawValue
         historyTimeoutSeconds = 0
     }
