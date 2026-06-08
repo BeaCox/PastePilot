@@ -2,6 +2,17 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.2.1] - 2026-06-08
+
+### Fixed
+
+- Moved the sensitive-content indicator to the leading type badge and added an
+  explicit reveal control in the hover preview.
+- Stopped repeatedly requesting Accessibility permission from the plain-text
+  paste shortcut and added live permission status in Settings.
+- Added guidance for refreshing Accessibility permission after replacing an
+  ad-hoc signed build.
+
 ## [0.2.0] - 2026-06-08
 
 ### Added
@@ -22,8 +33,6 @@ All notable changes to PastePilot are documented in this file.
 - Added recovery from the last valid history backup.
 - Prevented unreadable history files from triggering destructive orphan-image
   cleanup.
-- Moved the sensitive-content indicator to the leading type badge and added an
-  explicit reveal control in the hover preview.
 
 ## [0.1.1] - 2026-06-08
 

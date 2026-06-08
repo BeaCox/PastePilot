@@ -40,6 +40,8 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .general
     @State private var showsResetConfirmation = false
     @State private var showsClearHistoryConfirmation = false
+    @State private var accessibilityGranted = AXIsProcessTrusted()
+    @State private var accessibilityPollTimer: Timer?
 
     private var preferredHeight: CGFloat {
         switch selectedTab {
@@ -67,6 +69,22 @@ struct SettingsView: View {
         }
         .onChange(of: selectedTab) {
             resize(preferredHeight)
+        }
+        .onAppear {
+            refreshAccessibilityStatus()
+            accessibilityPollTimer?.invalidate()
+            accessibilityPollTimer = Timer.scheduledTimer(
+                withTimeInterval: 1,
+                repeats: true
+            ) { _ in
+                Task { @MainActor in
+                    refreshAccessibilityStatus()
+                }
+            }
+        }
+        .onDisappear {
+            accessibilityPollTimer?.invalidate()
+            accessibilityPollTimer = nil
         }
         .confirmationDialog(
             "Reset to Defaults?".localized,
@@ -185,6 +203,24 @@ struct SettingsView: View {
                         "Removes fonts, colors, links, and other rich-text formatting before pasting. Requires Accessibility permission.".localized
                     )
                 }
+                HStack {
+                    Label(
+                        accessibilityGranted
+                            ? "Permission Granted".localized
+                            : "Permission Not Granted".localized,
+                        systemImage: accessibilityGranted
+                            ? "checkmark.circle.fill"
+                            : "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(accessibilityGranted ? .green : .orange)
+                    Spacer()
+                    if !accessibilityGranted {
+                        Button("Open Accessibility Settings".localized) {
+                            openAccessibilitySettings()
+                        }
+                    }
+                }
+                .font(.caption)
             }
         }
     }
@@ -192,6 +228,19 @@ struct SettingsView: View {
     private var shortcutsConflict: Bool {
         settings.hotKeyCode == settings.plainTextHotKeyCode
             && settings.hotKeyModifiers == settings.plainTextHotKeyModifiers
+    }
+
+    private func refreshAccessibilityStatus() {
+        accessibilityGranted = AXIsProcessTrusted()
+    }
+
+    private func openAccessibilitySettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        ) else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     private var storagePage: some View {

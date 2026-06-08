@@ -178,6 +178,8 @@
 "Click the shortcut field and press a new combination; press Delete to reset." = "点击快捷键框后录制新组合；按 Delete 恢复默认值。";
 "Choose a different shortcut; both global actions currently use the same keys." = "请选择其他快捷键；两个全局操作当前使用了相同的按键。";
 "Removes fonts, colors, links, and other rich-text formatting before pasting. Requires Accessibility permission." = "粘贴前移除字体、颜色、链接及其他富文本格式。需要辅助功能权限。";
+"Permission Granted" = "权限已生效";
+"Permission Not Granted" = "权限未生效";
 "Keep up to" = "最多保留";
 "50 items" = "50 条";
 "100 items" = "100 条";
@@ -250,6 +252,9 @@
 "Clipboard Monitoring" = "剪贴板监听";
 "Active — no additional permission needed." = "已启用，无需额外权限。";
 "Open Accessibility Settings" = "打开辅助功能设置";
+"Accessibility Permission Required" = "需要辅助功能权限";
+"Enable the currently installed PastePilot in System Settings, then quit and reopen the app. Unsigned development builds may need permission again after replacement." = "请在系统设置中启用当前安装的 PastePilot，然后退出并重新打开应用。未签名的开发版本被替换后可能需要重新授权。";
+"Not Now" = "暂不处理";
 "Press %@ to open PastePilot anytime." = "随时按 %@ 呼出 PastePilot。";
 "Press %@ to paste without formatting." = "按 %@ 即可粘贴并移除格式。";
 "Get Started" = "开始使用";

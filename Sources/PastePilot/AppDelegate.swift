@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var keyEventMonitor: Any?
     private var cancellables: Set<AnyCancellable> = []
     private var isSynchronizingLoginItem = false
+    private var didShowAccessibilityAlert = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = AppIconRenderer.icon(size: 512)
@@ -491,10 +492,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         if result == .accessibilityRequired {
-            let options = [
-                kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
-            ] as CFDictionary
-            AXIsProcessTrustedWithOptions(options)
+            showAccessibilityRequiredAlert()
+        }
+    }
+
+    private func showAccessibilityRequiredAlert() {
+        guard !didShowAccessibilityAlert else { return }
+        didShowAccessibilityAlert = true
+
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "Accessibility Permission Required".localized
+        alert.informativeText = "Enable the currently installed PastePilot in System Settings, then quit and reopen the app. Unsigned development builds may need permission again after replacement.".localized
+        alert.addButton(withTitle: "Open Accessibility Settings".localized)
+        alert.addButton(withTitle: "Not Now".localized)
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(
+               string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+           ) {
+            NSWorkspace.shared.open(url)
         }
     }
 
