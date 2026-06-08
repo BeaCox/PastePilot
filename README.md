@@ -115,6 +115,10 @@ steps:
 | `make dmg` | Build a compressed DMG with an `Applications` shortcut |
 | `make test` | Run the core check suite |
 
+`make dmg` uses pinned `dmgbuild` tooling, installed into `.build/`, to create
+the branded Finder layout without depending on the build machine's Finder
+preferences.
+
 ### App bundle
 
 ```sh

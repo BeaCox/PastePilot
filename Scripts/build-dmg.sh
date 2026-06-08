@@ -4,12 +4,13 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARCH="${ARCH:-$(uname -m)}"
 APP="${APP_PATH:-$ROOT/dist/PastePilot-$ARCH.app}"
-STAGING="$ROOT/.build/dmg-root-$ARCH"
+DMG_ASSETS="$ROOT/.build/dmg-assets-$ARCH"
+DMG_TOOLS="$ROOT/.build/dmgbuild-tools-1.6.7"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 
 cleanup() {
-  rm -rf "$STAGING"
+  rm -rf "$DMG_ASSETS"
 }
 trap cleanup EXIT INT TERM
 
@@ -22,18 +23,31 @@ DMG="${DMG_PATH:-$ROOT/dist/PastePilot-$VERSION-$ARCH.dmg}"
 VOLUME_NAME="${VOLUME_NAME:-PastePilot $VERSION ($ARCH)}"
 
 mkdir -p "$(dirname "$DMG")"
-rm -rf "$STAGING"
-mkdir -p "$STAGING"
-ditto "$APP" "$STAGING/PastePilot.app"
-ln -s /Applications "$STAGING/Applications"
+rm -rf "$DMG_ASSETS"
+mkdir -p "$DMG_ASSETS"
+swift "$ROOT/Scripts/generate-dmg-background.swift" \
+  "$DMG_ASSETS/background.png" 1
+swift "$ROOT/Scripts/generate-dmg-background.swift" \
+  "$DMG_ASSETS/background@2x.png" 2
 rm -f "$DMG"
 
-hdiutil create \
-  -volname "$VOLUME_NAME" \
-  -srcfolder "$STAGING" \
-  -format UDZO \
-  -imagekey zlib-level=9 \
-  -ov \
+if ! PYTHONPATH="$DMG_TOOLS" python3 -c 'import dmgbuild' 2>/dev/null; then
+  rm -rf "$DMG_TOOLS"
+  python3 -m pip install \
+    --quiet \
+    --disable-pip-version-check \
+    --target "$DMG_TOOLS" \
+    "dmgbuild==1.6.7" \
+    "ds_store==1.3.2" \
+    "mac_alias==2.2.3"
+fi
+
+PYTHONPATH="$DMG_TOOLS" python3 -m dmgbuild \
+  -s "$ROOT/Scripts/dmg-settings.py" \
+  -D "app=$APP" \
+  -D "background=$DMG_ASSETS/background.png" \
+  --detach-retries 10 \
+  "$VOLUME_NAME" \
   "$DMG"
 
 if [ "$SIGN_IDENTITY" != "-" ]; then
