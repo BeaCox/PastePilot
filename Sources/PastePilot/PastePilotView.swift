@@ -509,7 +509,9 @@ private struct CompactHistoryItem: View {
         HStack(spacing: 3) {
             Button(action: copy) {
                 HStack(spacing: 7) {
-                    if let image {
+                    if item.containsSensitiveData {
+                        SensitiveContentBadge(size: 22)
+                    } else if let image {
                         Image(nsImage: image)
                             .resizable()
                             .scaledToFill()
@@ -523,12 +525,6 @@ private struct CompactHistoryItem: View {
                         .font(.system(size: 13, design: item.kind == .text ? .default : .monospaced))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if item.containsSensitiveData {
-                        Image(systemName: "eye.slash.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
 
                     if !showsActions, let shortcutNumber {
                         Text("⌘\(shortcutNumber)")
@@ -679,6 +675,7 @@ private struct ClipboardDetailPreview: View {
     let image: NSImage?
     let showNotice: (String) -> Void
     let hoverChanged: (Bool) -> Void
+    @State private var revealsSensitiveContent = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -758,10 +755,28 @@ private struct ClipboardDetailPreview: View {
                 .foregroundStyle(.tertiary)
 
                 if item.containsSensitiveData {
-                    Label("Sensitive content hidden".localized, systemImage: "eye.slash.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                        .padding(.top, 6)
+                    HStack {
+                        Label(
+                            revealsSensitiveContent
+                                ? "Sensitive content revealed".localized
+                                : "Sensitive content hidden".localized,
+                            systemImage: revealsSensitiveContent
+                                ? "eye.fill"
+                                : "eye.slash.fill"
+                        )
+                        Spacer()
+                        Button(
+                            revealsSensitiveContent
+                                ? "Hide".localized
+                                : "Reveal".localized
+                        ) {
+                            revealsSensitiveContent.toggle()
+                        }
+                        .buttonStyle(.link)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .padding(.top, 6)
                 }
 
                 if item.isImage, item.imageSourceURL != nil || item.imageOriginalPath != nil {
@@ -791,6 +806,9 @@ private struct ClipboardDetailPreview: View {
         .padding(16)
         .frame(width: 340, alignment: .topLeading)
         .onHover(perform: hoverChanged)
+        .onChange(of: item.id) {
+            revealsSensitiveContent = false
+        }
     }
 
     @ViewBuilder
@@ -848,7 +866,7 @@ private struct ClipboardDetailPreview: View {
     }
 
     private var previewContent: AttributedString {
-        if item.containsSensitiveData {
+        if item.containsSensitiveData && !revealsSensitiveContent {
             return AttributedString(ContentAnalyzer.redacted(item.content))
         }
         if item.kind == .json,
@@ -898,6 +916,22 @@ private struct PreviewActionButtonStyle: ButtonStyle {
                     isHovering = hovering
                 }
             }
+    }
+}
+
+private struct SensitiveContentBadge: View {
+    var size: CGFloat = 24
+
+    var body: some View {
+        Image(systemName: "eye.slash.fill")
+            .font(.system(size: size * 0.46, weight: .medium))
+            .foregroundStyle(.orange)
+            .frame(width: size, height: size)
+            .background(
+                Color.orange.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: size * 0.24)
+            )
+            .accessibilityLabel("Sensitive content hidden".localized)
     }
 }
 

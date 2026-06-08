@@ -151,6 +151,8 @@
 "Copy original" = "复制原文";
 "Unknown Source" = "未知来源";
 "Sensitive content hidden" = "敏感内容已隐藏";
+"Sensitive content revealed" = "敏感内容已显示";
+"Hide" = "隐藏原文";
 "Unknown size" = "未知尺寸";
 "Recognized Text" = "识别文字";
 "%d characters" = "%d 字符";
