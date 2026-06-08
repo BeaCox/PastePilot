@@ -2,6 +2,16 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.1.1] - 2026-06-08
+
+### Fixed
+
+- Hover previews now choose the side with enough screen space and anchor to the
+  active clipboard item, improving the common left-opening layout when the menu
+  bar icon is near the right edge of the screen.
+- Preview popover sizing is more stable, and OCR text is no longer duplicated
+  in the detail panel.
+
 ## [0.1.0] - 2026-06-08
 
 ### Added

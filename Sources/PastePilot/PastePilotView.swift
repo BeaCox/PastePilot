@@ -17,6 +17,7 @@ struct MenuBarView: View {
     @State private var previewTask: Task<Void, Never>?
     @State private var closePreviewTask: Task<Void, Never>?
     @State private var isFileDropTargeted = false
+    @State private var historyItemFrames: [UUID: CGRect] = [:]
     @FocusState private var searchFocused: Bool
 
     private var filteredItems: [ClipboardItem] {
@@ -262,10 +263,26 @@ struct MenuBarView: View {
                                     selectFirstItem()
                                 }
                             )
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(
+                                        key: HistoryItemFramePreferenceKey.self,
+                                        value: [
+                                            item.id: geometry.frame(
+                                                in: .named(HistoryListCoordinateSpace.name)
+                                            )
+                                        ]
+                                    )
+                                }
+                            }
                             .id(item.id)
                         }
                     }
                     .padding(.trailing, 6)
+                }
+                .coordinateSpace(name: HistoryListCoordinateSpace.name)
+                .onPreferenceChange(HistoryItemFramePreferenceKey.self) {
+                    historyItemFrames = $0
                 }
                 .onChange(of: selectedID) {
                     guard needsScrollToSelection, let selectedID else { return }
@@ -289,7 +306,10 @@ struct MenuBarView: View {
                 }
             }
             .background(
-                StablePopover(isPresented: previewedItem != nil) {
+                StablePopover(
+                    isPresented: previewedItem != nil,
+                    anchorRect: previewedID.flatMap { historyItemFrames[$0] }
+                ) {
                     if let item = previewedItem {
                         ClipboardDetailPreview(
                             item: item,
@@ -1054,13 +1074,29 @@ private enum JSONSyntaxHighlighter {
     }
 }
 
+private enum HistoryListCoordinateSpace {
+    static let name = "PastePilotHistoryList"
+}
+
+private struct HistoryItemFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(
+        value: inout [UUID: CGRect],
+        nextValue: () -> [UUID: CGRect]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
 private struct StablePopover<Content: View>: NSViewRepresentable {
     let isPresented: Bool
+    let anchorRect: CGRect?
     @ViewBuilder let content: () -> Content
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeNSView(context: Context) -> NSView { NSView() }
+    func makeNSView(context: Context) -> NSView { FlippedAnchorView() }
 
     func updateNSView(_ nsView: NSView, context: Context) {
         let coordinator = context.coordinator
@@ -1079,9 +1115,20 @@ private struct StablePopover<Content: View>: NSViewRepresentable {
                 coordinator.hosting = hosting
                 coordinator.popover?.contentViewController = hosting
             }
-            if !(coordinator.popover?.isShown ?? false), nsView.window != nil {
+            guard nsView.window != nil else { return }
+
+            let positioningRect = resolvedAnchorRect(in: nsView)
+            if coordinator.popover?.isShown == true {
+                coordinator.popover?.positioningRect = positioningRect
+            } else {
                 coordinator.popover?.show(
-                    relativeTo: nsView.bounds, of: nsView, preferredEdge: .maxX
+                    relativeTo: positioningRect,
+                    of: nsView,
+                    preferredEdge: preferredEdge(
+                        for: positioningRect,
+                        in: nsView,
+                        contentWidth: coordinator.hosting?.preferredContentSize.width ?? 340
+                    )
                 )
             }
         } else {
@@ -1097,10 +1144,47 @@ private struct StablePopover<Content: View>: NSViewRepresentable {
         coordinator.hosting = nil
     }
 
+    private func resolvedAnchorRect(in view: NSView) -> NSRect {
+        guard let anchorRect else { return view.bounds }
+
+        let visibleRect = anchorRect.intersection(view.bounds)
+        guard !visibleRect.isNull, visibleRect.height > 0 else {
+            return view.bounds
+        }
+        return visibleRect
+    }
+
+    private func preferredEdge(
+        for anchorRect: NSRect,
+        in view: NSView,
+        contentWidth: CGFloat
+    ) -> NSRectEdge {
+        guard let window = view.window,
+              let screen = window.screen else {
+            return .maxX
+        }
+
+        let anchorInWindow = view.convert(anchorRect, to: nil)
+        let anchorOnScreen = window.convertToScreen(anchorInWindow)
+        let visibleFrame = screen.visibleFrame
+        let requiredWidth = contentWidth + 24
+        let leftSpace = anchorOnScreen.minX - visibleFrame.minX
+        let rightSpace = visibleFrame.maxX - anchorOnScreen.maxX
+
+        if leftSpace >= requiredWidth, leftSpace >= rightSpace {
+            return .minX
+        }
+        return .maxX
+    }
+
     class Coordinator {
         var popover: NSPopover?
         var hosting: NSHostingController<Content>?
     }
+}
+
+private final class FlippedAnchorView: NSView {
+    override var isFlipped: Bool { true }
 }
 
 private struct ResultPreview: View {
