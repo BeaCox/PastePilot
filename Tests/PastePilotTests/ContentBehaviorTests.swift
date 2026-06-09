@@ -105,6 +105,40 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func inlinePreviewClosingActionsAreIdentified() {
+        #expect(
+            ClipboardAction(
+                id: "quick-look",
+                title: "Quick Look",
+                detail: "",
+                symbol: "eye",
+                effect: .quickLook([URL(fileURLWithPath: "/tmp/file.txt")])
+            )
+            .closesInlinePreview
+        )
+        #expect(
+            ClipboardAction(
+                id: "reveal-files",
+                title: "Show in Finder",
+                detail: "",
+                symbol: "folder",
+                effect: .revealFiles([URL(fileURLWithPath: "/tmp/file.txt")])
+            )
+            .closesInlinePreview == false
+        )
+        #expect(
+            ClipboardAction(
+                id: "copy",
+                title: "Copy",
+                detail: "",
+                symbol: "doc.on.doc",
+                effect: .copy("text")
+            )
+            .closesInlinePreview == false
+        )
+    }
+
+    @Test
     func imageFileAndRichTextActions() {
         let webImage = ClipboardItem(
             content: "Image 320 × 180",

@@ -30,6 +30,24 @@ struct ClipboardAction: Identifiable {
         if case let .copy(content) = effect { return content }
         return nil
     }
+
+    var closesInlinePreview: Bool {
+        switch effect {
+        case .quickLookCachedImageFile,
+             .quickLook:
+            return true
+        case .copy,
+             .copyImage,
+             .copyImageMarkdown,
+             .copyCachedImageFile,
+             .copyFiles,
+             .copyRichText,
+             .revealCachedImageFile,
+             .revealFiles,
+             .open:
+            return false
+        }
+    }
 }
 
 enum ClipboardActionFactory {

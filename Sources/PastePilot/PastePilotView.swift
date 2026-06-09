@@ -256,13 +256,9 @@ struct MenuBarView: View {
                                     selectedID = item.id
                                     previewedID = item.id
                                 },
+                                performAction: performAction,
                                 copy: {
-                                    showNotice(
-                                        ClipboardActionFactory.perform(
-                                            ClipboardActionFactory.copyAction(for: item),
-                                            using: store
-                                        )
-                                    )
+                                    performAction(ClipboardActionFactory.copyAction(for: item))
                                 },
                                 togglePinned: {
                                     store.togglePinned(item.id)
@@ -322,9 +318,8 @@ struct MenuBarView: View {
                     if let item = previewedItem {
                         ClipboardDetailPreview(
                             item: item,
-                            store: store,
                             image: store.image(for: item),
-                            showNotice: { showNotice($0) },
+                            performAction: performAction,
                             hoverChanged: handlePreviewHover
                         )
                     }
@@ -397,12 +392,7 @@ struct MenuBarView: View {
             return
         }
         let item = filteredItems[number - 1]
-        showNotice(
-            ClipboardActionFactory.perform(
-                ClipboardActionFactory.copyAction(for: item),
-                using: store
-            )
-        )
+        performAction(ClipboardActionFactory.copyAction(for: item))
     }
 
     private func clearUnpinnedHistory() {
@@ -535,7 +525,7 @@ struct MenuBarView: View {
 
     private func performPrimaryAction(for item: ClipboardItem) {
         let action = ClipboardActionFactory.copyAction(for: item)
-        showNotice(ClipboardActionFactory.perform(action, using: store))
+        performAction(action)
     }
 
     private func performAction(at oneBasedIndex: Int) {
@@ -543,6 +533,13 @@ struct MenuBarView: View {
         let actions = keyboardActions(for: item)
         guard actions.indices.contains(oneBasedIndex - 1) else { return }
         let action = actions[oneBasedIndex - 1]
+        performAction(action)
+    }
+
+    private func performAction(_ action: ClipboardAction) {
+        if action.closesInlinePreview {
+            closePreview()
+        }
         showNotice(ClipboardActionFactory.perform(action, using: store))
     }
 
@@ -570,6 +567,7 @@ private struct CompactHistoryItem: View {
     let select: () -> Void
     let hoverChanged: (Bool) -> Void
     let preview: () -> Void
+    let performAction: (ClipboardAction) -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
     let delete: () -> Void
@@ -653,10 +651,26 @@ private struct CompactHistoryItem: View {
             Button("Preview".localized, action: preview)
             if !item.fileURLs.isEmpty {
                 Button("Quick Look".localized) {
-                    _ = QuickLookService.shared.preview(item.fileURLs)
+                    performAction(
+                        ClipboardAction(
+                            id: "quick-look",
+                            title: "Quick Look".localized,
+                            detail: "Preview using the macOS system viewer".localized,
+                            symbol: "eye",
+                            effect: .quickLook(item.fileURLs)
+                        )
+                    )
                 }
                 Button("Show in Finder".localized) {
-                    NSWorkspace.shared.activateFileViewerSelecting(item.fileURLs)
+                    performAction(
+                        ClipboardAction(
+                            id: "reveal-files",
+                            title: "Show in Finder".localized,
+                            detail: "Reveal the original file location".localized,
+                            symbol: "folder",
+                            effect: .revealFiles(item.fileURLs)
+                        )
+                    )
                 }
             }
             Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized, action: togglePinned)
@@ -741,9 +755,8 @@ private struct HistorySectionHeader: View {
 
 private struct ClipboardDetailPreview: View {
     let item: ClipboardItem
-    let store: ClipboardStore
     let image: NSImage?
-    let showNotice: (String) -> Void
+    let performAction: (ClipboardAction) -> Void
     let hoverChanged: (Bool) -> Void
     @State private var revealsSensitiveContent = false
 
@@ -887,7 +900,7 @@ private struct ClipboardDetailPreview: View {
         VStack(spacing: 0) {
             ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
                 Button {
-                    showNotice(ClipboardActionFactory.perform(action, using: store))
+                    performAction(action)
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: action.symbol)
