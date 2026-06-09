@@ -10,10 +10,12 @@ struct ClipboardAction: Identifiable {
             sourceURL: String?,
             originalPath: String?
         )
-        case copyCachedImagePath(String)
+        case copyCachedImageFile(String)
         case copyFiles([URL])
         case copyRichText(UUID)
+        case revealCachedImageFile(String)
         case revealFiles([URL])
+        case quickLookCachedImageFile(String)
         case quickLook([URL])
         case open(URL)
     }
@@ -33,61 +35,26 @@ struct ClipboardAction: Identifiable {
 enum ClipboardActionFactory {
     static func actions(for item: ClipboardItem) -> [ClipboardAction] {
         if item.kind == .image, let fileName = item.imageFileName {
-            var imageActions = [
-                ClipboardAction(
-                    id: "copy-image",
-                    title: "Copy Image".localized,
-                    detail: "Write the original image back to the clipboard".localized,
-                    symbol: "doc.on.doc",
-                    effect: .copyImage(fileName)
-                ),
-                ClipboardAction(
-                    id: "copy-image-markdown",
-                    title: "Copy Markdown".localized,
-                    detail: "Prefers web URL, falls back to local file path".localized,
-                    symbol: "text.badge.checkmark",
-                    effect: .copyImageMarkdown(
+            if let originalPath = item.imageOriginalPath {
+                return deduplicated(
+                    imageActions(
                         fileName: fileName,
                         sourceURL: item.imageSourceURL,
-                        originalPath: item.imageOriginalPath
-                    )
-                )
-            ]
-            if let sourceURL = item.imageSourceURL {
-                imageActions.append(
-                    ClipboardAction(
-                        id: "copy-image-url",
-                        title: "Copy Image URL".localized,
-                        detail: "Copy the original web image address".localized,
-                        symbol: "link",
-                        effect: .copy(sourceURL)
+                        originalPath: originalPath,
+                        fileURL: URL(fileURLWithPath: originalPath),
+                        usesCachedFile: false
                     )
                 )
             }
-            if let originalPath = item.imageOriginalPath {
-                let originalURL = URL(fileURLWithPath: originalPath)
-                imageActions.append(
-                    ClipboardAction(
-                        id: "copy-image-path",
-                        title: "Copy File Path".localized,
-                        detail: "Copy the local path of the original image file".localized,
-                        symbol: "folder",
-                        effect: .copy(originalPath)
-                    )
+            return deduplicated(
+                imageActions(
+                    fileName: fileName,
+                    sourceURL: item.imageSourceURL,
+                    originalPath: nil,
+                    fileURL: nil,
+                    usesCachedFile: true
                 )
-                imageActions.append(contentsOf: fileActions(for: [originalURL]))
-            } else {
-                imageActions.append(
-                    ClipboardAction(
-                        id: "copy-image-cache-path",
-                        title: "Copy Cache Path".localized,
-                        detail: "Copy the PastePilot-cached PNG path".localized,
-                        symbol: "internaldrive",
-                        effect: .copyCachedImagePath(fileName)
-                    )
-                )
-            }
-            return deduplicated(imageActions)
+            )
         }
 
         var actions = [
@@ -222,12 +189,6 @@ enum ClipboardActionFactory {
         let available = actions(for: item).filter {
             $0.id != copyAction(for: item).id
         }
-        if item.kind == .image, item.imageOriginalPath != nil {
-            let preferredIDs = ["quick-look", "reveal-files", "copy-image-markdown"]
-            return preferredIDs.compactMap { id in
-                available.first { $0.id == id }
-            }
-        }
         return Array(available.prefix(3))
     }
 
@@ -292,9 +253,10 @@ enum ClipboardActionFactory {
                 )
             )
             return "Image Markdown copied".localized
-        case let .copyCachedImagePath(fileName):
-            store.copy(store.imagePath(fileName: fileName))
-            return "Cache path copied".localized
+        case let .copyCachedImageFile(fileName):
+            return store.copyFiles([URL(fileURLWithPath: store.imagePath(fileName: fileName))])
+                ? "Files copied".localized
+                : "Image file missing".localized
         case let .copyFiles(urls):
             return store.copyFiles(urls)
                 ? "Files copied".localized
@@ -313,10 +275,23 @@ enum ClipboardActionFactory {
             }
             NSWorkspace.shared.activateFileViewerSelecting(existingURLs)
             return "Shown in Finder".localized
+        case let .revealCachedImageFile(fileName):
+            let url = URL(fileURLWithPath: store.imagePath(fileName: fileName))
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                return "Image file missing".localized
+            }
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            return "Shown in Finder".localized
         case let .quickLook(urls):
             return QuickLookService.shared.preview(urls)
                 ? "Quick Look opened".localized
                 : "Files are no longer available".localized
+        case let .quickLookCachedImageFile(fileName):
+            return QuickLookService.shared.preview([
+                URL(fileURLWithPath: store.imagePath(fileName: fileName))
+            ])
+                ? "Quick Look opened".localized
+                : "Image file missing".localized
         case let .open(url):
             NSWorkspace.shared.open(url)
             return "Link opened".localized
@@ -412,6 +387,84 @@ enum ClipboardActionFactory {
         ]
     }
 
+    private static func imageActions(
+        fileName: String,
+        sourceURL: String?,
+        originalPath: String?,
+        fileURL: URL?,
+        usesCachedFile: Bool
+    ) -> [ClipboardAction] {
+        var actions = [
+            ClipboardAction(
+                id: "copy-image",
+                title: "Copy Image".localized,
+                detail: "Write the original image back to the clipboard".localized,
+                symbol: "photo",
+                effect: .copyImage(fileName)
+            )
+        ]
+
+        if let sourceURL {
+            actions.append(
+                ClipboardAction(
+                    id: "copy-image-url",
+                    title: "Copy Image URL".localized,
+                    detail: "Copy the original web image address".localized,
+                    symbol: "link",
+                    effect: .copy(sourceURL)
+                )
+            )
+        } else {
+            actions.append(ClipboardAction(
+                id: "copy-image-file",
+                title: "Copy File".localized,
+                detail: usesCachedFile
+                    ? "Write the cached PNG file back to the clipboard".localized
+                    : "Write the original files back to the clipboard".localized,
+                symbol: "doc.on.doc",
+                effect: usesCachedFile
+                    ? .copyCachedImageFile(fileName)
+                    : .copyFiles(fileURL.map { [$0] } ?? [])
+            ))
+        }
+
+        actions.append(contentsOf: [
+            ClipboardAction(
+                id: "copy-image-markdown",
+                title: "Copy Markdown".localized,
+                detail: "Prefers web URL, falls back to local file path".localized,
+                symbol: "text.badge.checkmark",
+                effect: .copyImageMarkdown(
+                    fileName: fileName,
+                    sourceURL: sourceURL,
+                    originalPath: originalPath
+                )
+            ),
+            ClipboardAction(
+                id: "quick-look",
+                title: "Quick Look".localized,
+                detail: "Preview using the macOS system viewer".localized,
+                symbol: "eye",
+                effect: usesCachedFile
+                    ? .quickLookCachedImageFile(fileName)
+                    : .quickLook(fileURL.map { [$0] } ?? [])
+            ),
+            ClipboardAction(
+                id: "reveal-files",
+                title: "Show in Finder".localized,
+                detail: usesCachedFile
+                    ? "Reveal the cached PNG file".localized
+                    : "Reveal the original file location".localized,
+                symbol: "folder",
+                effect: usesCachedFile
+                    ? .revealCachedImageFile(fileName)
+                    : .revealFiles(fileURL.map { [$0] } ?? [])
+            )
+        ])
+
+        return actions
+    }
+
     private static func deduplicated(_ actions: [ClipboardAction]) -> [ClipboardAction] {
         var seenEffects: Set<String> = []
         return actions.filter { action in
@@ -423,14 +476,18 @@ enum ClipboardActionFactory {
                 key = "image:\(fileName)"
             case let .copyImageMarkdown(fileName, sourceURL, originalPath):
                 key = "markdown:\(sourceURL ?? originalPath ?? fileName)"
-            case let .copyCachedImagePath(fileName):
-                key = "cache-path:\(fileName)"
+            case let .copyCachedImageFile(fileName):
+                key = "cache-file:\(fileName)"
             case let .copyFiles(urls):
                 key = "files:\(urls.map(\.path).joined(separator: "|"))"
             case let .copyRichText(id):
                 key = "rich-text:\(id.uuidString)"
+            case let .revealCachedImageFile(fileName):
+                key = "reveal-cache:\(fileName)"
             case let .revealFiles(urls):
                 key = "reveal:\(urls.map(\.path).joined(separator: "|"))"
+            case let .quickLookCachedImageFile(fileName):
+                key = "quick-look-cache:\(fileName)"
             case let .quickLook(urls):
                 key = "quick-look:\(urls.map(\.path).joined(separator: "|"))"
             case let .open(url):

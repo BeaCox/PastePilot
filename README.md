@@ -30,7 +30,7 @@ PastePilot automatically identifies 11 content types and tailors actions to each
 | **Color** | `#FF5733`, `rgb(...)`, `hsl(...)` | Normalize hex format |
 | **Markdown** | Headings, lists, links | Name conversion, string escape |
 | **Rich Text** | Formatted text from web/editors | Preserve formatting, copy as plain text, copy HTML source |
-| **Image** | Screenshots, copied images | Preview, copy Markdown with web URL or file path, OCR text search |
+| **Image** | Screenshots, copied images | Copy as image data, source URL, or file; copy Markdown with URL/path fallback; Quick Look, Show in Finder, OCR text search |
 | **File** | Files from Finder | Copy, Quick Look, Show in Finder |
 | **Plain Text** | Everything else | Convert to `camelCase` / `snake_case`, escape as string |
 
@@ -78,10 +78,26 @@ after an update, so close old DMGs and keep only the installed copy in
 ### Menu Bar Interface
 
 - **Hover preview** — pause on any item to see full content, source app, and metadata
-- **Keyboard-driven** — `↩` copy, `␣` preview, `⌘P` pin, `⌘⌫` delete, `⌘1`–`⌘9` quick copy
+- **Keyboard-driven** — search, navigation, previews, item actions, pinning,
+  deletion, and cleanup all have keyboard paths
 - **Search** — filter history by content, type, or OCR text
 - **Pin** — pinned items stay at the top and survive cleanup
 - **Drag & drop** — drop files or images directly into the popover
+
+#### Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `↑` / `↓` | Move the selected history item |
+| `↩` | Copy the selected item |
+| `␣` | Open or close the selected item's preview |
+| `⌘1`–`⌘9` | Copy the corresponding visible history item |
+| `⌥1`–`⌥9` | Run an action for the selected item, matching the preview action list |
+| `⌘P` | Pin or unpin the selected item |
+| `⌘⌫` | Delete the selected item |
+| `⌘⇧⌫` | Clear unpinned history after confirmation |
+| `⌘F` / `⌘K` | Focus search |
+| `Esc` | Close preview, clear search, then close the popover |
 
 ### Preferences
 
@@ -153,7 +169,7 @@ make dmg
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ARCH` | Host architecture | Target architecture (`arm64` or `x86_64`) |
-| `VERSION` | `0.2.3` | CFBundleShortVersionString |
+| `VERSION` | `0.3.0` | CFBundleShortVersionString |
 | `BUILD_NUMBER` | `1` | CFBundleVersion |
 | `SIGN_IDENTITY` | `-` (ad-hoc) | Code signing identity |
 | `NOTARY_PROFILE` | *(empty)* | Keychain profile for notarization |
@@ -175,7 +191,7 @@ To produce a signed release DMG:
 
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-VERSION=0.2.3 BUILD_NUMBER=1 make dmg
+VERSION=0.3.0 BUILD_NUMBER=1 make dmg
 ```
 
 To also notarize and staple:
@@ -187,7 +203,7 @@ xcrun notarytool store-credentials "PastePilot-notary"
 # Build, sign, notarize, and staple
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="PastePilot-notary" \
-VERSION=0.2.3 BUILD_NUMBER=1 make dmg
+VERSION=0.3.0 BUILD_NUMBER=1 make dmg
 ```
 
 ### Automatic updates
@@ -204,8 +220,8 @@ signed appcasts, and publishes a GitHub Release with DMGs and SHA-256
 checksums:
 
 ```sh
-git tag v0.2.3
-git push origin v0.2.3
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ## Test

@@ -182,6 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self?.updateController.checkForUpdates()
                 },
                 quit: { [weak self] in self?.quit() },
+                closePopover: { [weak self] in self?.popover?.performClose(nil) },
                 resize: { [weak self] size in
                     self?.resizePopover(size: size)
                 }
@@ -340,50 +341,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard self?.popover?.isShown == true else { return event }
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if flags.contains(.command),
-               !flags.contains(.option),
-               !flags.contains(.control),
+
+            if flags == .command,
                let number = Self.shortcutNumber(for: event.keyCode) {
-                NotificationCenter.default.post(
-                    name: .pastePilotCopyIndex,
-                    object: number
-                )
+                Self.post(.copyIndex(number))
                 return nil
             }
 
-            if flags.contains(.command),
-               !flags.contains(.option),
-               !flags.contains(.control) {
+            if flags == .option,
+               let number = Self.shortcutNumber(for: event.keyCode) {
+                Self.post(.keyboard(.performAction(number)))
+                return nil
+            }
+
+            if flags == .command {
                 switch event.keyCode {
                 case UInt16(kVK_ANSI_P):
-                    NotificationCenter.default.post(name: .pastePilotTogglePinned, object: nil)
+                    Self.post(.keyboard(.togglePinned))
                     return nil
                 case UInt16(kVK_Delete):
-                    NotificationCenter.default.post(name: .pastePilotDeleteItem, object: nil)
+                    Self.post(.keyboard(.deleteSelected))
+                    return nil
+                case UInt16(kVK_ANSI_F), UInt16(kVK_ANSI_K):
+                    Self.post(.keyboard(.focusSearch))
+                    return nil
+                case UInt16(kVK_ANSI_W):
+                    Self.post(.keyboard(.close))
                     return nil
                 default:
                     break
                 }
             }
 
-            let notification: Notification.Name?
+            if flags == [.command, .shift],
+               event.keyCode == UInt16(kVK_Delete) {
+                Self.post(.keyboard(.clearUnpinned))
+                return nil
+            }
+
+            let command: PopoverKeyboardCommand?
             switch event.keyCode {
             case UInt16(kVK_UpArrow):
-                notification = .pastePilotMoveUp
+                command = .moveUp
             case UInt16(kVK_DownArrow):
-                notification = .pastePilotMoveDown
+                command = .moveDown
             case UInt16(kVK_Space):
                 if let editor = self?.popover?.contentViewController?
                     .view.window?.firstResponder as? NSTextView,
                    !editor.string.isEmpty {
                     return event
                 }
-                notification = .pastePilotTogglePreview
+                command = .togglePreview
+            case UInt16(kVK_Return), UInt16(kVK_ANSI_KeypadEnter):
+                command = .copySelected
+            case UInt16(kVK_Escape):
+                command = .close
             default:
-                notification = nil
+                command = nil
             }
-            guard let notification else { return event }
-            NotificationCenter.default.post(name: notification, object: nil)
+            guard let command else { return event }
+            Self.post(.keyboard(command))
             return nil
         }
     }
@@ -541,13 +558,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         return keyCodes[Int(keyCode)]
     }
+
+    private enum PopoverKeyPost {
+        case keyboard(PopoverKeyboardCommand)
+        case copyIndex(Int)
+    }
+
+    private static func post(_ post: PopoverKeyPost) {
+        switch post {
+        case let .keyboard(command):
+            NotificationCenter.default.post(
+                name: .pastePilotKeyboardCommand,
+                object: command
+            )
+        case let .copyIndex(number):
+            NotificationCenter.default.post(
+                name: .pastePilotCopyIndex,
+                object: number
+            )
+        }
+    }
 }
 
 extension Notification.Name {
-    static let pastePilotMoveUp = Notification.Name("PastePilotMoveUp")
-    static let pastePilotMoveDown = Notification.Name("PastePilotMoveDown")
+    static let pastePilotKeyboardCommand = Notification.Name("PastePilotKeyboardCommand")
     static let pastePilotCopyIndex = Notification.Name("PastePilotCopyIndex")
-    static let pastePilotTogglePreview = Notification.Name("PastePilotTogglePreview")
-    static let pastePilotTogglePinned = Notification.Name("PastePilotTogglePinned")
-    static let pastePilotDeleteItem = Notification.Name("PastePilotDeleteItem")
 }

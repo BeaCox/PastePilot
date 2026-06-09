@@ -1,5 +1,19 @@
 import SwiftUI
 
+enum PopoverKeyboardCommand {
+    case moveUp
+    case moveDown
+    case copySelected
+    case togglePreview
+    case togglePinned
+    case deleteSelected
+    case focusSearch
+    case clearSearch
+    case clearUnpinned
+    case performAction(Int)
+    case close
+}
+
 struct MenuBarView: View {
     @ObservedObject var store: ClipboardStore
     @ObservedObject var settings: AppSettings
@@ -7,6 +21,7 @@ struct MenuBarView: View {
     let openAbout: () -> Void
     let checkForUpdates: () -> Void
     let quit: () -> Void
+    let closePopover: () -> Void
     let resize: (CGSize) -> Void
     @State private var searchText = ""
     @State private var selectedID: UUID?
@@ -64,7 +79,6 @@ struct MenuBarView: View {
             footer
         }
         .frame(width: preferredSize.width, height: preferredSize.height)
-        .background(.regularMaterial)
     }
 
     private var dropHandlingPanel: some View {
@@ -105,26 +119,12 @@ struct MenuBarView: View {
     private var notificationHandlingPanel: some View {
         stateHandlingPanel
         .onMoveCommand(perform: moveSelection)
-        .onReceive(NotificationCenter.default.publisher(for: .pastePilotMoveUp)) { _ in
-            moveSelection(.up)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .pastePilotMoveDown)) { _ in
-            moveSelection(.down)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .pastePilotTogglePreview)) { _ in
-            togglePreview()
+        .onReceive(NotificationCenter.default.publisher(for: .pastePilotKeyboardCommand)) { notification in
+            guard let command = notification.object as? PopoverKeyboardCommand else { return }
+            performKeyboardCommand(command)
         }
         .onReceive(NotificationCenter.default.publisher(for: .pastePilotCopyIndex)) { notification in
             copyItem(at: notification)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .pastePilotTogglePinned)) { _ in
-            guard let item = selectedItem else { return }
-            store.togglePinned(item.id)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .pastePilotDeleteItem)) { _ in
-            guard let item = selectedItem else { return }
-            store.delete(item.id)
-            selectFirstItem()
         }
     }
 
@@ -133,11 +133,19 @@ struct MenuBarView: View {
             Text("%d items".localized(store.items.count))
                 .foregroundStyle(.secondary)
             Spacer()
-            HStack(spacing: 6) {
-                Text("↩ \("Copy".localized)")
-                Text("␣ \("Preview".localized)")
-                Text("⌘P \("Pin".localized)")
-                Text("⌘⌫ \("Delete".localized)")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    Text("↩ \("Copy".localized)")
+                    Text("␣ \("Preview".localized)")
+                    Text("⌥1-9 \("Actions".localized)")
+                    Text("⌘P \("Pin".localized)")
+                    Text("⌘F \("Search".localized)")
+                }
+                HStack(spacing: 6) {
+                    Text("↩ \("Copy".localized)")
+                    Text("␣ \("Preview".localized)")
+                    Text("⌥1-9 \("Actions".localized)")
+                }
             }
             .font(.caption2)
             .foregroundStyle(.tertiary)
@@ -145,6 +153,7 @@ struct MenuBarView: View {
                 Button("Clear Unpinned".localized) {
                     showsClearConfirmation = true
                 }
+                .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 Divider()
                 Button("Preferences…".localized, action: openSettings)
                     .keyboardShortcut(",", modifiers: .command)
@@ -377,6 +386,8 @@ struct MenuBarView: View {
             closePreview()
         } else if !searchText.isEmpty {
             searchText = ""
+        } else {
+            closePopover()
         }
     }
 
@@ -397,6 +408,46 @@ struct MenuBarView: View {
     private func clearUnpinnedHistory() {
         store.clearUnpinned()
         closePreview()
+        selectFirstItem()
+    }
+
+    private func performKeyboardCommand(_ command: PopoverKeyboardCommand) {
+        switch command {
+        case .moveUp:
+            moveSelection(.up)
+        case .moveDown:
+            moveSelection(.down)
+        case .copySelected:
+            guard let item = selectedItem else { return }
+            performPrimaryAction(for: item)
+        case .togglePreview:
+            togglePreview()
+        case .togglePinned:
+            toggleSelectedPinned()
+        case .deleteSelected:
+            deleteSelectedItem()
+        case .focusSearch:
+            searchFocused = true
+        case .clearSearch:
+            searchText = ""
+            searchFocused = true
+        case .clearUnpinned:
+            showsClearConfirmation = true
+        case let .performAction(index):
+            performAction(at: index)
+        case .close:
+            handleExitCommand()
+        }
+    }
+
+    private func toggleSelectedPinned() {
+        guard let item = selectedItem else { return }
+        store.togglePinned(item.id)
+    }
+
+    private func deleteSelectedItem() {
+        guard let item = selectedItem else { return }
+        store.delete(item.id)
         selectFirstItem()
     }
 
@@ -483,8 +534,23 @@ struct MenuBarView: View {
     }
 
     private func performPrimaryAction(for item: ClipboardItem) {
-        guard let action = ClipboardActionFactory.actions(for: item).first else { return }
+        let action = ClipboardActionFactory.copyAction(for: item)
         showNotice(ClipboardActionFactory.perform(action, using: store))
+    }
+
+    private func performAction(at oneBasedIndex: Int) {
+        guard let item = selectedItem else { return }
+        let actions = keyboardActions(for: item)
+        guard actions.indices.contains(oneBasedIndex - 1) else { return }
+        let action = actions[oneBasedIndex - 1]
+        showNotice(ClipboardActionFactory.perform(action, using: store))
+    }
+
+    private func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {
+        let copyAction = ClipboardActionFactory.copyAction(for: item)
+        return [copyAction] + ClipboardActionFactory.actions(for: item).filter {
+            $0.id != copyAction.id
+        }
     }
 
     private func showNotice(_ message: String) {
@@ -817,8 +883,7 @@ private struct ClipboardDetailPreview: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        let actions = [ClipboardActionFactory.copyAction(for: item)]
-            + ClipboardActionFactory.compactActions(for: item)
+        let actions = Array(keyboardActions.prefix(9))
         VStack(spacing: 0) {
             ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
                 Button {
@@ -831,7 +896,11 @@ private struct ClipboardDetailPreview: View {
                             .frame(width: 16)
                         Text(action.title)
                             .font(.system(size: 12))
+                            .lineLimit(1)
                         Spacer()
+                        Text("⌥\(index + 1)")
+                            .font(.system(size: 11, design: .rounded).weight(.medium))
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -844,6 +913,13 @@ private struct ClipboardDetailPreview: View {
             }
         }
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var keyboardActions: [ClipboardAction] {
+        let copyAction = ClipboardActionFactory.copyAction(for: item)
+        return [copyAction] + ClipboardActionFactory.actions(for: item).filter {
+            $0.id != copyAction.id
+        }
     }
 
     @ViewBuilder

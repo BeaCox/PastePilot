@@ -2,6 +2,22 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.3.0] - 2026-06-09
+
+### Changed
+
+- Expanded menu bar keyboard control with search focus, action shortcuts,
+  clear-unpinned cleanup, popover close handling, and visible action shortcut
+  hints in previews.
+- Added URL/file-aware image actions, including Copy Image URL for web images
+  and Copy File, Quick Look, and Show in Finder for local or cached image files.
+- Documented the full menu bar keyboard shortcut set for release users.
+
+### Fixed
+
+- Keep Return/Enter consistent with the documented copy behavior, including URL
+  items whose first suggested action opens the browser.
+
 ## [0.2.3] - 2026-06-09
 
 ### Changed

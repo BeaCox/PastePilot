@@ -117,8 +117,12 @@ struct ContentBehaviorTests {
             imageSourceURL: "https://example.com/image.png"
         )
         #expect(
+            ClipboardActionFactory.actions(for: webImage).map(\.id)
+                == ["copy-image", "copy-image-url", "copy-image-markdown", "quick-look", "reveal-files"]
+        )
+        #expect(
             ClipboardActionFactory.compactActions(for: webImage).map(\.id)
-                == ["copy-image-markdown", "copy-image-url", "copy-image-cache-path"]
+                == ["copy-image-url", "copy-image-markdown", "quick-look"]
         )
 
         let localImage = ClipboardItem(
@@ -128,8 +132,22 @@ struct ContentBehaviorTests {
             imageOriginalPath: "/Users/demo/Pictures/local.png"
         )
         #expect(
+            ClipboardActionFactory.actions(for: localImage).map(\.id)
+                == ["copy-image", "copy-image-file", "copy-image-markdown", "quick-look", "reveal-files"]
+        )
+        #expect(
             ClipboardActionFactory.compactActions(for: localImage).map(\.id)
-                == ["quick-look", "reveal-files", "copy-image-markdown"]
+                == ["copy-image-file", "copy-image-markdown", "quick-look"]
+        )
+
+        let cachedImage = ClipboardItem(
+            content: "Image 80 × 80",
+            kind: .image,
+            imageFileName: "cached.png"
+        )
+        #expect(
+            ClipboardActionFactory.actions(for: cachedImage).map(\.id)
+                == ["copy-image", "copy-image-file", "copy-image-markdown", "quick-look", "reveal-files"]
         )
 
         let file = ClipboardItem(

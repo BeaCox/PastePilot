@@ -37,8 +37,6 @@
 "Copy Image" = "复制图片";
 "Copy Markdown" = "复制 Markdown";
 "Copy Image URL" = "复制图片 URL";
-"Copy File Path" = "复制文件路径";
-"Copy Cache Path" = "复制缓存路径";
 "Copy Original" = "复制原文";
 "Format JSON" = "格式化 JSON";
 "Minify JSON" = "压缩 JSON";
@@ -64,7 +62,8 @@
 "Prefers web URL, falls back to local file path" = "优先使用网页 URL，其次使用本地图片路径";
 "Copy the original web image address" = "复制网页图片的原始地址";
 "Copy the local path of the original image file" = "复制图片原文件的本地路径";
-"Copy the PastePilot-cached PNG path" = "复制 PastePilot 保存的 PNG 路径";
+"Write the cached PNG file back to the clipboard" = "将缓存的 PNG 文件写回剪贴板";
+"Reveal the cached PNG file" = "显示缓存的 PNG 文件";
 "Copy as-is back to the clipboard" = "不做修改，重新写入剪贴板";
 "Sort keys and indent for readability" = "排序键名并添加缩进，便于阅读";
 "Remove whitespace for payloads and configs" = "移除空白，适合请求参数和配置";
@@ -91,7 +90,6 @@
 "Image copied" = "已复制图片";
 "Image file missing" = "图片文件已丢失";
 "Image Markdown copied" = "已复制图片 Markdown";
-"Cache path copied" = "已复制缓存路径";
 "Link opened" = "已打开链接";
 
 /* Compact action titles */
@@ -132,6 +130,8 @@
 "Hide Preview" = "收起预览";
 "Preview" = "预览";
 "Copy" = "复制";
+"Actions" = "操作";
+"Search" = "搜索";
 "Result Preview" = "处理结果预览";
 "Space to Preview" = "空格预览";
 "Close Preview" = "关闭预览";
