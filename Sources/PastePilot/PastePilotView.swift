@@ -437,6 +437,10 @@ struct MenuBarView: View {
         closePreviewTask?.cancel()
         selectedID = item.id
         guard settings.hoverPreviewEnabled else { return }
+        if previewedItem != nil {
+            previewedID = item.id
+            return
+        }
         previewTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }

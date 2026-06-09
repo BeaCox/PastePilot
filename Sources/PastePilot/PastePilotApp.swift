@@ -6,7 +6,12 @@ struct PastePilotApp: App {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView(
+                settings: appDelegate.settings,
+                openDataFolder: appDelegate.openDataFolder,
+                clearUnpinnedHistory: appDelegate.clearUnpinnedHistory,
+                updateController: appDelegate.updateController
+            )
         }
     }
 }

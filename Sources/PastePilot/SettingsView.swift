@@ -36,7 +36,6 @@ struct SettingsView: View {
     let openDataFolder: () -> Void
     let clearUnpinnedHistory: () -> Void
     let updateController: UpdateController
-    let resize: (CGFloat) -> Void
     @State private var selectedTab: SettingsTab = .general
     @State private var showsResetConfirmation = false
     @State private var showsClearHistoryConfirmation = false
@@ -45,31 +44,47 @@ struct SettingsView: View {
 
     private var preferredHeight: CGFloat {
         switch selectedTab {
-        case .general: 540
-        case .storage: 390
-        case .appearance: 330
-        case .ignored: 500
-        case .advanced: 380
+        case .general: 500
+        case .storage: 340
+        case .appearance: 320
+        case .ignored: 460
+        case .advanced: 350
         }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            tabBar
-            Divider()
-            ScrollView {
-                page
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 22)
-            }
+        TabView(selection: $selectedTab) {
+            generalPage
+                .tabItem {
+                    Label(SettingsTab.general.title, systemImage: SettingsTab.general.symbol)
+                }
+                .tag(SettingsTab.general)
+
+            storagePage
+                .tabItem {
+                    Label(SettingsTab.storage.title, systemImage: SettingsTab.storage.symbol)
+                }
+                .tag(SettingsTab.storage)
+
+            appearancePage
+                .tabItem {
+                    Label(SettingsTab.appearance.title, systemImage: SettingsTab.appearance.symbol)
+                }
+                .tag(SettingsTab.appearance)
+
+            ignoredPage
+                .tabItem {
+                    Label(SettingsTab.ignored.title, systemImage: SettingsTab.ignored.symbol)
+                }
+                .tag(SettingsTab.ignored)
+
+            advancedPage
+                .tabItem {
+                    Label(SettingsTab.advanced.title, systemImage: SettingsTab.advanced.symbol)
+                }
+                .tag(SettingsTab.advanced)
         }
-        .frame(width: 640, height: preferredHeight)
-        .onAppear {
-            resize(preferredHeight)
-        }
-        .onChange(of: selectedTab) {
-            resize(preferredHeight)
-        }
+        .frame(width: 620, height: preferredHeight)
         .onAppear {
             refreshAccessibilityStatus()
             accessibilityPollTimer?.invalidate()
@@ -108,80 +123,21 @@ struct SettingsView: View {
         }
     }
 
-    private var tabBar: some View {
-        HStack(spacing: 6) {
-            ForEach(SettingsTab.allCases) { tab in
-                Button {
-                    selectedTab = tab
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.symbol)
-                            .font(.system(size: 17, weight: .medium))
-                            .frame(height: 20)
-                        Text(tab.title)
-                            .font(.caption)
-                    }
-                    .foregroundStyle(
-                        selectedTab == tab ? Color.accentColor : Color.secondary
-                    )
-                    .frame(width: 82, height: 44)
-                    .background(
-                        selectedTab == tab
-                            ? Color.primary.opacity(0.06)
-                            : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 8)
-                    )
-                    .overlay {
-                        if selectedTab == tab {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.primary.opacity(0.08))
-                        }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(tab.title)
-                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(.bar)
-    }
-
-    @ViewBuilder
-    private var page: some View {
-        switch selectedTab {
-        case .general:
-            generalPage
-        case .storage:
-            storagePage
-        case .appearance:
-            appearancePage
-        case .ignored:
-            ignoredPage
-        case .advanced:
-            advancedPage
-        }
-    }
-
     private var generalPage: some View {
-        SettingsPage {
-            SettingsSection {
+        SettingsPane {
+            SettingsGroup {
                 Toggle("Launch PastePilot at Login".localized, isOn: $settings.launchAtLogin)
                 Toggle("Monitor Clipboard".localized, isOn: $settings.monitoringEnabled)
                 SettingsNote("When disabled, existing history can still be searched and copied.".localized)
             }
 
-            SettingsSection {
-                Text("Global Shortcuts".localized)
-                    .font(.headline)
-
+            SettingsGroup(title: "Global Shortcuts".localized) {
                 SettingsRow(title: "Open PastePilot".localized) {
                     HotKeyRecorder(
                         keyCode: $settings.hotKeyCode,
                         modifiers: $settings.hotKeyModifiers
                     )
+                    .frame(width: 190, height: 34)
                 }
                 SettingsRow(title: "Paste as Plain Text".localized) {
                     HotKeyRecorder(
@@ -191,6 +147,7 @@ struct SettingsView: View {
                         defaultModifiers: AppSettings.defaultPlainTextHotKeyModifiers,
                         accessibilityLabel: "Paste as Plain Text Shortcut".localized
                     )
+                    .frame(width: 190, height: 34)
                 }
                 SettingsNote("Click a shortcut field and press a new combination; press Delete to reset.".localized)
                 if shortcutsConflict {
@@ -205,7 +162,7 @@ struct SettingsView: View {
                 }
             }
 
-            SettingsSection {
+            SettingsGroup {
                 HStack {
                     Label(
                         accessibilityGranted
@@ -254,8 +211,8 @@ struct SettingsView: View {
     }
 
     private var storagePage: some View {
-        SettingsPage {
-            SettingsSection {
+        SettingsPane {
+            SettingsGroup {
                 SettingsRow(title: "Keep up to".localized) {
                     Picker("", selection: $settings.historyLimit) {
                         Text("50 items".localized).tag(50)
@@ -280,7 +237,7 @@ struct SettingsView: View {
                 SettingsNote("Pinned items are excluded from this limit and never auto-deleted.".localized)
             }
 
-            SettingsSection {
+            SettingsGroup {
                 SettingsRow(title: "Image Size Limit".localized) {
                     Picker("", selection: $settings.imageSizeLimitMB) {
                         Text("5 MB").tag(5)
@@ -299,8 +256,8 @@ struct SettingsView: View {
     }
 
     private var appearancePage: some View {
-        SettingsPage {
-            SettingsSection {
+        SettingsPane {
+            SettingsGroup {
                 SettingsRow(title: "Menu Bar Icon".localized) {
                     Picker("", selection: $settings.menuBarIconStyle) {
                         ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { style in
@@ -318,12 +275,12 @@ struct SettingsView: View {
                 }
             }
 
-            SettingsSection {
+            SettingsGroup {
                 Toggle("Show Details on Hover".localized, isOn: $settings.hoverPreviewEnabled)
                 SettingsNote("Hover briefly to see full content, source app, and metadata.".localized)
             }
 
-            SettingsSection {
+            SettingsGroup {
                 SettingsRow(title: "Menu Bar Window".localized) {
                     Text("Adaptive".localized)
                         .foregroundStyle(.secondary)
@@ -334,12 +291,12 @@ struct SettingsView: View {
     }
 
     private var ignoredPage: some View {
-        SettingsPage {
-            SettingsSection {
+        SettingsPane {
+            SettingsGroup {
                 IgnoredAppsEditor(settings: settings)
             }
 
-            SettingsSection {
+            SettingsGroup {
                 Label("Ignore rules only affect new copies and won't delete existing history.".localized, systemImage: "info.circle")
                     .foregroundStyle(.secondary)
             }
@@ -347,8 +304,8 @@ struct SettingsView: View {
     }
 
     private var advancedPage: some View {
-        SettingsPage {
-            SettingsSection {
+        SettingsPane {
+            SettingsGroup {
                 SettingsRow(title: "Local Data".localized) {
                     Button("Open Data Folder".localized, action: openDataFolder)
                 }
@@ -359,7 +316,7 @@ struct SettingsView: View {
                 }
             }
 
-            SettingsSection {
+            SettingsGroup {
                 SettingsRow(title: "Updates".localized) {
                     Button("Check for Updates…".localized) {
                         updateController.checkForUpdates()
@@ -375,7 +332,7 @@ struct SettingsView: View {
                 )
             }
 
-            SettingsSection {
+            SettingsGroup {
                 SettingsRow(title: "Preferences".localized) {
                     Button("Reset to Defaults…".localized) {
                         showsResetConfirmation = true
@@ -387,7 +344,7 @@ struct SettingsView: View {
     }
 }
 
-private struct SettingsPage<Content: View>: View {
+private struct SettingsPane<Content: View>: View {
     @ViewBuilder let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -395,26 +352,43 @@ private struct SettingsPage<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            content
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                content
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
         }
     }
 }
 
-private struct SettingsSection<Content: View>: View {
+private struct SettingsGroup<Content: View>: View {
+    var title: String?
     @ViewBuilder let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(
+        title: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            content
+        VStack(alignment: .leading, spacing: 10) {
+            if let title {
+                Text(title)
+                    .font(.headline)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, title == nil ? 0 : 2)
+
+            Divider()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -428,12 +402,13 @@ private struct SettingsRow<Content: View>: View {
     }
 
     var body: some View {
-        HStack {
+        HStack(alignment: .center, spacing: 16) {
             Text(title)
+                .frame(width: 170, alignment: .leading)
             Spacer()
             content
         }
-        .frame(minHeight: 28)
+        .frame(minHeight: 30)
     }
 }
 

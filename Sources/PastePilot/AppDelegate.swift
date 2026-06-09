@@ -11,11 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case pastePlainText = 2
     }
 
-    private let settings = AppSettings.shared
+    let settings = AppSettings.shared
     private let store = ClipboardStore()
-    private let updateController = UpdateController()
+    let updateController = UpdateController()
     private let plainTextPasteService = PlainTextPasteService()
-    private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
     private var welcomeWindow: NSWindow?
     private var popover: NSPopover?
@@ -80,23 +79,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showSettings() {
         popover?.close()
-        if settingsWindow == nil {
-            let view = SettingsView(
-                settings: settings,
-                openDataFolder: { [weak self] in self?.openDataFolder() },
-                clearUnpinnedHistory: { [weak self] in self?.store.clearUnpinned() },
-                updateController: updateController,
-                resize: { [weak self] height in
-                    self?.resizeSettingsWindow(height: height)
-                }
-            )
-            settingsWindow = makeUtilityWindow(
-                title: "PastePilot Settings".localized,
-                size: NSSize(width: 640, height: 350),
-                content: view
-            )
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            guard let appMenu = NSApp.mainMenu?.items.first?.submenu,
+                  let index = appMenu.items.firstIndex(where: {
+                      $0.keyEquivalent == ","
+                  }) else {
+                return
+            }
+            appMenu.performActionForItem(at: index)
         }
-        showUtilityWindow(settingsWindow)
     }
 
     @objc private func showAbout() {
@@ -116,6 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             aboutWindow = makeUtilityWindow(
                 title: "About PastePilot".localized,
                 size: NSSize(width: 520, height: 390),
+                autosaveName: "PastePilot.AboutWindow",
                 content: view
             )
         }
@@ -225,13 +218,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentSize = contentSize
     }
 
-    private func resizeSettingsWindow(height: CGFloat) {
-        guard let settingsWindow else { return }
-        let size = NSSize(width: 640, height: height)
-        guard settingsWindow.contentLayoutRect.size != size else { return }
-        settingsWindow.setContentSize(size)
-    }
-
     private func configureSettingsObservers() {
         settings.$monitoringEnabled
             .dropFirst()
@@ -302,6 +288,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeUtilityWindow<Content: View>(
         title: String,
         size: NSSize,
+        autosaveName: String? = nil,
         content: Content
     ) -> NSWindow {
         let window = NSWindow(
@@ -313,23 +300,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = title
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: content)
-        window.center()
+        if let autosaveName {
+            if !window.setFrameUsingName(autosaveName) {
+                window.center()
+            }
+            window.setFrameAutosaveName(autosaveName)
+        } else {
+            window.center()
+        }
         return window
     }
 
     private func showUtilityWindow(_ window: NSWindow?) {
         guard let window else { return }
         NSApp.activate(ignoringOtherApps: true)
-        window.center()
         window.makeKeyAndOrderFront(nil)
     }
 
-    private func openDataFolder() {
+    func openDataFolder() {
         try? FileManager.default.createDirectory(
             at: store.dataDirectoryURL,
             withIntermediateDirectories: true
         )
         NSWorkspace.shared.activateFileViewerSelecting([store.dataDirectoryURL])
+    }
+
+    func clearUnpinnedHistory() {
+        store.clearUnpinned()
     }
 
     private func statusImage(filled: Bool) -> NSImage? {
