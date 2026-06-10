@@ -57,8 +57,8 @@ struct HistoryRepository {
 
         if fileManager.fileExists(atPath: historyURL.path),
            decodeFile(at: historyURL) != nil {
-            try? fileManager.removeItem(at: backupURL)
-            try fileManager.copyItem(at: historyURL, to: backupURL)
+            let currentHistory = try Data(contentsOf: historyURL)
+            try currentHistory.write(to: backupURL, options: .atomic)
         }
 
         let document = HistoryDocument(
@@ -81,5 +81,38 @@ struct HistoryRepository {
             return document.items
         }
         return try? decoder.decode([ClipboardItem].self, from: data)
+    }
+}
+
+final class HistoryWriteQueue {
+    private let repository: HistoryRepository
+    private let queue = DispatchQueue(
+        label: "PastePilot.HistoryWriteQueue",
+        qos: .utility
+    )
+    private let queueKey = DispatchSpecificKey<Void>()
+
+    init(repository: HistoryRepository) {
+        self.repository = repository
+        queue.setSpecific(key: queueKey, value: ())
+    }
+
+    func save(
+        _ items: [ClipboardItem],
+        completion: ((Error?) -> Void)? = nil
+    ) {
+        queue.async { [repository] in
+            do {
+                try repository.save(items)
+                completion?(nil)
+            } catch {
+                completion?(error)
+            }
+        }
+    }
+
+    func flush() {
+        guard DispatchQueue.getSpecific(key: queueKey) == nil else { return }
+        queue.sync {}
     }
 }

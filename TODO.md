@@ -5,7 +5,8 @@
 - [x] Standard SwiftPM test target using Swift Testing
 - [x] Split history persistence, image storage, and OCR from `ClipboardStore`
 - [x] Global paste-as-plain-text shortcut
-- [ ] Move image encoding and history writes off the main actor
+- [x] Move history writes off the main actor
+- [ ] Move image encoding off the main actor
 - [ ] Split the menu bar and settings views into focused files
 
 ## Short Term

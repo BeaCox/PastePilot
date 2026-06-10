@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         store.stopMonitoring()
+        store.flushHistoryWrites()
         unregisterHotKeys()
         if let hotKeyHandler {
             RemoveEventHandler(hotKeyHandler)

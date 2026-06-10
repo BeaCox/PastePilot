@@ -61,6 +61,30 @@ struct StorageTests {
     }
 
     @Test
+    func repositoryOverwritesExistingBackup() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let first = ClipboardItem(content: "first", kind: .text)
+        let second = ClipboardItem(content: "second", kind: .text)
+        let third = ClipboardItem(content: "third", kind: .text)
+
+        try repository.save([first])
+        try repository.save([second])
+        try repository.save([third])
+
+        try Data("not json".utf8).write(
+            to: directory.appendingPathComponent("history.json"),
+            options: .atomic
+        )
+
+        let recoveredItem = try #require(repository.load().items.first)
+        #expect(recoveredItem.id == second.id)
+        #expect(recoveredItem.content == second.content)
+    }
+
+    @Test
     func repositoryDistinguishesMissingAndUnrecoverableHistory() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -102,6 +126,22 @@ struct StorageTests {
                 atPath: imageStore.path(fileName: "remove.png")
             )
         )
+    }
+
+    @Test
+    func historyWriteQueuePersistsAfterFlush() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let writer = HistoryWriteQueue(repository: repository)
+        let item = ClipboardItem(content: "queued", kind: .text)
+
+        writer.save([item])
+        writer.flush()
+
+        let loadedItem = try #require(repository.load().items.first)
+        #expect(loadedItem.id == item.id)
+        #expect(loadedItem.content == item.content)
     }
 
     @Test

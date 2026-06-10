@@ -10,6 +10,7 @@ final class ClipboardStore: ObservableObject {
     private let pasteboard: NSPasteboard
     private let settings: AppSettings
     private let historyRepository: HistoryRepository
+    private let historyWriteQueue: HistoryWriteQueue
     private let imageStore: ClipboardImageStore
     private let ocrService: any OCRService
     private var timer: Timer?
@@ -27,9 +28,11 @@ final class ClipboardStore: ObservableObject {
         ocrService: any OCRService = VisionOCRService()
     ) {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
+        let historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
         self.pasteboard = pasteboard
         self.settings = settings
-        self.historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
+        self.historyRepository = historyRepository
+        self.historyWriteQueue = HistoryWriteQueue(repository: historyRepository)
         self.imageStore = ClipboardImageStore(
             directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
         )
@@ -144,6 +147,10 @@ final class ClipboardStore: ObservableObject {
         expired.forEach(deleteImageFile)
         items.removeAll { !$0.isPinned && $0.createdAt < cutoff }
         save()
+    }
+
+    func flushHistoryWrites() {
+        historyWriteQueue.flush()
     }
 
     var dataDirectoryURL: URL {
@@ -547,10 +554,10 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func save() {
-        do {
-            try historyRepository.save(items)
-        } catch {
-            NSLog("PastePilot failed to save history: \(error)")
+        historyWriteQueue.save(items) { error in
+            if let error {
+                NSLog("PastePilot failed to save history: \(error)")
+            }
         }
     }
 
