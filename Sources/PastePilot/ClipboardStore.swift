@@ -1,5 +1,4 @@
 import AppKit
-import CryptoKit
 import Foundation
 import UniformTypeIdentifiers
 
@@ -12,6 +11,7 @@ final class ClipboardStore: ObservableObject {
     private let historyRepository: HistoryRepository
     private let historyWriteQueue: HistoryWriteQueue
     private let imageStore: ClipboardImageStore
+    private let imageProcessingQueue: ClipboardImageProcessingQueue
     private let ocrService: any OCRService
     private var timer: Timer?
     private var lastChangeCount: Int
@@ -36,6 +36,7 @@ final class ClipboardStore: ObservableObject {
         self.imageStore = ClipboardImageStore(
             directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
         )
+        self.imageProcessingQueue = ClipboardImageProcessingQueue()
         self.ocrService = ocrService
         self.lastChangeCount = pasteboard.changeCount
         load()
@@ -101,7 +102,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     func importFiles(_ urls: [URL]) {
-        captureFiles(urls: urls, source: (nil, nil))
+        captureFiles(urls: urls, source: (nil, nil), pasteboardChangeCount: nil)
     }
 
     func image(for item: ClipboardItem) -> NSImage? {
@@ -213,13 +214,18 @@ final class ClipboardStore: ObservableObject {
             options: options
         ) as? [URL] ?? []
         guard !urls.isEmpty else { return false }
-        captureFiles(urls: urls, source: sourceApplication())
+        captureFiles(
+            urls: urls,
+            source: sourceApplication(),
+            pasteboardChangeCount: pasteboard.changeCount
+        )
         return true
     }
 
     private func captureFiles(
         urls: [URL],
-        source: (name: String?, bundleIdentifier: String?)
+        source: (name: String?, bundleIdentifier: String?),
+        pasteboardChangeCount: Int?
     ) {
         let normalized = urls
             .filter(\.isFileURL)
@@ -232,7 +238,11 @@ final class ClipboardStore: ObservableObject {
         if normalized.count == 1,
            let url = normalized.first,
            isImageFile(url),
-           captureImageFile(url, source: source) {
+           captureImageFile(
+               url,
+               source: source,
+               pasteboardChangeCount: pasteboardChangeCount
+           ) {
             return
         }
 
@@ -258,14 +268,16 @@ final class ClipboardStore: ObservableObject {
 
     private func captureImageFile(
         _ url: URL,
-        source: (name: String?, bundleIdentifier: String?)
+        source: (name: String?, bundleIdentifier: String?),
+        pasteboardChangeCount: Int?
     ) -> Bool {
         guard let image = NSImage(contentsOf: url) else { return false }
         return saveImage(
             image,
             source: source,
             remoteURL: nil,
-            originalPath: url.path
+            originalPath: url.path,
+            pasteboardChangeCount: pasteboardChangeCount
         )
     }
 
@@ -337,7 +349,8 @@ final class ClipboardStore: ObservableObject {
             image,
             source: source,
             remoteURL: imageOrigin.remoteURL,
-            originalPath: imageOrigin.localPath
+            originalPath: imageOrigin.localPath,
+            pasteboardChangeCount: pasteboard.changeCount
         )
     }
 
@@ -345,50 +358,98 @@ final class ClipboardStore: ObservableObject {
         _ image: NSImage,
         source: (name: String?, bundleIdentifier: String?),
         remoteURL: String?,
-        originalPath: String?
+        originalPath: String?,
+        pasteboardChangeCount: Int?
     ) -> Bool {
-        guard let pngData = pngData(for: image),
-              pngData.count <= settings.imageSizeLimitMB * 1_024 * 1_024 else {
+        guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
+        guard let cgImage = image.cgImage(
+            forProposedRect: nil,
+            context: nil,
+            hints: nil
+        ) else {
             return false
         }
-        let digest = SHA256.hash(data: pngData).map { String(format: "%02x", $0) }.joined()
-        guard items.first?.imageDigest != digest else { return true }
 
-        guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
         let id = UUID()
         let fileName = "\(id.uuidString).png"
-        do {
-            try imageStore.save(pngData, fileName: fileName)
-        } catch {
-            NSLog("PastePilot failed to save image: \(error)")
-            return false
+        let sizeLimitBytes = settings.imageSizeLimitMB * 1_024 * 1_024
+        imageProcessingQueue.encodeAndSave(
+            cgImage,
+            fileName: fileName,
+            imageStore: imageStore,
+            sizeLimitBytes: sizeLimitBytes
+        ) { [weak self] result in
+            Task { @MainActor in
+                guard let self else { return }
+                self.finishSavingImage(
+                    result,
+                    id: id,
+                    source: source,
+                    remoteURL: remoteURL,
+                    originalPath: originalPath,
+                    pasteboardChangeCount: pasteboardChangeCount,
+                    ocrImage: cgImage
+                )
+            }
         }
-
-        let pixelSize = imagePixelSize(image)
-        let wasPinned = items.first { $0.imageDigest == digest }?.isPinned ?? false
-        let item = ClipboardItem(
-            id: id,
-            content: "Image %d × %d".localized(pixelSize.width, pixelSize.height),
-            kind: .image,
-            isPinned: wasPinned,
-            sourceAppName: source.name,
-            sourceBundleIdentifier: source.bundleIdentifier,
-            imageFileName: fileName,
-            imageWidth: pixelSize.width,
-            imageHeight: pixelSize.height,
-            imageByteCount: pngData.count,
-            imageDigest: digest,
-            imageSourceURL: remoteURL,
-            imageOriginalPath: originalPath,
-            filePaths: originalPath.map { [$0] }
-        )
-        items.filter { $0.imageDigest == digest }.forEach(deleteImageFile)
-        items.removeAll { $0.imageDigest == digest }
-        items.insert(item, at: 0)
-        trimHistory(limit: settings.historyLimit)
-        save()
-        performOCR(on: image, itemID: id)
         return true
+    }
+
+    private func finishSavingImage(
+        _ result: Result<ProcessedClipboardImage, Error>,
+        id: UUID,
+        source: (name: String?, bundleIdentifier: String?),
+        remoteURL: String?,
+        originalPath: String?,
+        pasteboardChangeCount: Int?,
+        ocrImage: CGImage
+    ) {
+        switch result {
+        case .success(let processedImage):
+            guard pasteboardChangeCount.map({ pasteboard.changeCount == $0 }) ?? true else {
+                imageStore.delete(fileName: processedImage.fileName)
+                return
+            }
+            guard items.first?.imageDigest != processedImage.digest else {
+                imageStore.delete(fileName: processedImage.fileName)
+                return
+            }
+
+            let wasPinned = items.first {
+                $0.imageDigest == processedImage.digest
+            }?.isPinned ?? false
+            let item = ClipboardItem(
+                id: id,
+                content: "Image %d × %d".localized(
+                    processedImage.width,
+                    processedImage.height
+                ),
+                kind: .image,
+                isPinned: wasPinned,
+                sourceAppName: source.name,
+                sourceBundleIdentifier: source.bundleIdentifier,
+                imageFileName: processedImage.fileName,
+                imageWidth: processedImage.width,
+                imageHeight: processedImage.height,
+                imageByteCount: processedImage.byteCount,
+                imageDigest: processedImage.digest,
+                imageSourceURL: remoteURL,
+                imageOriginalPath: originalPath,
+                filePaths: originalPath.map { [$0] }
+            )
+            items.filter {
+                $0.imageDigest == processedImage.digest
+            }.forEach(deleteImageFile)
+            items.removeAll { $0.imageDigest == processedImage.digest }
+            items.insert(item, at: 0)
+            trimHistory(limit: settings.historyLimit)
+            save()
+            performOCR(on: ocrImage, itemID: id)
+        case .failure(let error):
+            if !(error is ClipboardImageProcessingError) {
+                NSLog("PastePilot failed to save image: \(error)")
+            }
+        }
     }
 
     private func clipboardImage() -> NSImage? {
@@ -467,23 +528,6 @@ final class ClipboardStore: ObservableObject {
             return nil
         }
         return url.absoluteString
-    }
-
-    private func pngData(for image: NSImage) -> Data? {
-        guard let tiffData = image.tiffRepresentation,
-              let representation = NSBitmapImageRep(data: tiffData) else {
-            return nil
-        }
-        return representation.representation(using: .png, properties: [:])
-    }
-
-    private func imagePixelSize(_ image: NSImage) -> (width: Int, height: Int) {
-        guard let representation = image.representations.max(by: {
-            $0.pixelsWide * $0.pixelsHigh < $1.pixelsWide * $1.pixelsHigh
-        }) else {
-            return (Int(image.size.width), Int(image.size.height))
-        }
-        return (representation.pixelsWide, representation.pixelsHigh)
     }
 
     private func sourceApplication() -> (name: String?, bundleIdentifier: String?) {
@@ -566,11 +610,7 @@ final class ClipboardStore: ObservableObject {
         imageStore.delete(fileName: fileName)
     }
 
-    private func performOCR(on image: NSImage, itemID: UUID) {
-        guard let cgImage = image.cgImage(
-            forProposedRect: nil, context: nil, hints: nil
-        ) else { return }
-
+    private func performOCR(on cgImage: CGImage, itemID: UUID) {
         Task {
             guard let text = await ocrService.recognizeText(in: cgImage),
                   let index = items.firstIndex(where: { $0.id == itemID }) else {

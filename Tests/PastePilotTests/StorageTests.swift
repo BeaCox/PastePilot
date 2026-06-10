@@ -129,6 +129,39 @@ struct StorageTests {
     }
 
     @Test
+    func imageProcessingQueueEncodesAndSavesPNG() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        let writer = ClipboardImageProcessingQueue()
+        let image = try makeTestImage(width: 3, height: 2)
+
+        let processedImage = try await withCheckedThrowingContinuation { continuation in
+            writer.encodeAndSave(
+                image,
+                fileName: "queued.png",
+                imageStore: imageStore,
+                sizeLimitBytes: 1_000_000
+            ) { result in
+                continuation.resume(with: result)
+            }
+        }
+
+        #expect(processedImage.fileName == "queued.png")
+        #expect(processedImage.width == 3)
+        #expect(processedImage.height == 2)
+        #expect(processedImage.byteCount > 0)
+        #expect(!processedImage.digest.isEmpty)
+        #expect(
+            FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "queued.png")
+            )
+        )
+    }
+
+    @Test
     func historyWriteQueuePersistsAfterFlush() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -181,6 +214,7 @@ struct StorageTests {
             ocrService: StubOCRService()
         )
         #expect(Set(store.items.map(\.content)) == ["recent", "pinned"])
+        store.flushHistoryWrites()
 
         let anotherRecent = ClipboardItem(
             content: "another",
@@ -196,6 +230,7 @@ struct StorageTests {
         )
         reloadedStore.applyHistoryLimit(1)
         #expect(Set(reloadedStore.items.map(\.content)) == ["another", "pinned"])
+        reloadedStore.flushHistoryWrites()
     }
 
     private func makeTemporaryDirectory() throws -> URL {
@@ -206,6 +241,24 @@ struct StorageTests {
             withIntermediateDirectories: true
         )
         return directory
+    }
+
+    private func makeTestImage(width: Int, height: Int) throws -> CGImage {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let context = try #require(
+            CGContext(
+                data: nil,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        )
+        context.setFillColor(NSColor.systemBlue.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return try #require(context.makeImage())
     }
 }
 

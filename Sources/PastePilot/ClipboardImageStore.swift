@@ -1,5 +1,8 @@
 import AppKit
+import CryptoKit
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 struct ClipboardImageStore {
     let directoryURL: URL
@@ -42,5 +45,81 @@ struct ClipboardImageStore {
 
     private func url(fileName: String) -> URL {
         directoryURL.appendingPathComponent(fileName)
+    }
+}
+
+struct ProcessedClipboardImage {
+    let fileName: String
+    let byteCount: Int
+    let digest: String
+    let width: Int
+    let height: Int
+}
+
+enum ClipboardImageProcessingError: Error {
+    case encodingFailed
+    case exceedsSizeLimit
+}
+
+final class ClipboardImageProcessingQueue {
+    private let queue = DispatchQueue(
+        label: "PastePilot.ImageProcessingQueue",
+        qos: .userInitiated
+    )
+
+    func encodeAndSave(
+        _ image: CGImage,
+        fileName: String,
+        imageStore: ClipboardImageStore,
+        sizeLimitBytes: Int,
+        completion: @escaping (Result<ProcessedClipboardImage, Error>) -> Void
+    ) {
+        queue.async {
+            do {
+                guard let pngData = Self.pngData(for: image) else {
+                    completion(.failure(ClipboardImageProcessingError.encodingFailed))
+                    return
+                }
+                guard pngData.count <= sizeLimitBytes else {
+                    completion(.failure(ClipboardImageProcessingError.exceedsSizeLimit))
+                    return
+                }
+
+                try imageStore.save(pngData, fileName: fileName)
+                let digest = SHA256.hash(data: pngData)
+                    .map { String(format: "%02x", $0) }
+                    .joined()
+                completion(
+                    .success(
+                        ProcessedClipboardImage(
+                            fileName: fileName,
+                            byteCount: pngData.count,
+                            digest: digest,
+                            width: image.width,
+                            height: image.height
+                        )
+                    )
+                )
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
+
+    private static func pngData(for image: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else {
+            return nil
+        }
+        return data as Data
     }
 }
