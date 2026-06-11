@@ -6,13 +6,43 @@
 
 [![CI](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/BeaCox/PastePilot/actions/workflows/ci.yml)
 
-A lightweight macOS clipboard manager built for developers. PastePilot recognizes what you copied and suggests the next useful action — no plugins, no cloud, everything stays on your Mac.
+A local-first macOS clipboard manager that understands developer content.
+
+PastePilot recognizes commands, JSON, code, errors, colors, screenshots, and
+files, then suggests the next useful action from your menu bar. No plugins, no
+telemetry, no cloud sync. Everything stays on your Mac.
+
+[Download latest release](https://github.com/BeaCox/PastePilot/releases/latest) ·
+[See demo](#demo) ·
+[Build from source](#quick-start)
 
 </div>
+
+## Why PastePilot?
+
+Most clipboard managers remember what you copied. PastePilot understands what
+you copied and turns it into useful developer actions.
+
+- **Clean commands before they hit your terminal.** Strip `$`, `%`, `❯`,
+  virtualenv prompts, and terminal transcript noise.
+- **Work with structured data faster.** Pretty-print JSON, minify it, or
+  generate TypeScript interfaces from API responses.
+- **Find screenshots by text.** OCR copied images locally with macOS Vision,
+  then search clipboard history by visible text.
+- **Keep clipboard data local.** No plugins, no telemetry, and no cloud sync.
 
 ## Demo
 
 ![PastePilot menu bar popover demo](README-assets/pastepilot-demo.gif)
+
+## How It Compares
+
+| Tool | Main focus | Where PastePilot differs |
+|------|------------|--------------------------|
+| **PastePilot** | Developer clipboard history with smart local actions | Recognizes commands, JSON, code, errors, colors, Markdown, rich text, images, and files; includes OCR search and sensitive-content masking |
+| **Maccy** | Fast, minimal clipboard history | PastePilot adds content-aware transforms and developer workflows on top of clipboard history |
+| **Raycast Clipboard** | Clipboard history inside a broader launcher | PastePilot is a standalone menu bar app focused on copied developer content and local-first behavior |
+| **Paste / cloud clipboard apps** | Polished history, organization, and sync workflows | PastePilot prioritizes open source code, local storage, no telemetry, and no cloud dependency |
 
 ## Features
 
