@@ -22,19 +22,14 @@ enum MenuBarIconStyle: String, CaseIterable {
     }
 
     var previewImage: NSImage {
-        switch self {
-        case .pastepilot:
-            AppIconRenderer.menuBarImage(style: .pastepilot, filled: true)
-                ?? NSImage(systemSymbolName: "clipboard", accessibilityDescription: nil)!
-        case .clipboard:
-            NSImage(systemSymbolName: "clipboard.fill", accessibilityDescription: nil)!
-        case .paperplane:
-            NSImage(systemSymbolName: "paperplane.fill", accessibilityDescription: nil)!
-        }
+        AppIconRenderer.menuBarImage(style: self, filled: true)
+            ?? NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)!
     }
 }
 
 enum AppIconRenderer {
+    static let menuBarPointSize = 18
+
     static func icon(size: Int) -> NSImage {
         if let image = resourceImage(named: "AppIconSource") {
             image.size = NSSize(width: size, height: size)
@@ -68,12 +63,12 @@ enum AppIconRenderer {
 
     private static func customMenuBarImage() -> NSImage {
         if let image = resourceImage(named: "MenuBarIconTemplate") {
-            image.size = NSSize(width: 20, height: 20)
+            image.size = NSSize(width: menuBarPointSize, height: menuBarPointSize)
             image.isTemplate = true
             return image
         }
 
-        let pt = 18
+        let pt = menuBarPointSize
         let px = pt * 2
         let rep = makeBitmapRep(pixels: px)
         rep.size = NSSize(width: pt, height: pt)

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import PastePilot
@@ -250,5 +251,14 @@ struct ContentBehaviorTests {
         #expect(
             HotKeyFormatter.display(keyCode: 49, modifiers: 2_048) == "⌥Space"
         )
+    }
+
+    @Test
+    func pastePilotMenuBarIconUsesStandardCanvas() throws {
+        let image = try #require(
+            AppIconRenderer.menuBarImage(style: .pastepilot, filled: true)
+        )
+        #expect(image.size == NSSize(width: 18, height: 18))
+        #expect(MenuBarIconStyle.pastepilot.previewImage.size == image.size)
     }
 }
