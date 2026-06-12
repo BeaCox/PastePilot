@@ -97,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if aboutWindow == nil {
             let version = Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
-            ) as? String ?? "0.2.0"
+            ) as? String ?? "0.3.1"
             let view = AboutView(
                 settings: settings,
                 version: version,

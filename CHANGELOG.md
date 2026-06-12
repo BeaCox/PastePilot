@@ -2,6 +2,29 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.3.1] - 2026-06-12
+
+### Changed
+
+- Moved clipboard history persistence and image encoding off the main actor to
+  keep the menu bar interface responsive during larger saves and image copies.
+- Improved the README with clearer positioning, developer workflow examples,
+  and comparisons with other clipboard managers.
+
+### Fixed
+
+- Close PastePilot's inline preview before opening Quick Look, avoiding
+  overlapping preview windows.
+- Corrected the PastePilot menu bar icon and Settings picker preview sizes.
+
+### Maintenance
+
+- Split the Settings and menu bar views into focused source files.
+- Added coverage for queued history writes, background image processing,
+  Quick Look preview behavior, and menu bar icon sizing.
+- Made `make test` work with Command Line Tools by preparing and re-signing the
+  generated SwiftPM test bundle before execution.
+
 ## [0.3.0] - 2026-06-09
 
 ### Changed
