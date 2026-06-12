@@ -8,7 +8,7 @@
 - [x] Move history writes off the main actor
 - [x] Move image encoding off the main actor
 - [x] Split the settings views into focused files
-- [ ] Split the menu bar view into focused files
+- [x] Split the menu bar view into focused files
 
 ## Short Term
 
