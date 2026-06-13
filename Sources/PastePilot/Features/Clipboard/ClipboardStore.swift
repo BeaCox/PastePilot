@@ -1,0 +1,166 @@
+import AppKit
+import Foundation
+
+@MainActor
+final class ClipboardStore: ObservableObject {
+    @Published var items: [ClipboardItem] = []
+
+    let pasteboard: NSPasteboard
+    let settings: AppSettings
+    let historyRepository: HistoryRepository
+    let historyWriteQueue: HistoryWriteQueue
+    let imageStore: ClipboardImageStore
+    let imageProcessingQueue: ClipboardImageProcessingQueue
+    let ocrService: any OCRService
+    var timer: Timer?
+    var lastChangeCount: Int
+    var ignoredContent: String?
+    var lastPurgeCheck: Date = .distantPast
+    static let sourcePasteboardType = NSPasteboard.PasteboardType(
+        rawValue: "org.nspasteboard.source"
+    )
+
+    init(
+        pasteboard: NSPasteboard = .general,
+        settings: AppSettings = .shared,
+        dataDirectoryURL: URL? = nil,
+        ocrService: any OCRService = VisionOCRService()
+    ) {
+        let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
+        let historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
+        self.pasteboard = pasteboard
+        self.settings = settings
+        self.historyRepository = historyRepository
+        self.historyWriteQueue = HistoryWriteQueue(repository: historyRepository)
+        self.imageStore = ClipboardImageStore(
+            directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
+        )
+        self.imageProcessingQueue = ClipboardImageProcessingQueue()
+        self.ocrService = ocrService
+        self.lastChangeCount = pasteboard.changeCount
+        load()
+    }
+
+    func startMonitoring() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.captureIfNeeded() }
+        }
+    }
+
+    func stopMonitoring() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    func captureCurrentClipboard() {
+        lastChangeCount = -1
+        captureIfNeeded()
+    }
+
+    func acknowledgeCurrentClipboard() {
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    func copy(_ content: String) {
+        ignoredContent = content
+        pasteboard.clearContents()
+        pasteboard.setString(content, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    func copyImage(fileName: String) -> Bool {
+        guard let image = imageStore.image(fileName: fileName) else { return false }
+        pasteboard.clearContents()
+        let succeeded = pasteboard.writeObjects([image])
+        lastChangeCount = pasteboard.changeCount
+        return succeeded
+    }
+
+    func copyFiles(_ urls: [URL]) -> Bool {
+        let existingURLs = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !existingURLs.isEmpty else { return false }
+        pasteboard.clearContents()
+        let succeeded = pasteboard.writeObjects(existingURLs as [NSURL])
+        lastChangeCount = pasteboard.changeCount
+        return succeeded
+    }
+
+    func copyRichText(for item: ClipboardItem) -> Bool {
+        pasteboard.clearContents()
+        if let base64 = item.richTextRTFBase64,
+           let data = Data(base64Encoded: base64) {
+            pasteboard.setData(data, forType: .rtf)
+        }
+        if let html = item.richTextHTML {
+            pasteboard.setString(html, forType: .html)
+        }
+        pasteboard.setString(item.content, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+        return item.hasRichText
+    }
+
+    func importFiles(_ urls: [URL]) {
+        captureFiles(urls: urls, source: (nil, nil), pasteboardChangeCount: nil)
+    }
+
+    func image(for item: ClipboardItem) -> NSImage? {
+        guard let fileName = item.imageFileName else { return nil }
+        return imageStore.image(fileName: fileName)
+    }
+
+    func imagePath(fileName: String) -> String {
+        imageStore.path(fileName: fileName)
+    }
+
+    func togglePinned(_ id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].isPinned.toggle()
+        save()
+    }
+
+    func delete(_ id: UUID) {
+        if let item = items.first(where: { $0.id == id }) {
+            deleteImageFile(for: item)
+        }
+        items.removeAll { $0.id == id }
+        save()
+    }
+
+    func clearUnpinned() {
+        items.filter { !$0.isPinned }.forEach(deleteImageFile)
+        items.removeAll { !$0.isPinned }
+        save()
+    }
+
+    func applyHistoryLimit(_ limit: Int) {
+        trimHistory(limit: limit)
+        save()
+    }
+
+    func purgeExpired() {
+        let timeout = settings.historyTimeoutSeconds
+        guard timeout > 0 else { return }
+        let cutoff = Date().addingTimeInterval(-Double(timeout))
+        let expired = items.filter { !$0.isPinned && $0.createdAt < cutoff }
+        guard !expired.isEmpty else { return }
+        expired.forEach(deleteImageFile)
+        items.removeAll { !$0.isPinned && $0.createdAt < cutoff }
+        save()
+    }
+
+    func flushHistoryWrites() {
+        historyWriteQueue.flush()
+    }
+
+    var dataDirectoryURL: URL {
+        historyRepository.dataDirectoryURL
+    }
+
+    static var defaultDataDirectoryURL: URL {
+        FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0].appendingPathComponent("PastePilot", isDirectory: true)
+    }
+}
