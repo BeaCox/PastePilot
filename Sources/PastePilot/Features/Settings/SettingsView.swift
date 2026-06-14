@@ -41,15 +41,14 @@ struct SettingsView: View {
     @State private var showsClearHistoryConfirmation = false
     @State private var accessibilityGranted = EventPostingPermission.isGranted
     @State private var accessibilityPollTimer: Timer?
+    @State private var pageHeights: [AnyHashable: CGFloat] = [:]
 
+    // Fit the window to the selected page's measured content, clamped so it
+    // never gets tiny or taller than a comfortable on-screen size (beyond
+    // which the page scrolls).
     private var preferredHeight: CGFloat {
-        switch selectedTab {
-        case .general: 500
-        case .storage: 340
-        case .appearance: 320
-        case .ignored: 460
-        case .advanced: 350
-        }
+        let measured = pageHeights[AnyHashable(selectedTab)] ?? 360
+        return min(640, max(240, measured))
     }
 
     var body: some View {
@@ -85,6 +84,8 @@ struct SettingsView: View {
                 .tag(SettingsTab.advanced)
         }
         .frame(width: 620, height: preferredHeight)
+        .onPreferenceChange(SettingsHeightKey.self) { pageHeights = $0 }
+        .animation(.easeInOut(duration: 0.18), value: preferredHeight)
         .onAppear {
             refreshAccessibilityStatus()
             accessibilityPollTimer?.invalidate()
@@ -124,7 +125,7 @@ struct SettingsView: View {
     }
 
     private var generalPage: some View {
-        SettingsPane {
+        SettingsPane(id: SettingsTab.general) {
             SettingsGroup {
                 Toggle("Launch PastePilot at Login".localized, isOn: $settings.launchAtLogin)
                 Toggle("Monitor Clipboard".localized, isOn: $settings.monitoringEnabled)
@@ -211,7 +212,7 @@ struct SettingsView: View {
     }
 
     private var storagePage: some View {
-        SettingsPane {
+        SettingsPane(id: SettingsTab.storage) {
             SettingsGroup {
                 SettingsRow(title: "Keep up to".localized) {
                     Picker("", selection: $settings.historyLimit) {
@@ -248,15 +249,12 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 130)
                 }
-                SettingsRow(title: "Data Folder".localized) {
-                    Button("Show in Finder".localized, action: openDataFolder)
-                }
             }
         }
     }
 
     private var appearancePage: some View {
-        SettingsPane {
+        SettingsPane(id: SettingsTab.appearance) {
             SettingsGroup {
                 SettingsRow(title: "Menu Bar Icon".localized) {
                     Picker("", selection: $settings.menuBarIconStyle) {
@@ -309,7 +307,7 @@ struct SettingsView: View {
     }
 
     private var ignoredPage: some View {
-        SettingsPane {
+        SettingsPane(id: SettingsTab.ignored) {
             SettingsGroup {
                 IgnoredAppsEditor(settings: settings)
             }
@@ -322,7 +320,7 @@ struct SettingsView: View {
     }
 
     private var advancedPage: some View {
-        SettingsPane {
+        SettingsPane(id: SettingsTab.advanced) {
             SettingsGroup {
                 SettingsRow(title: "Local Data".localized) {
                     Button("Open Data Folder".localized, action: openDataFolder)

@@ -1,19 +1,42 @@
 import SwiftUI
 
+/// Reports the natural content height of each settings page, keyed by page id,
+/// so the window can size itself to exactly fit the selected page.
+struct SettingsHeightKey: PreferenceKey {
+    static var defaultValue: [AnyHashable: CGFloat] = [:]
+
+    static func reduce(
+        value: inout [AnyHashable: CGFloat],
+        nextValue: () -> [AnyHashable: CGFloat]
+    ) {
+        value.merge(nextValue()) { _, latest in latest }
+    }
+}
+
 struct SettingsPane<Content: View>: View {
+    let id: AnyHashable
     @ViewBuilder let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(id: AnyHashable, @ViewBuilder content: () -> Content) {
+        self.id = id
         self.content = content()
     }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 18) {
                 content
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 24)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 22)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: SettingsHeightKey.self,
+                        value: [id: proxy.size.height]
+                    )
+                }
+            )
         }
     }
 }
@@ -31,19 +54,27 @@ struct SettingsGroup<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 7) {
             if let title {
                 Text(title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 content
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, title == nil ? 0 : 2)
-
-            Divider()
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(.quaternary.opacity(0.4))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.quaternary, lineWidth: 0.5)
+            )
         }
     }
 }
