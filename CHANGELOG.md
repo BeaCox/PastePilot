@@ -2,6 +2,39 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [0.4.0] - 2026-06-15
+
+### Added
+
+- Drag and drop files onto the menu bar icon to import them directly into
+  clipboard history, even when the panel is closed.
+- **After Copying** preference to choose what happens once you copy or transform
+  an item: keep the panel open, close the preview, or close the whole panel.
+- **Animate Preview** preference to fade the detail preview in and out.
+
+### Changed
+
+- Dismiss the panel and any open detail preview automatically when focus moves
+  to another app.
+- Redesigned Settings with grouped cards and a window that sizes itself to fit
+  each page's content instead of using fixed per-tab heights.
+- Consolidated the data folder shortcut on the Advanced tab and removed the
+  duplicate entry from the Storage tab.
+
+### Fixed
+
+- **Close Panel** after copying now actually closes the panel instead of only
+  the preview.
+- The detail preview now vanishes together with the panel rather than animating
+  out as a separate, trailing step.
+
+### Maintenance
+
+- Reorganized the source tree into feature-focused folders (App, Features,
+  Services, Support).
+- Improved type inference and expanded test coverage for content transforms and
+  plain-text pasting.
+
 ## [0.3.1] - 2026-06-12
 
 ### Changed

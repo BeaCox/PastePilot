@@ -40,7 +40,7 @@ extension AppDelegate {
         if aboutWindow == nil {
             let version = Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
-            ) as? String ?? "0.3.1"
+            ) as? String ?? "0.4.0"
             let view = AboutView(
                 settings: settings,
                 version: version,
