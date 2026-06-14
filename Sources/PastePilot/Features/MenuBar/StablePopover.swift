@@ -71,6 +71,9 @@ struct StablePopover<Content: View>: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        // The host view only tears down when the whole panel is closing, so the
+        // preview must vanish instantly alongside it rather than animate out.
+        coordinator.popover?.animates = false
         coordinator.popover?.close()
         coordinator.popover = nil
         coordinator.hosting = nil

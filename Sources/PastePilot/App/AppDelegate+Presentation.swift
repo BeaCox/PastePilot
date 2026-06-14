@@ -137,7 +137,7 @@ extension AppDelegate {
                     self?.updateController.checkForUpdates()
                 },
                 quit: { [weak self] in self?.quit() },
-                closePopover: { [weak self] in self?.popover?.performClose(nil) },
+                closePopover: { [weak self] in self?.popover?.close() },
                 resize: { [weak self] size in
                     self?.resizePopover(size: size)
                 }

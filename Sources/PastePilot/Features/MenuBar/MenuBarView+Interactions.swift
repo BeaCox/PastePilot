@@ -223,8 +223,14 @@ extension MenuBarView {
     func applyPasteCloseBehavior(forcePreviewClose: Bool) {
         switch PasteCloseBehavior(rawValue: settings.pasteCloseBehavior) ?? .closePreview {
         case .closePanel:
+            // Dismiss the preview instantly (no fade) this runloop, then close
+            // the panel on the next one. Closing the panel while the preview
+            // child popover is still up makes AppKit animate the preview out as
+            // a separate, sequential step.
+            previewClosesInstantly = true
             closePreview()
-            closePopover()
+            let closePopover = closePopover
+            DispatchQueue.main.async(execute: closePopover)
         case .closePreview:
             closePreview()
         case .keepOpen:
