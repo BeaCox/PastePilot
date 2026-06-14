@@ -224,7 +224,7 @@ enum ContentTransformer {
         let indent = String(repeating: "  ", count: depth)
         if let dictionary = value as? [String: Any] {
             let fields = dictionary.keys.sorted().map { key in
-                let fieldType = typeScriptType(dictionary[key] as Any, depth: depth + 1)
+                let fieldType = typeScriptType(dictionary[key] ?? NSNull(), depth: depth + 1)
                 return "\(indent)  \(safeTypeScriptKey(key)): \(fieldType);"
             }.joined(separator: "\n")
             return "interface \(name) {\n\(fields)\n\(indent)}"
@@ -235,20 +235,84 @@ enum ContentTransformer {
     private static func typeScriptType(_ value: Any, depth: Int) -> String {
         if value is NSNull { return "null" }
         if value is String { return "string" }
-        if value is Bool { return "boolean" }
-        if value is NSNumber { return "number" }
+        if let number = value as? NSNumber {
+            return CFGetTypeID(number) == CFBooleanGetTypeID()
+                ? "boolean"
+                : "number"
+        }
         if let array = value as? [Any] {
-            guard let first = array.first else { return "unknown[]" }
-            return "\(typeScriptType(first, depth: depth))[]"
+            return typeScriptArrayType(array, depth: depth)
         }
         if let dictionary = value as? [String: Any] {
-            let indent = String(repeating: "  ", count: depth)
-            let fields = dictionary.keys.sorted().map { key in
-                "\(indent)  \(safeTypeScriptKey(key)): \(typeScriptType(dictionary[key] as Any, depth: depth + 1));"
-            }.joined(separator: "\n")
-            return "{\n\(fields)\n\(indent)}"
+            return typeScriptObjectType(dictionary, depth: depth)
         }
         return "unknown"
+    }
+
+    private static func typeScriptArrayType(_ array: [Any], depth: Int) -> String {
+        guard !array.isEmpty else { return "unknown[]" }
+
+        let elementTypes = typeScriptTypes(for: array, depth: depth)
+        let elementType = joinedTypeUnion(elementTypes)
+        if elementTypes.count > 1 {
+            return "(\(elementType))[]"
+        }
+        return "\(elementType)[]"
+    }
+
+    private static func typeScriptType(for values: [Any], depth: Int) -> String {
+        joinedTypeUnion(typeScriptTypes(for: values, depth: depth))
+    }
+
+    private static func typeScriptTypes(for values: [Any], depth: Int) -> [String] {
+        let hasNull = values.contains { $0 is NSNull }
+        let nonNullValues = values.filter { !($0 is NSNull) }
+        var types: [String] = []
+
+        let dictionaries = nonNullValues.compactMap { $0 as? [String: Any] }
+        if !dictionaries.isEmpty, dictionaries.count == nonNullValues.count {
+            types.append(typeScriptObjectType(dictionaries, depth: depth))
+        } else {
+            types.append(contentsOf: nonNullValues.map { typeScriptType($0, depth: depth) })
+        }
+
+        if hasNull {
+            types.append("null")
+        }
+
+        return uniqueTypeList(types)
+    }
+
+    private static func typeScriptObjectType(_ dictionary: [String: Any], depth: Int) -> String {
+        let indent = String(repeating: "  ", count: depth)
+        let fields = dictionary.keys.sorted().map { key in
+            "\(indent)  \(safeTypeScriptKey(key)): \(typeScriptType(dictionary[key] ?? NSNull(), depth: depth + 1));"
+        }.joined(separator: "\n")
+        return "{\n\(fields)\n\(indent)}"
+    }
+
+    private static func typeScriptObjectType(_ dictionaries: [[String: Any]], depth: Int) -> String {
+        let indent = String(repeating: "  ", count: depth)
+        let fields = Set(dictionaries.flatMap(\.keys)).sorted().map { key in
+            let values = dictionaries.compactMap { $0[key] }
+            let marker = values.count < dictionaries.count ? "?" : ""
+            return "\(indent)  \(safeTypeScriptKey(key))\(marker): \(typeScriptType(for: values, depth: depth + 1));"
+        }.joined(separator: "\n")
+        return "{\n\(fields)\n\(indent)}"
+    }
+
+    private static func joinedTypeUnion(_ types: [String]) -> String {
+        let uniqueTypes = uniqueTypeList(types)
+        guard !uniqueTypes.isEmpty else { return "unknown" }
+        return uniqueTypes.joined(separator: " | ")
+    }
+
+    private static func uniqueTypeList(_ types: [String]) -> [String] {
+        types.reduce(into: [String]()) { result, type in
+            if !result.contains(type) {
+                result.append(type)
+            }
+        }
     }
 
     private static func safeTypeScriptKey(_ key: String) -> String {

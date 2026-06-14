@@ -8,12 +8,9 @@ struct PlainTextPasteServiceTests {
     @Test
     @MainActor
     func pastesPlainTextAndRestoresOriginalClipboard() async throws {
-        let pasteboard = NSPasteboard(
-            name: NSPasteboard.Name("PastePilotPlainTextTests.\(UUID().uuidString)")
-        )
-        pasteboard.clearContents()
-        pasteboard.setString("Formatted text", forType: .string)
-        pasteboard.setString("<b>Formatted text</b>", forType: .html)
+        let pasteboard = TestPasteboard()
+        #expect(pasteboard.setString("Formatted text", forType: .string))
+        #expect(pasteboard.setString("<b>Formatted text</b>", forType: .html))
         let originalTypes = Set(pasteboard.types ?? [])
         var pasteShortcutCount = 0
         var didComplete = false
@@ -44,18 +41,15 @@ struct PlainTextPasteServiceTests {
     @Test
     @MainActor
     func doesNotOverwriteClipboardChangedDuringPaste() async throws {
-        let pasteboard = NSPasteboard(
-            name: NSPasteboard.Name("PastePilotPlainTextTests.\(UUID().uuidString)")
-        )
-        pasteboard.clearContents()
-        pasteboard.setString("Original", forType: .string)
+        let pasteboard = TestPasteboard()
+        #expect(pasteboard.setString("Original", forType: .string))
 
         let service = PlainTextPasteService(
             pasteboard: pasteboard,
             isAccessibilityGranted: { true },
             postPasteShortcut: {
                 pasteboard.clearContents()
-                pasteboard.setString("New copy", forType: .string)
+                _ = pasteboard.setString("New copy", forType: .string)
             },
             restoreDelay: .milliseconds(10)
         )
@@ -73,11 +67,8 @@ struct PlainTextPasteServiceTests {
     @Test
     @MainActor
     func requiresAccessibilityBeforeChangingClipboard() {
-        let pasteboard = NSPasteboard(
-            name: NSPasteboard.Name("PastePilotPlainTextTests.\(UUID().uuidString)")
-        )
-        pasteboard.clearContents()
-        pasteboard.setString("Original", forType: .string)
+        let pasteboard = TestPasteboard()
+        #expect(pasteboard.setString("Original", forType: .string))
 
         let service = PlainTextPasteService(
             pasteboard: pasteboard,
@@ -100,6 +91,53 @@ struct PlainTextPasteServiceTests {
             guard clock.now < deadline else { return false }
             try? await Task.sleep(for: .milliseconds(10))
         }
+        return true
+    }
+}
+
+@MainActor
+private final class TestPasteboard: PlainTextPasteboard {
+    private(set) var changeCount = 0
+    private var items: [NSPasteboardItem] = []
+
+    var types: [NSPasteboard.PasteboardType]? {
+        items.first?.types
+    }
+
+    var pasteboardItems: [NSPasteboardItem]? {
+        items
+    }
+
+    @discardableResult
+    func clearContents() -> Int {
+        let oldChangeCount = changeCount
+        items = []
+        changeCount += 1
+        return oldChangeCount
+    }
+
+    func setString(_ string: String, forType dataType: NSPasteboard.PasteboardType) -> Bool {
+        if items.isEmpty {
+            items = [NSPasteboardItem()]
+        }
+        let didSet = items[0].setString(string, forType: dataType)
+        if didSet {
+            changeCount += 1
+        }
+        return didSet
+    }
+
+    func string(forType dataType: NSPasteboard.PasteboardType) -> String? {
+        items.first?.string(forType: dataType)
+    }
+
+    func data(forType dataType: NSPasteboard.PasteboardType) -> Data? {
+        items.first?.data(forType: dataType)
+    }
+
+    func writeItems(_ items: [NSPasteboardItem]) -> Bool {
+        self.items = items
+        changeCount += 1
         return true
     }
 }

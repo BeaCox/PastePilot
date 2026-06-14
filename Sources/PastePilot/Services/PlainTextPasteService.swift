@@ -2,6 +2,25 @@ import AppKit
 import Carbon
 import CoreGraphics
 
+@MainActor
+protocol PlainTextPasteboard: AnyObject {
+    var changeCount: Int { get }
+    var pasteboardItems: [NSPasteboardItem]? { get }
+
+    @discardableResult
+    func clearContents() -> Int
+    func setString(_ string: String, forType dataType: NSPasteboard.PasteboardType) -> Bool
+    func string(forType dataType: NSPasteboard.PasteboardType) -> String?
+    func data(forType dataType: NSPasteboard.PasteboardType) -> Data?
+    func writeItems(_ items: [NSPasteboardItem]) -> Bool
+}
+
+extension NSPasteboard: PlainTextPasteboard {
+    func writeItems(_ items: [NSPasteboardItem]) -> Bool {
+        writeObjects(items)
+    }
+}
+
 enum EventPostingPermission {
     static var isGranted: Bool {
         CGPreflightPostEventAccess()
@@ -20,10 +39,11 @@ enum EventPostingPermission {
     }
 }
 
+@MainActor
 struct PasteboardSnapshot {
     private let items: [[NSPasteboard.PasteboardType: Data]]
 
-    init(pasteboard: NSPasteboard) {
+    init(pasteboard: PlainTextPasteboard) {
         items = (pasteboard.pasteboardItems ?? []).map { item in
             Dictionary(
                 uniqueKeysWithValues: item.types.compactMap { type in
@@ -34,7 +54,7 @@ struct PasteboardSnapshot {
     }
 
     @discardableResult
-    func restore(to pasteboard: NSPasteboard) -> Bool {
+    func restore(to pasteboard: PlainTextPasteboard) -> Bool {
         pasteboard.clearContents()
         let pasteboardItems = items.map { values in
             let item = NSPasteboardItem()
@@ -43,7 +63,7 @@ struct PasteboardSnapshot {
             }
             return item
         }
-        return pasteboardItems.isEmpty || pasteboard.writeObjects(pasteboardItems)
+        return pasteboardItems.isEmpty || pasteboard.writeItems(pasteboardItems)
     }
 }
 
@@ -57,14 +77,14 @@ final class PlainTextPasteService {
         case busy
     }
 
-    private let pasteboard: NSPasteboard
+    private let pasteboard: PlainTextPasteboard
     private let isAccessibilityGranted: () -> Bool
     private let postPasteShortcut: () -> Void
     private let restoreDelay: Duration
     private var restoreTask: Task<Void, Never>?
 
     init(
-        pasteboard: NSPasteboard = .general,
+        pasteboard: PlainTextPasteboard = NSPasteboard.general,
         isAccessibilityGranted: @escaping () -> Bool = {
             EventPostingPermission.isGranted
         },

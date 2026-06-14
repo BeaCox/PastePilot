@@ -34,10 +34,25 @@ struct ContentBehaviorTests {
         #expect(ContentTransformer.minifyJSON(json) == #"{"a":1,"b":2}"#)
 
         let typeScript = ContentTransformer.jsonToTypeScript(
-            #"{"name":"Pilot","active":true}"#
+            #"{"name":"Pilot","active":true,"count":1}"#
         )
         #expect(typeScript?.contains("interface Root") == true)
         #expect(typeScript?.contains("active: boolean;") == true)
+        #expect(typeScript?.contains("count: number;") == true)
+
+        let arrayTypeScript = ContentTransformer.jsonToTypeScript(
+            #"{"users":[{"id":1,"name":"Ada"},{"active":true,"id":2,"name":null}]}"#
+        )
+        #expect(arrayTypeScript?.contains("users: {") == true)
+        #expect(arrayTypeScript?.contains("active?: boolean;") == true)
+        #expect(arrayTypeScript?.contains("id: number;") == true)
+        #expect(arrayTypeScript?.contains("name: string | null;") == true)
+        #expect(arrayTypeScript?.contains("}[];") == true)
+
+        #expect(
+            ContentTransformer.jsonToTypeScript(#"[1,"two",null]"#)
+                == "type Root = (number | string | null)[];"
+        )
     }
 
     @Test
