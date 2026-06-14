@@ -6,6 +6,7 @@ extension MenuBarView {
     }
 
     func handleAppear() {
+        previewClosesInstantly = false
         selectFirstItem()
         searchFocused = true
         resize(preferredSize)
@@ -100,6 +101,10 @@ extension MenuBarView {
             performAction(at: index)
         case .close:
             handleExitCommand()
+        case .dismissAll:
+            previewClosesInstantly = true
+            closePreview()
+            closePopover()
         }
     }
 
@@ -210,10 +215,23 @@ extension MenuBarView {
     }
 
     func performAction(_ action: ClipboardAction) {
-        if action.closesInlinePreview {
+        let message = ClipboardActionFactory.perform(action, using: store)
+        applyPasteCloseBehavior(forcePreviewClose: action.closesInlinePreview)
+        showNotice(message)
+    }
+
+    func applyPasteCloseBehavior(forcePreviewClose: Bool) {
+        switch PasteCloseBehavior(rawValue: settings.pasteCloseBehavior) ?? .closePreview {
+        case .closePanel:
             closePreview()
+            closePopover()
+        case .closePreview:
+            closePreview()
+        case .keepOpen:
+            if forcePreviewClose {
+                closePreview()
+            }
         }
-        showNotice(ClipboardActionFactory.perform(action, using: store))
     }
 
     func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {

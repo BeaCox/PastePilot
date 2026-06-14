@@ -12,6 +12,7 @@ enum PopoverKeyboardCommand {
     case clearUnpinned
     case performAction(Int)
     case close
+    case dismissAll
 }
 
 struct MenuBarView: View {
@@ -31,8 +32,8 @@ struct MenuBarView: View {
     @State var showsClearConfirmation = false
     @State var previewTask: Task<Void, Never>?
     @State var closePreviewTask: Task<Void, Never>?
-    @State var isFileDropTargeted = false
     @State var historyItemFrames: [UUID: CGRect] = [:]
+    @State var previewClosesInstantly = false
     @FocusState var searchFocused: Bool
 
     var filteredItems: [ClipboardItem] {

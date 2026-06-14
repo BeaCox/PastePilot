@@ -12,23 +12,8 @@ extension MenuBarView {
         .frame(width: preferredSize.width, height: preferredSize.height)
     }
 
-    var dropHandlingPanel: some View {
-        panelContent
-        .dropDestination(for: URL.self) { urls, _ in
-            store.importFiles(urls)
-            return !urls.isEmpty
-        } isTargeted: { targeted in
-            withAnimation(.easeOut(duration: 0.12)) {
-                isFileDropTargeted = targeted
-            }
-        }
-        .overlay {
-            FileDropOverlay(isTargeted: isFileDropTargeted)
-        }
-    }
-
     var stateHandlingPanel: some View {
-        dropHandlingPanel
+        panelContent
         .onHover(perform: handlePanelHover)
         .onAppear {
             handleAppear()
@@ -244,7 +229,9 @@ extension MenuBarView {
             .background(
                 StablePopover(
                     isPresented: previewedItem != nil,
-                    anchorRect: previewedID.flatMap { historyItemFrames[$0] }
+                    anchorRect: previewedID.flatMap { historyItemFrames[$0] },
+                    instantClose: previewClosesInstantly,
+                    animationEnabled: settings.previewAnimationEnabled
                 ) {
                     if let item = previewedItem {
                         ClipboardDetailPreview(

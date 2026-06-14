@@ -110,6 +110,17 @@ extension AppDelegate {
         item.button?.toolTip = "PastePilot: Click for clipboard actions".localized
         item.button?.target = self
         item.button?.action = #selector(togglePopover)
+        if let button = item.button {
+            let dropView = StatusItemDropView(frame: button.bounds)
+            dropView.autoresizingMask = [.width, .height]
+            dropView.onDropFiles = { [weak self] urls in
+                self?.handleStatusItemDrop(urls)
+            }
+            dropView.onClick = { [weak self] in
+                self?.togglePopover()
+            }
+            button.addSubview(dropView)
+        }
         statusItem = item
 
         let popover = NSPopover()
@@ -154,6 +165,13 @@ extension AppDelegate {
                 self.statusItem?.button?.image = image
             }
             .store(in: &cancellables)
+    }
+
+    func handleStatusItemDrop(_ urls: [URL]) {
+        store.importFiles(urls)
+        if popover?.isShown != true {
+            togglePopover()
+        }
     }
 
     func resizePopover(size: CGSize) {

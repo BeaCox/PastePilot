@@ -18,6 +18,8 @@ struct HistoryItemFramePreferenceKey: PreferenceKey {
 struct StablePopover<Content: View>: NSViewRepresentable {
     let isPresented: Bool
     let anchorRect: CGRect?
+    var instantClose: Bool = false
+    var animationEnabled: Bool = true
     @ViewBuilder let content: () -> Content
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -30,9 +32,9 @@ struct StablePopover<Content: View>: NSViewRepresentable {
             if coordinator.popover == nil {
                 let popover = NSPopover()
                 popover.behavior = .applicationDefined
-                popover.animates = true
                 coordinator.popover = popover
             }
+            coordinator.popover?.animates = animationEnabled
             if let hosting = coordinator.hosting {
                 hosting.rootView = content()
             } else {
@@ -58,6 +60,10 @@ struct StablePopover<Content: View>: NSViewRepresentable {
                 )
             }
         } else {
+            // When the panel is being dismissed (e.g. the user clicked another
+            // app), close without animation so the preview vanishes together
+            // with the panel. Otherwise honor the user's animation preference.
+            coordinator.popover?.animates = animationEnabled && !instantClose
             coordinator.popover?.close()
             coordinator.popover = nil
             coordinator.hosting = nil

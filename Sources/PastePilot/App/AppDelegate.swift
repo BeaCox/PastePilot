@@ -60,4 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         togglePopover()
     }
 
+    func applicationDidResignActive(_ notification: Notification) {
+        // When focus moves to another app, dismiss the panel and any open
+        // detail preview together so nothing is left dangling.
+        Self.post(.keyboard(.dismissAll))
+    }
+
 }

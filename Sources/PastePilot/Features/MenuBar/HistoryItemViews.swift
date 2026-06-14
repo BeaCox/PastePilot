@@ -226,31 +226,3 @@ struct ContentKindBadge: View {
             .accessibilityHidden(true)
     }
 }
-
-struct FileDropOverlay: View {
-    let isTargeted: Bool
-
-    var body: some View {
-        if isTargeted {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial)
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        Color.accentColor,
-                        style: StrokeStyle(lineWidth: 2, dash: [7, 5])
-                    )
-                VStack(spacing: 8) {
-                    Image(systemName: "arrow.down.doc.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(Color.accentColor)
-                    Text("Drop files to add them to PastePilot".localized)
-                        .font(.headline)
-                }
-            }
-            .padding(8)
-            .transition(.opacity)
-            .allowsHitTesting(false)
-        }
-    }
-}

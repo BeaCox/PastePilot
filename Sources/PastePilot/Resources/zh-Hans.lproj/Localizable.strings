@@ -157,7 +157,6 @@
 "Recognized Text" = "识别文字";
 "%d characters" = "%d 字符";
 "%d lines" = "%d 行";
-"Drop files to add them to PastePilot" = "拖放文件以添加到 PastePilot";
 "Folder" = "文件夹";
 
 /* SettingsView */
@@ -207,6 +206,13 @@
 "Show in Finder" = "在 Finder 中显示";
 "Show Details on Hover" = "悬停显示完整详情";
 "Hover briefly to see full content, source app, and metadata." = "鼠标停留片刻后显示完整内容、来源应用和元数据。";
+"Animate Preview" = "预览动画";
+"Fade the detail preview in and out. Switching apps always closes it instantly." = "详情预览淡入淡出。切换到其他应用时始终立即关闭。";
+"After Copying" = "复制后";
+"Keep Panel Open" = "保持面板打开";
+"Close Preview" = "关闭预览";
+"Close Panel" = "关闭面板";
+"Choose what closes after you copy or transform an item." = "选择复制或转换内容后自动关闭哪些界面。";
 "Menu Bar Window" = "菜单栏窗口";
 "Adaptive" = "自适应";
 "The window grows with your results and follows the system light or dark appearance." = "窗口会随结果数量调整高度，并自动跟随系统浅色或深色外观。";

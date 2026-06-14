@@ -1,6 +1,12 @@
 import Carbon
 import Foundation
 
+enum PasteCloseBehavior: String, CaseIterable {
+    case keepOpen
+    case closePreview
+    case closePanel
+}
+
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
     static let defaultOpenHotKeyCode = kVK_Space
@@ -23,6 +29,8 @@ final class AppSettings: ObservableObject {
         static let plainTextHotKeyModifiers = "plainTextHotKeyModifiers"
         static let menuBarIconStyle = "menuBarIconStyle"
         static let historyTimeoutSeconds = "historyTimeoutSeconds"
+        static let pasteCloseBehavior = "pasteCloseBehavior"
+        static let previewAnimationEnabled = "previewAnimationEnabled"
     }
 
     private let defaults: UserDefaults
@@ -85,6 +93,14 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds) }
     }
 
+    @Published var pasteCloseBehavior: String {
+        didSet { defaults.set(pasteCloseBehavior, forKey: Key.pasteCloseBehavior) }
+    }
+
+    @Published var previewAnimationEnabled: Bool {
+        didSet { defaults.set(previewAnimationEnabled, forKey: Key.previewAnimationEnabled) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
@@ -99,7 +115,9 @@ final class AppSettings: ObservableObject {
             Key.plainTextHotKeyCode: Self.defaultPlainTextHotKeyCode,
             Key.plainTextHotKeyModifiers: Self.defaultPlainTextHotKeyModifiers,
             Key.menuBarIconStyle: MenuBarIconStyle.pastepilot.rawValue,
-            Key.historyTimeoutSeconds: 0
+            Key.historyTimeoutSeconds: 0,
+            Key.pasteCloseBehavior: PasteCloseBehavior.closePreview.rawValue,
+            Key.previewAnimationEnabled: true
         ])
         monitoringEnabled = defaults.bool(forKey: Key.monitoringEnabled)
         hoverPreviewEnabled = defaults.bool(forKey: Key.hoverPreviewEnabled)
@@ -118,6 +136,9 @@ final class AppSettings: ObservableObject {
         menuBarIconStyle = defaults.string(forKey: Key.menuBarIconStyle)
             ?? MenuBarIconStyle.pastepilot.rawValue
         historyTimeoutSeconds = defaults.integer(forKey: Key.historyTimeoutSeconds)
+        pasteCloseBehavior = defaults.string(forKey: Key.pasteCloseBehavior)
+            ?? PasteCloseBehavior.closePreview.rawValue
+        previewAnimationEnabled = defaults.bool(forKey: Key.previewAnimationEnabled)
     }
 
     var ignoredBundleIdentifierSet: Set<String> {
@@ -142,5 +163,7 @@ final class AppSettings: ObservableObject {
         plainTextHotKeyModifiers = Self.defaultPlainTextHotKeyModifiers
         menuBarIconStyle = MenuBarIconStyle.pastepilot.rawValue
         historyTimeoutSeconds = 0
+        pasteCloseBehavior = PasteCloseBehavior.closePreview.rawValue
+        previewAnimationEnabled = true
     }
 }

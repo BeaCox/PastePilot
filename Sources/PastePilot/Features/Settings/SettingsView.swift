@@ -278,6 +278,24 @@ struct SettingsView: View {
             SettingsGroup {
                 Toggle("Show Details on Hover".localized, isOn: $settings.hoverPreviewEnabled)
                 SettingsNote("Hover briefly to see full content, source app, and metadata.".localized)
+                Toggle("Animate Preview".localized, isOn: $settings.previewAnimationEnabled)
+                SettingsNote("Fade the detail preview in and out. Switching apps always closes it instantly.".localized)
+            }
+
+            SettingsGroup {
+                SettingsRow(title: "After Copying".localized) {
+                    Picker("", selection: $settings.pasteCloseBehavior) {
+                        Text("Keep Panel Open".localized)
+                            .tag(PasteCloseBehavior.keepOpen.rawValue)
+                        Text("Close Preview".localized)
+                            .tag(PasteCloseBehavior.closePreview.rawValue)
+                        Text("Close Panel".localized)
+                            .tag(PasteCloseBehavior.closePanel.rawValue)
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+                SettingsNote("Choose what closes after you copy or transform an item.".localized)
             }
 
             SettingsGroup {
