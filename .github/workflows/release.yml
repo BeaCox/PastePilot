@@ -82,6 +82,38 @@ jobs:
       contents: write
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Extract changelog section
+        id: changelog
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Print the body of the matching "## [VERSION]" section, with leading
+          # and trailing blank lines trimmed.
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { capture = 1; next }
+            capture && /^## \[/      { exit }
+            capture {
+              if (!started && $0 ~ /[^[:space:]]/) started = 1
+              if (started) { lines[n++] = $0 }
+            }
+            END {
+              last = n - 1
+              while (last >= 0 && lines[last] ~ /^[[:space:]]*$/) last--
+              for (i = 0; i <= last; i++) print lines[i]
+            }
+          ' CHANGELOG.md > release-notes.md
+          if [ -s release-notes.md ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changelog section found for $VERSION; falling back to generated notes."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
@@ -99,7 +131,13 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          NOTES_FOUND: ${{ steps.changelog.outputs.found }}
         run: |
+          if [ "$NOTES_FOUND" = "true" ]; then
+            NOTES_ARG=(--notes-file release-notes.md)
+          else
+            NOTES_ARG=(--generate-notes)
+          fi
           gh release delete "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
           gh release create "$GITHUB_REF_NAME" \
             dist/*.dmg \
@@ -107,5 +145,5 @@ jobs:
             dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --generate-notes \
+            "${NOTES_ARG[@]}" \
             --title "PastePilot $GITHUB_REF_NAME"
