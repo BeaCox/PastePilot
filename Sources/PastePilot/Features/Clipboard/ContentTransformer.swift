@@ -149,18 +149,16 @@ enum ContentTransformer {
             .filter { !$0.isEmpty }
     }
 
+    private static let promptRegexes: [NSRegularExpression] = [
+        #"^\s*(?:\$|%|❯|➜)\s+(.+)$"#,
+        #"^\s*[A-Za-z0-9._-]+@[A-Za-z0-9._-]+(?::[^$#]+)?[$#]\s+(.+)$"#,
+        #"^\s*\([^)]*\)\s*(?:\$|%|❯|➜)\s+(.+)$"#
+    ].compactMap { try? NSRegularExpression(pattern: $0) }
+
     static func promptedCommand(from line: String) -> String? {
-        let patterns = [
-            #"^\s*(?:\$|%|❯|➜)\s+(.+)$"#,
-            #"^\s*[A-Za-z0-9._-]+@[A-Za-z0-9._-]+(?::[^$#]+)?[$#]\s+(.+)$"#,
-            #"^\s*\([^)]*\)\s*(?:\$|%|❯|➜)\s+(.+)$"#
-        ]
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern),
-                  let match = regex.firstMatch(
-                    in: line,
-                    range: NSRange(line.startIndex..., in: line)
-                  ),
+        let nsRange = NSRange(line.startIndex..., in: line)
+        for regex in promptRegexes {
+            guard let match = regex.firstMatch(in: line, range: nsRange),
                   match.numberOfRanges > 1,
                   let range = Range(match.range(at: 1), in: line) else {
                 continue

@@ -185,13 +185,15 @@ extension ClipboardStore {
         return (nil, localPath)
     }
 
-    func imageSourceFromHTML(_ html: String) -> String? {
-        let pattern = #"<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']"#
-        guard let regex = try? NSRegularExpression(
-            pattern: pattern,
+    private static let imgSrcRegex: NSRegularExpression = {
+        try! NSRegularExpression(
+            pattern: #"<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']"#,
             options: [.caseInsensitive]
-        ),
-        let match = regex.firstMatch(
+        )
+    }()
+
+    func imageSourceFromHTML(_ html: String) -> String? {
+        guard let match = Self.imgSrcRegex.firstMatch(
             in: html,
             range: NSRange(html.startIndex..., in: html)
         ),

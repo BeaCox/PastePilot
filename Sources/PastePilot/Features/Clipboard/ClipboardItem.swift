@@ -14,22 +14,6 @@ enum ContentKind: String, Codable, CaseIterable {
     case code
     case text
 
-    var title: String {
-        switch self {
-        case .file: "File"
-        case .richText: "Rich Text"
-        case .image: "Image"
-        case .json: "JSON"
-        case .url: "URL"
-        case .color: "Color"
-        case .command: "Command"
-        case .error: "Error"
-        case .markdown: "Markdown"
-        case .code: "Code"
-        case .text: "Text"
-        }
-    }
-
     var symbol: String {
         switch self {
         case .file: "doc.on.doc"

@@ -13,6 +13,10 @@ enum ContentAnalyzer {
         #"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"#
     ]
 
+    private static let sensitiveRegexes: [NSRegularExpression] = sensitivePatterns.compactMap {
+        try? NSRegularExpression(pattern: $0)
+    }
+
     static func analyze(_ rawText: String) -> AnalysisResult {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         let sensitive = sensitivePatterns.contains { text.range(of: $0, options: .regularExpression) != nil }
@@ -42,8 +46,7 @@ enum ContentAnalyzer {
     }
 
     static func redacted(_ text: String) -> String {
-        sensitivePatterns.reduce(text) { result, pattern in
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { return result }
+        sensitiveRegexes.reduce(text) { result, regex in
             let range = NSRange(result.startIndex..., in: result)
             return regex.stringByReplacingMatches(in: result, range: range, withTemplate: "••••••••")
         }

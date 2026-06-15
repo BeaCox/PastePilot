@@ -32,6 +32,7 @@ struct MenuBarView: View {
     @State var showsClearConfirmation = false
     @State var previewTask: Task<Void, Never>?
     @State var closePreviewTask: Task<Void, Never>?
+    @State var noticeTask: Task<Void, Never>?
     @State var historyItemFrames: [UUID: CGRect] = [:]
     @State var previewClosesInstantly = false
     @FocusState var searchFocused: Bool

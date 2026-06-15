@@ -247,6 +247,11 @@ enum ClipboardActionFactory {
         )
     }
 
+    static func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {
+        let copy = copyAction(for: item)
+        return [copy] + actions(for: item).filter { $0.id != copy.id }
+    }
+
     @MainActor
     static func perform(_ action: ClipboardAction, using store: ClipboardStore) -> String {
         switch action.effect {

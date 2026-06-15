@@ -241,16 +241,15 @@ extension MenuBarView {
     }
 
     func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {
-        let copyAction = ClipboardActionFactory.copyAction(for: item)
-        return [copyAction] + ClipboardActionFactory.actions(for: item).filter {
-            $0.id != copyAction.id
-        }
+        ClipboardActionFactory.keyboardActions(for: item)
     }
 
     func showNotice(_ message: String) {
+        noticeTask?.cancel()
         withAnimation { notice = message }
-        Task {
+        noticeTask = Task {
             try? await Task.sleep(for: .seconds(1.3))
+            guard !Task.isCancelled else { return }
             withAnimation { notice = nil }
         }
     }

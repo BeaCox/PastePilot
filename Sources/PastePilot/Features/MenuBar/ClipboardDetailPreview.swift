@@ -176,10 +176,7 @@ struct ClipboardDetailPreview: View {
     }
 
     private var keyboardActions: [ClipboardAction] {
-        let copyAction = ClipboardActionFactory.copyAction(for: item)
-        return [copyAction] + ClipboardActionFactory.actions(for: item).filter {
-            $0.id != copyAction.id
-        }
+        ClipboardActionFactory.keyboardActions(for: item)
     }
 
     @ViewBuilder
@@ -365,25 +362,30 @@ private struct RichTextPreview: NSViewRepresentable {
 }
 
 private enum JSONSyntaxHighlighter {
+    private static let stringRegex = try! NSRegularExpression(pattern: #""(?:\\.|[^"\\])*""#)
+    private static let keyRegex = try! NSRegularExpression(pattern: #""(?:\\.|[^"\\])*"(?=\s*:)"#)
+    private static let boolNullRegex = try! NSRegularExpression(pattern: #"\b(?:true|false|null)\b"#)
+    private static let numberRegex = try! NSRegularExpression(pattern: #"-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b"#)
+
     static func highlight(_ source: String) -> AttributedString {
         var result = AttributedString(source)
         result.foregroundColor = .primary
-        apply(#""(?:\\.|[^"\\])*""#, color: .green, to: &result, source: source)
-        apply(#""(?:\\.|[^"\\])*"(?=\s*:)"#, color: .blue, to: &result, source: source)
-        apply(#"\b(?:true|false|null)\b"#, color: .purple, to: &result, source: source)
-        apply(#"-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b"#, color: .orange, to: &result, source: source)
+        let fullRange = NSRange(source.startIndex..., in: source)
+        apply(stringRegex, color: .green, to: &result, source: source, range: fullRange)
+        apply(keyRegex, color: .blue, to: &result, source: source, range: fullRange)
+        apply(boolNullRegex, color: .purple, to: &result, source: source, range: fullRange)
+        apply(numberRegex, color: .orange, to: &result, source: source, range: fullRange)
         return result
     }
 
     private static func apply(
-        _ pattern: String,
+        _ regex: NSRegularExpression,
         color: Color,
         to result: inout AttributedString,
-        source: String
+        source: String,
+        range: NSRange
     ) {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
-        let fullRange = NSRange(source.startIndex..., in: source)
-        for match in regex.matches(in: source, range: fullRange) {
+        for match in regex.matches(in: source, range: range) {
             guard let sourceRange = Range(match.range, in: source),
                   let lower = AttributedString.Index(sourceRange.lowerBound, within: result),
                   let upper = AttributedString.Index(sourceRange.upperBound, within: result) else {
