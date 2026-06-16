@@ -19,7 +19,7 @@ enum ContentAnalyzer {
 
     static func analyze(_ rawText: String) -> AnalysisResult {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let sensitive = sensitivePatterns.contains { text.range(of: $0, options: .regularExpression) != nil }
+        let sensitive = containsSensitiveData(text)
 
         if isJSON(text) {
             return AnalysisResult(kind: .json, containsSensitiveData: sensitive)
@@ -43,6 +43,13 @@ enum ContentAnalyzer {
             return AnalysisResult(kind: .code, containsSensitiveData: sensitive)
         }
         return AnalysisResult(kind: .text, containsSensitiveData: sensitive)
+    }
+
+    static func containsSensitiveData(_ text: String) -> Bool {
+        sensitiveRegexes.contains { regex in
+            let range = NSRange(text.startIndex..., in: text)
+            return regex.firstMatch(in: text, range: range) != nil
+        }
     }
 
     static func redacted(_ text: String) -> String {
