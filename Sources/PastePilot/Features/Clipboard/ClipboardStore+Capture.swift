@@ -32,9 +32,7 @@ extension ClipboardStore {
         let analysis = ContentAnalyzer.analyze(content)
         let source = sourceApplication()
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
-        let wasPinned = items.first { $0.content == content }?.isPinned ?? false
-        items.removeAll { $0.content == content }
-        items.insert(
+        insertCaptured(duplicate: { $0.content == content }) { wasPinned in
             ClipboardItem(
                 content: content,
                 kind: analysis.kind,
@@ -42,11 +40,8 @@ extension ClipboardStore {
                 containsSensitiveData: analysis.containsSensitiveData,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier
-            ),
-            at: 0
-        )
-        trimHistory(limit: settings.historyLimit)
-        save()
+            )
+        }
     }
 
     func captureFileURLsIfAvailable() -> Bool {
@@ -92,22 +87,17 @@ extension ClipboardStore {
 
         let paths = normalized.map(\.path)
         guard items.first?.filePaths != paths else { return }
-        let previous = items.first { $0.filePaths == paths }
-        items.removeAll { $0.filePaths == paths }
         let content = normalized.map(\.lastPathComponent).joined(separator: "\n")
-        items.insert(
+        insertCaptured(duplicate: { $0.filePaths == paths }) { wasPinned in
             ClipboardItem(
                 content: content,
                 kind: .file,
-                isPinned: previous?.isPinned ?? false,
+                isPinned: wasPinned,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier,
                 filePaths: paths
-            ),
-            at: 0
-        )
-        trimHistory(limit: settings.historyLimit)
-        save()
+            )
+        }
     }
 
     func captureRichTextIfAvailable() -> Bool {
@@ -145,26 +135,19 @@ extension ClipboardStore {
             return true
         }
 
-        let previous = items.first {
-            $0.content == plainText && $0.kind == .richText
-        }
-        items.removeAll {
-            $0.content == plainText && $0.kind == .richText
-        }
-        items.insert(
+        insertCaptured(
+            duplicate: { $0.content == plainText && $0.kind == .richText }
+        ) { wasPinned in
             ClipboardItem(
                 content: plainText,
                 kind: .richText,
-                isPinned: previous?.isPinned ?? false,
+                isPinned: wasPinned,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier,
                 richTextRTFBase64: rtfBase64,
                 richTextHTML: html
-            ),
-            at: 0
-        )
-        trimHistory(limit: settings.historyLimit)
-        save()
+            )
+        }
         return true
     }
 
@@ -195,5 +178,21 @@ extension ClipboardStore {
     func isIgnored(bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
         return settings.ignoredBundleIdentifierSet.contains(bundleIdentifier)
+    }
+
+    /// Removes any existing items matching `duplicate`, inserts `make` at the
+    /// front (preserving a previously matching item's pinned state), then trims
+    /// and persists. Returns the pinned state carried over from the duplicate.
+    @discardableResult
+    func insertCaptured(
+        duplicate: (ClipboardItem) -> Bool,
+        make: (_ wasPinned: Bool) -> ClipboardItem
+    ) -> Bool {
+        let wasPinned = items.first(where: duplicate)?.isPinned ?? false
+        items.removeAll(where: duplicate)
+        items.insert(make(wasPinned), at: 0)
+        trimHistory(limit: settings.historyLimit)
+        save()
+        return wasPinned
     }
 }
