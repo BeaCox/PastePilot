@@ -2,6 +2,18 @@
 
 All notable changes to PastePilot are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- The update prompt now shows this version's release notes, generated from the
+  matching CHANGELOG section and embedded into the signed appcast.
+
+### Maintenance
+
+- Simplified content analysis by deriving the content kind once and computing
+  the sensitive-data range a single time per scan.
+
 ## [0.4.0] - 2026-06-15
 
 ### Added
