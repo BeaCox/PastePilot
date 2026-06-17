@@ -19,37 +19,30 @@ enum ContentAnalyzer {
 
     static func analyze(_ rawText: String) -> AnalysisResult {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let sensitive = containsSensitiveData(text)
+        return AnalysisResult(
+            kind: detectKind(text),
+            containsSensitiveData: containsSensitiveData(text)
+        )
+    }
 
-        if isJSON(text) {
-            return AnalysisResult(kind: .json, containsSensitiveData: sensitive)
-        }
+    private static func detectKind(_ text: String) -> ContentKind {
+        if isJSON(text) { return .json }
         if URL(string: text).flatMap({ $0.scheme }) != nil, !text.contains(where: \.isWhitespace) {
-            return AnalysisResult(kind: .url, containsSensitiveData: sensitive)
+            return .url
         }
         if text.range(of: #"^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\([^)]+\)|hsla?\([^)]+\))$"#, options: .regularExpression) != nil {
-            return AnalysisResult(kind: .color, containsSensitiveData: sensitive)
+            return .color
         }
-        if looksLikeError(text) {
-            return AnalysisResult(kind: .error, containsSensitiveData: sensitive)
-        }
-        if looksLikeCommand(text) {
-            return AnalysisResult(kind: .command, containsSensitiveData: sensitive)
-        }
-        if looksLikeMarkdown(text) {
-            return AnalysisResult(kind: .markdown, containsSensitiveData: sensitive)
-        }
-        if looksLikeCode(text) {
-            return AnalysisResult(kind: .code, containsSensitiveData: sensitive)
-        }
-        return AnalysisResult(kind: .text, containsSensitiveData: sensitive)
+        if looksLikeError(text) { return .error }
+        if looksLikeCommand(text) { return .command }
+        if looksLikeMarkdown(text) { return .markdown }
+        if looksLikeCode(text) { return .code }
+        return .text
     }
 
     static func containsSensitiveData(_ text: String) -> Bool {
-        sensitiveRegexes.contains { regex in
-            let range = NSRange(text.startIndex..., in: text)
-            return regex.firstMatch(in: text, range: range) != nil
-        }
+        let range = NSRange(text.startIndex..., in: text)
+        return sensitiveRegexes.contains { $0.firstMatch(in: text, range: range) != nil }
     }
 
     static func redacted(_ text: String) -> String {
