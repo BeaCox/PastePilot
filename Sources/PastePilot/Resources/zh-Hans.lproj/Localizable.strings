@@ -203,14 +203,12 @@
 "Pinned items are excluded from this limit and never auto-deleted." = "固定项目不受此限制，永远不会被自动删除。";
 "Image Size Limit" = "单张图片上限";
 "Data Folder" = "数据目录";
-"Show in Finder" = "在 Finder 中显示";
 "Show Details on Hover" = "悬停显示完整详情";
 "Hover briefly to see full content, source app, and metadata." = "鼠标停留片刻后显示完整内容、来源应用和元数据。";
 "Animate Preview" = "预览动画";
 "Fade the detail preview in and out. Switching apps always closes it instantly." = "详情预览淡入淡出。切换到其他应用时始终立即关闭。";
 "After Copying" = "复制后";
 "Keep Panel Open" = "保持面板打开";
-"Close Preview" = "关闭预览";
 "Close Panel" = "关闭面板";
 "Choose what closes after you copy or transform an item." = "选择复制或转换内容后自动关闭哪些界面。";
 "Menu Bar Window" = "菜单栏窗口";
@@ -245,7 +243,6 @@
 "Developer Actions" = "开发者操作";
 "Built In" = "内置";
 "Designed & Built by" = "设计与开发";
-"Data Folder" = "数据目录";
 
 /* AppDelegate */
 "PastePilot Settings" = "PastePilot 设置";

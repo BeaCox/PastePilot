@@ -233,6 +233,112 @@ struct StorageTests {
         reloadedStore.flushHistoryWrites()
     }
 
+    @Test
+    @MainActor
+    func imageSaveResultIsDiscardedWhenClipboardHasChanged() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        try imageStore.save(Data("new".utf8), fileName: "new.png")
+
+        let staleChangeCount = pasteboard.changeCount - 1
+
+        store.finishSavingImage(
+            .success(ProcessedClipboardImage(
+                fileName: "new.png",
+                byteCount: 3,
+                digest: "digest",
+                width: 3,
+                height: 2
+            )),
+            id: UUID(),
+            source: (nil, nil),
+            remoteURL: nil,
+            originalPath: nil,
+            pasteboardChangeCount: staleChangeCount,
+            ocrImage: try makeTestImage(width: 3, height: 2)
+        )
+
+        #expect(store.items.isEmpty)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "new.png")
+            )
+        )
+    }
+
+    @Test
+    @MainActor
+    func duplicateImageSavePreservesPinnedStateAndRemovesOldFile() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        try imageStore.save(Data("old".utf8), fileName: "old.png")
+        try imageStore.save(Data("new".utf8), fileName: "new.png")
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        store.items = [
+            ClipboardItem(content: "newer text", kind: .text),
+            ClipboardItem(
+                content: "old image",
+                kind: .image,
+                isPinned: true,
+                imageFileName: "old.png",
+                imageDigest: "same-digest"
+            )
+        ]
+
+        store.finishSavingImage(
+            .success(ProcessedClipboardImage(
+                fileName: "new.png",
+                byteCount: 3,
+                digest: "same-digest",
+                width: 3,
+                height: 2
+            )),
+            id: UUID(),
+            source: ("Preview", "com.apple.Preview"),
+            remoteURL: "https://example.com/image.png",
+            originalPath: nil,
+            pasteboardChangeCount: nil,
+            ocrImage: try makeTestImage(width: 3, height: 2)
+        )
+
+        let imageItem = try #require(store.items.first)
+        #expect(imageItem.kind == .image)
+        #expect(imageItem.isPinned)
+        #expect(imageItem.imageFileName == "new.png")
+        #expect(imageItem.imageSourceURL == "https://example.com/image.png")
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "old.png")
+            )
+        )
+        #expect(
+            FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "new.png")
+            )
+        )
+        store.flushHistoryWrites()
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("PastePilotTests-\(UUID().uuidString)", isDirectory: true)

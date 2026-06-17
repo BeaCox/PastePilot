@@ -61,4 +61,29 @@ struct AppSettingsTests {
                 == AppSettings.defaultPlainTextHotKeyModifiers
         )
     }
+
+    @Test
+    func invalidPersistedValuesFallBackToSupportedDefaults() throws {
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(999, forKey: "historyLimit")
+        defaults.set(1_024, forKey: "imageSizeLimitMB")
+        defaults.set(42, forKey: "historyTimeoutSeconds")
+        defaults.set("missing-icon", forKey: "menuBarIconStyle")
+        defaults.set("close-everything", forKey: "pasteCloseBehavior")
+
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.historyLimit == AppSettings.defaultHistoryLimit)
+        #expect(settings.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
+        #expect(
+            settings.historyTimeoutSeconds
+                == AppSettings.defaultHistoryTimeoutSeconds
+        )
+        #expect(settings.menuBarIconStyle == MenuBarIconStyle.pastepilot.rawValue)
+        #expect(settings.pasteCloseBehavior == PasteCloseBehavior.closePreview.rawValue)
+    }
 }

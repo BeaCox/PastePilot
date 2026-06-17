@@ -15,6 +15,18 @@ final class AppSettings: ObservableObject {
     static let defaultPlainTextHotKeyModifiers = UInt32(
         optionKey | shiftKey | cmdKey
     )
+    static let defaultHistoryLimit = 100
+    static let supportedHistoryLimits = [50, 100, 200, 500]
+    static let defaultImageSizeLimitMB = 25
+    static let supportedImageSizeLimitsMB = [5, 10, 25, 50]
+    static let defaultHistoryTimeoutSeconds = 0
+    static let supportedHistoryTimeoutsSeconds = [
+        0,
+        3_600,
+        86_400,
+        604_800,
+        2_592_000
+    ]
 
     private enum Key {
         static let monitoringEnabled = "monitoringEnabled"
@@ -106,24 +118,32 @@ final class AppSettings: ObservableObject {
         defaults.register(defaults: [
             Key.monitoringEnabled: true,
             Key.hoverPreviewEnabled: true,
-            Key.historyLimit: 100,
+            Key.historyLimit: Self.defaultHistoryLimit,
             Key.launchAtLogin: false,
-            Key.imageSizeLimitMB: 25,
+            Key.imageSizeLimitMB: Self.defaultImageSizeLimitMB,
             Key.ignoredBundleIdentifiers: "",
             Key.hotKeyCode: Self.defaultOpenHotKeyCode,
             Key.hotKeyModifiers: Self.defaultOpenHotKeyModifiers,
             Key.plainTextHotKeyCode: Self.defaultPlainTextHotKeyCode,
             Key.plainTextHotKeyModifiers: Self.defaultPlainTextHotKeyModifiers,
             Key.menuBarIconStyle: MenuBarIconStyle.pastepilot.rawValue,
-            Key.historyTimeoutSeconds: 0,
+            Key.historyTimeoutSeconds: Self.defaultHistoryTimeoutSeconds,
             Key.pasteCloseBehavior: PasteCloseBehavior.closePreview.rawValue,
             Key.previewAnimationEnabled: true
         ])
         monitoringEnabled = defaults.bool(forKey: Key.monitoringEnabled)
         hoverPreviewEnabled = defaults.bool(forKey: Key.hoverPreviewEnabled)
-        historyLimit = defaults.integer(forKey: Key.historyLimit)
+        historyLimit = Self.supportedValue(
+            defaults.integer(forKey: Key.historyLimit),
+            in: Self.supportedHistoryLimits,
+            default: Self.defaultHistoryLimit
+        )
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
-        imageSizeLimitMB = defaults.integer(forKey: Key.imageSizeLimitMB)
+        imageSizeLimitMB = Self.supportedValue(
+            defaults.integer(forKey: Key.imageSizeLimitMB),
+            in: Self.supportedImageSizeLimitsMB,
+            default: Self.defaultImageSizeLimitMB
+        )
         ignoredBundleIdentifiers = defaults.string(
             forKey: Key.ignoredBundleIdentifiers
         ) ?? ""
@@ -133,11 +153,18 @@ final class AppSettings: ObservableObject {
         plainTextHotKeyModifiers = UInt32(
             defaults.integer(forKey: Key.plainTextHotKeyModifiers)
         )
-        menuBarIconStyle = defaults.string(forKey: Key.menuBarIconStyle)
-            ?? MenuBarIconStyle.pastepilot.rawValue
-        historyTimeoutSeconds = defaults.integer(forKey: Key.historyTimeoutSeconds)
-        pasteCloseBehavior = defaults.string(forKey: Key.pasteCloseBehavior)
-            ?? PasteCloseBehavior.closePreview.rawValue
+        let storedIconStyle = defaults.string(forKey: Key.menuBarIconStyle)
+        menuBarIconStyle = storedIconStyle.flatMap(MenuBarIconStyle.init(rawValue:))?
+            .rawValue ?? MenuBarIconStyle.pastepilot.rawValue
+        historyTimeoutSeconds = Self.supportedValue(
+            defaults.integer(forKey: Key.historyTimeoutSeconds),
+            in: Self.supportedHistoryTimeoutsSeconds,
+            default: Self.defaultHistoryTimeoutSeconds
+        )
+        let storedPasteCloseBehavior = defaults.string(forKey: Key.pasteCloseBehavior)
+        pasteCloseBehavior = storedPasteCloseBehavior
+            .flatMap(PasteCloseBehavior.init(rawValue:))?
+            .rawValue ?? PasteCloseBehavior.closePreview.rawValue
         previewAnimationEnabled = defaults.bool(forKey: Key.previewAnimationEnabled)
     }
 
@@ -153,17 +180,25 @@ final class AppSettings: ObservableObject {
     func reset() {
         monitoringEnabled = true
         hoverPreviewEnabled = true
-        historyLimit = 100
+        historyLimit = Self.defaultHistoryLimit
         launchAtLogin = false
-        imageSizeLimitMB = 25
+        imageSizeLimitMB = Self.defaultImageSizeLimitMB
         ignoredBundleIdentifiers = ""
         hotKeyCode = Self.defaultOpenHotKeyCode
         hotKeyModifiers = Self.defaultOpenHotKeyModifiers
         plainTextHotKeyCode = Self.defaultPlainTextHotKeyCode
         plainTextHotKeyModifiers = Self.defaultPlainTextHotKeyModifiers
         menuBarIconStyle = MenuBarIconStyle.pastepilot.rawValue
-        historyTimeoutSeconds = 0
+        historyTimeoutSeconds = Self.defaultHistoryTimeoutSeconds
         pasteCloseBehavior = PasteCloseBehavior.closePreview.rawValue
         previewAnimationEnabled = true
+    }
+
+    private static func supportedValue(
+        _ value: Int,
+        in supportedValues: [Int],
+        default defaultValue: Int
+    ) -> Int {
+        supportedValues.contains(value) ? value : defaultValue
     }
 }
