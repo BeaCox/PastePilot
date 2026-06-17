@@ -51,10 +51,21 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           test -n "$SPARKLE_PRIVATE_KEY"
+          VERSION="${GITHUB_REF_NAME#v}"
           UPDATES=".build/updates-${ARCH}"
           rm -rf "$UPDATES"
           mkdir -p "$UPDATES"
-          cp "dist/PastePilot-${GITHUB_REF_NAME#v}-${ARCH}.dmg" "$UPDATES/"
+          cp "dist/PastePilot-${VERSION}-${ARCH}.dmg" "$UPDATES/"
+          # A release-notes .html named after the archive is embedded by
+          # generate_appcast into the appcast <description>, so the Sparkle
+          # updater UI shows this version's changes when an update is offered.
+          NOTES_HTML="$UPDATES/PastePilot-${VERSION}-${ARCH}.html"
+          if python3 Scripts/changelog-to-html.py "$VERSION" > "$NOTES_HTML"; then
+            echo "Embedded release notes for $VERSION into the appcast."
+          else
+            rm -f "$NOTES_HTML"
+            echo "No CHANGELOG section for $VERSION; appcast will omit release notes."
+          fi
           TOOL="$(find ".build/${ARCH}/artifacts" -type f -name generate_appcast -print -quit)"
           test -x "$TOOL"
           printf '%s' "$SPARKLE_PRIVATE_KEY" | "$TOOL" \

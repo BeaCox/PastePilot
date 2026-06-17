@@ -14,7 +14,7 @@
 
 - [ ] Code signing and notarization (requires an Apple Developer Program account)
 - [ ] Homebrew Cask distribution
-- [ ] Show new version details and release notes when an update is available
+- [x] Show new version details and release notes when an update is available
 
 ## Future
 
