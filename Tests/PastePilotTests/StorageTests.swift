@@ -178,6 +178,32 @@ struct StorageTests {
     }
 
     @Test
+    func historyWriteQueueFlushWritesOnlyLatestPendingSnapshot() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let writer = HistoryWriteQueue(
+            repository: repository,
+            debounceInterval: .seconds(60)
+        )
+        let first = ClipboardItem(content: "first", kind: .text)
+        let second = ClipboardItem(content: "second", kind: .text)
+
+        writer.save([first])
+        writer.save([second])
+        writer.flush()
+
+        let loadedItem = try #require(repository.load().items.first)
+        #expect(loadedItem.id == second.id)
+        #expect(loadedItem.content == second.content)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("history.backup.json").path
+            )
+        )
+    }
+
+    @Test
     @MainActor
     func plainTextCapturePreservesOriginalWhitespace() throws {
         let directory = try makeTemporaryDirectory()

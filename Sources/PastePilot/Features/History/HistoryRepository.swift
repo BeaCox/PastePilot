@@ -86,14 +86,22 @@ struct HistoryRepository {
 
 final class HistoryWriteQueue {
     private let repository: HistoryRepository
+    private let debounceInterval: DispatchTimeInterval
     private let queue = DispatchQueue(
         label: "PastePilot.HistoryWriteQueue",
         qos: .utility
     )
     private let queueKey = DispatchSpecificKey<Void>()
+    private var pendingItems: [ClipboardItem]?
+    private var pendingCompletions: [(Error?) -> Void] = []
+    private var scheduledGeneration = 0
 
-    init(repository: HistoryRepository) {
+    init(
+        repository: HistoryRepository,
+        debounceInterval: DispatchTimeInterval = .milliseconds(150)
+    ) {
         self.repository = repository
+        self.debounceInterval = debounceInterval
         queue.setSpecific(key: queueKey, value: ())
     }
 
@@ -101,18 +109,49 @@ final class HistoryWriteQueue {
         _ items: [ClipboardItem],
         completion: ((Error?) -> Void)? = nil
     ) {
-        queue.async { [repository] in
-            do {
-                try repository.save(items)
-                completion?(nil)
-            } catch {
-                completion?(error)
+        queue.async {
+            self.pendingItems = items
+            if let completion {
+                self.pendingCompletions.append(completion)
+            }
+
+            self.scheduledGeneration += 1
+            let generation = self.scheduledGeneration
+            self.queue.asyncAfter(deadline: .now() + self.debounceInterval) {
+                self.writePending(ifGeneration: generation)
             }
         }
     }
 
     func flush() {
-        guard DispatchQueue.getSpecific(key: queueKey) == nil else { return }
-        queue.sync {}
+        if DispatchQueue.getSpecific(key: queueKey) != nil {
+            scheduledGeneration += 1
+            writePending()
+            return
+        }
+
+        queue.sync {
+            self.scheduledGeneration += 1
+            self.writePending()
+        }
+    }
+
+    private func writePending(ifGeneration generation: Int? = nil) {
+        if let generation, generation != scheduledGeneration { return }
+        guard let items = pendingItems else { return }
+
+        pendingItems = nil
+        let completions = pendingCompletions
+        pendingCompletions = []
+
+        let saveError: Error?
+        do {
+            try repository.save(items)
+            saveError = nil
+        } catch {
+            saveError = error
+        }
+
+        completions.forEach { $0(saveError) }
     }
 }

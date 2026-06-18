@@ -55,6 +55,10 @@ make app      # Build the .app bundle into dist/
 make run      # Build and launch
 ```
 
+Use `make test` as the standard local and CI test entrypoint. Direct `swift test`
+does not pass the Swift Testing framework and runtime search paths that the
+Makefile supplies for Xcode and Command Line Tools installations.
+
 ## Pull Request Guidelines
 
 1. **One concern per PR.** Keep changes focused — a bug fix, a new content type, a UI tweak.

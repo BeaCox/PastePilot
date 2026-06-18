@@ -176,6 +176,10 @@ steps:
 | `make dmg` | Build a compressed DMG with an `Applications` shortcut |
 | `make test` | Run the standard SwiftPM test suite |
 
+Use `make test` instead of calling `swift test` directly. The Makefile passes
+the Swift Testing flags and framework/runtime search paths needed by local
+Xcode and Command Line Tools setups.
+
 `make dmg` uses pinned `dmgbuild` tooling, installed into `.build/`, to create
 the branded Finder layout without depending on the build machine's Finder
 preferences.
