@@ -203,7 +203,7 @@ make dmg
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ARCH` | Host architecture | Target architecture (`arm64` or `x86_64`) |
-| `VERSION` | `0.4.0` | CFBundleShortVersionString |
+| `VERSION` | `0.5.0` | CFBundleShortVersionString |
 | `BUILD_NUMBER` | `1` | CFBundleVersion |
 | `SIGN_IDENTITY` | `-` (ad-hoc) | Code signing identity |
 | `NOTARY_PROFILE` | *(empty)* | Keychain profile for notarization |
@@ -225,7 +225,7 @@ To produce a signed release DMG:
 
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-VERSION=0.4.0 BUILD_NUMBER=1 make dmg
+VERSION=0.5.0 BUILD_NUMBER=1 make dmg
 ```
 
 To also notarize and staple:
@@ -237,7 +237,7 @@ xcrun notarytool store-credentials "PastePilot-notary"
 # Build, sign, notarize, and staple
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="PastePilot-notary" \
-VERSION=0.4.0 BUILD_NUMBER=1 make dmg
+VERSION=0.5.0 BUILD_NUMBER=1 make dmg
 ```
 
 ### Automatic updates
@@ -254,8 +254,8 @@ signed appcasts, and publishes a GitHub Release with DMGs and SHA-256
 checksums:
 
 ```sh
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 ## Test

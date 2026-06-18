@@ -27,7 +27,7 @@ struct MenuBarView: View {
     @State var searchText = ""
     @State var selectedID: UUID?
     @State var previewedID: UUID?
-    @State var notice: String?
+    @State var notice: PastePilotNotice?
     @State var needsScrollToSelection = false
     @State var showsClearConfirmation = false
     @State var previewTask: Task<Void, Never>?

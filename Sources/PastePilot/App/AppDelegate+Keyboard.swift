@@ -78,6 +78,7 @@ extension AppDelegate {
 
     func registerConfiguredHotKeys() {
         unregisterHotKeys()
+        settings.hotKeyRegistrationWarning = nil
         registerHotKey(
             .openPanel,
             keyCode: settings.hotKeyCode,
@@ -109,9 +110,23 @@ extension AppDelegate {
         if status == noErr, let reference {
             hotKeyRefs[hotKey] = reference
         } else {
+            let message = hotKeyRegistrationFailureMessage(for: hotKey)
+            settings.hotKeyRegistrationWarning = message
+            NotificationCenter.default.postPastePilotNotice(
+                PastePilotNotice(message, style: .warning)
+            )
             NSLog(
                 "PastePilot failed to register hot key \(hotKey.rawValue): \(status)"
             )
+        }
+    }
+
+    func hotKeyRegistrationFailureMessage(for hotKey: GlobalHotKey) -> String {
+        switch hotKey {
+        case .openPanel:
+            "Open PastePilot shortcut is already in use.".localized
+        case .pastePlainText:
+            "Paste as Plain Text shortcut is already in use.".localized
         }
     }
 

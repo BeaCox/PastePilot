@@ -22,6 +22,8 @@ struct AppSettingsTests {
             settings.plainTextHotKeyModifiers
                 == AppSettings.defaultPlainTextHotKeyModifiers
         )
+        #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
+        #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
@@ -29,6 +31,8 @@ struct AppSettingsTests {
         settings.hotKeyModifiers = 256
         settings.plainTextHotKeyCode = 9
         settings.plainTextHotKeyModifiers = 4_096
+        settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
+        settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
         settings.ignoredBundleIdentifiers = """
         com.apple.keychainaccess
 
@@ -42,6 +46,8 @@ struct AppSettingsTests {
         #expect(restored.hotKeyModifiers == 256)
         #expect(restored.plainTextHotKeyCode == 9)
         #expect(restored.plainTextHotKeyModifiers == 4_096)
+        #expect(restored.ocrRecognitionMode == OCRRecognitionMode.fast.rawValue)
+        #expect(restored.ocrLanguageMode == OCRLanguageMode.english.rawValue)
         #expect(
             restored.ignoredBundleIdentifierSet
                 == ["com.apple.keychainaccess", "com.example.private"]
@@ -60,6 +66,8 @@ struct AppSettingsTests {
             restored.plainTextHotKeyModifiers
                 == AppSettings.defaultPlainTextHotKeyModifiers
         )
+        #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
+        #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
     }
 
     @Test
@@ -74,6 +82,12 @@ struct AppSettingsTests {
         defaults.set(42, forKey: "historyTimeoutSeconds")
         defaults.set("missing-icon", forKey: "menuBarIconStyle")
         defaults.set("close-everything", forKey: "pasteCloseBehavior")
+        defaults.set(999, forKey: "hotKeyCode")
+        defaults.set(0, forKey: "hotKeyModifiers")
+        defaults.set(-1, forKey: "plainTextHotKeyCode")
+        defaults.set(Int(UInt32.max), forKey: "plainTextHotKeyModifiers")
+        defaults.set("slow", forKey: "ocrRecognitionMode")
+        defaults.set("everywhere", forKey: "ocrLanguageMode")
 
         let settings = AppSettings(defaults: defaults)
 
@@ -85,5 +99,17 @@ struct AppSettingsTests {
         )
         #expect(settings.menuBarIconStyle == MenuBarIconStyle.pastepilot.rawValue)
         #expect(settings.pasteCloseBehavior == PasteCloseBehavior.closePreview.rawValue)
+        #expect(settings.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
+        #expect(settings.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
+        #expect(
+            settings.plainTextHotKeyCode
+                == AppSettings.defaultPlainTextHotKeyCode
+        )
+        #expect(
+            settings.plainTextHotKeyModifiers
+                == AppSettings.defaultPlainTextHotKeyModifiers
+        )
+        #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
+        #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
     }
 }

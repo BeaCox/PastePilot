@@ -26,6 +26,9 @@
 
 /* ClipboardStore */
 "Image %d × %d" = "图片 %d × %d";
+"History could not be saved" = "历史记录无法保存";
+"Image could not be saved" = "图片无法保存";
+"Image exceeds the size limit" = "图片超过大小上限";
 
 /* Action titles */
 "Copy File" = "复制文件";
@@ -148,6 +151,8 @@
 "Click a shortcut field and press a new combination; press Delete to reset." = "点击任一快捷键框后录制新组合；按 Delete 恢复默认值。";
 "Choose a different shortcut; both global actions currently use the same keys." = "请选择其他快捷键；两个全局操作当前使用了相同的按键。";
 "Only Paste as Plain Text requires Accessibility permission." = "只有粘贴为纯文本需要辅助功能权限。";
+"Open PastePilot shortcut is already in use." = "打开 PastePilot 的快捷键已被占用。";
+"Paste as Plain Text shortcut is already in use." = "粘贴为纯文本的快捷键已被占用。";
 "Accessibility Permission Granted" = "辅助功能权限已生效";
 "Permission stopped working after an update?" = "更新后权限失效？";
 "1. Select the old PastePilot in Accessibility settings, then click the minus button at the bottom." = "1. 在辅助功能列表中选中旧 PastePilot，再点击底部的减号按钮。";
@@ -161,6 +166,16 @@
 "30 days" = "30 天";
 "Pinned items are excluded from this limit and never auto-deleted." = "固定项目不受此限制，永远不会被自动删除。";
 "Image Size Limit" = "单张图片上限";
+"Image Text Recognition" = "图片文字识别";
+"OCR Mode" = "OCR 模式";
+"OCR Languages" = "OCR 语言";
+"OCR runs locally on copied images and makes visible text searchable." = "OCR 会在本机处理复制的图片，让图片中的可见文字可被搜索。";
+"Off" = "关闭";
+"Fast" = "快速";
+"Accurate" = "准确";
+"System Language" = "系统语言";
+"English Only" = "仅英文";
+"Multilingual" = "多语言";
 "Data Folder" = "数据目录";
 "Show Details on Hover" = "悬停显示完整详情";
 "Hover briefly to see full content, source app, and metadata." = "鼠标停留片刻后显示完整内容、来源应用和元数据。";

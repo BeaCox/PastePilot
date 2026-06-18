@@ -3,7 +3,7 @@
 
 Sparkle's ``generate_appcast`` embeds the contents of an ``.html`` file that
 sits next to an update archive into the appcast's ``<description>``. Naming the
-file after the archive (e.g. ``PastePilot-0.4.0-arm64.html``) lets the standard
+file after the archive (e.g. ``PastePilot-0.5.0-arm64.html``) lets the standard
 updater UI show these notes when an update is available.
 
 Usage:

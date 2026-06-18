@@ -2,16 +2,26 @@ import CoreGraphics
 import Vision
 
 protocol OCRService {
-    func recognizeText(in image: CGImage) async -> String?
+    func recognizeText(
+        in image: CGImage,
+        recognitionMode: OCRRecognitionMode,
+        languageMode: OCRLanguageMode
+    ) async -> String?
 }
 
 struct VisionOCRService: OCRService {
-    func recognizeText(in image: CGImage) async -> String? {
-        await Task.detached(priority: .utility) {
+    func recognizeText(
+        in image: CGImage,
+        recognitionMode: OCRRecognitionMode,
+        languageMode: OCRLanguageMode
+    ) async -> String? {
+        guard recognitionMode != .off else { return nil }
+
+        return await Task.detached(priority: .utility) {
             let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["zh-Hans", "zh-Hant", "en-US", "ja", "ko"]
-            request.usesLanguageCorrection = true
+            request.recognitionLevel = recognitionMode == .fast ? .fast : .accurate
+            request.recognitionLanguages = Self.recognitionLanguages(for: languageMode)
+            request.usesLanguageCorrection = recognitionMode == .accurate
 
             let handler = VNImageRequestHandler(cgImage: image, options: [:])
             try? handler.perform([request])
@@ -21,5 +31,17 @@ struct VisionOCRService: OCRService {
                 .joined(separator: "\n")
             return text.isEmpty ? nil : text
         }.value
+    }
+
+    private static func recognitionLanguages(for mode: OCRLanguageMode) -> [String] {
+        switch mode {
+        case .system:
+            let preferredIdentifier = Locale.preferredLanguages.first ?? "en-US"
+            return [preferredIdentifier]
+        case .english:
+            return ["en-US"]
+        case .multilingual:
+            return ["zh-Hans", "zh-Hant", "en-US", "ja", "ko"]
+        }
     }
 }

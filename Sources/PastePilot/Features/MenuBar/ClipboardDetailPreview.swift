@@ -362,10 +362,10 @@ private struct RichTextPreview: NSViewRepresentable {
 }
 
 private enum JSONSyntaxHighlighter {
-    private static let stringRegex = try! NSRegularExpression(pattern: #""(?:\\.|[^"\\])*""#)
-    private static let keyRegex = try! NSRegularExpression(pattern: #""(?:\\.|[^"\\])*"(?=\s*:)"#)
-    private static let boolNullRegex = try! NSRegularExpression(pattern: #"\b(?:true|false|null)\b"#)
-    private static let numberRegex = try! NSRegularExpression(pattern: #"-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b"#)
+    private static let stringRegex = RegexFactory.make(#""(?:\\.|[^"\\])*""#)
+    private static let keyRegex = RegexFactory.make(#""(?:\\.|[^"\\])*"(?=\s*:)"#)
+    private static let boolNullRegex = RegexFactory.make(#"\b(?:true|false|null)\b"#)
+    private static let numberRegex = RegexFactory.make(#"-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b"#)
 
     static func highlight(_ source: String) -> AttributedString {
         var result = AttributedString(source)
@@ -379,12 +379,13 @@ private enum JSONSyntaxHighlighter {
     }
 
     private static func apply(
-        _ regex: NSRegularExpression,
+        _ regex: NSRegularExpression?,
         color: Color,
         to result: inout AttributedString,
         source: String,
         range: NSRange
     ) {
+        guard let regex else { return }
         for match in regex.matches(in: source, range: range) {
             guard let sourceRange = Range(match.range, in: source),
                   let lower = AttributedString.Index(sourceRange.lowerBound, within: result),

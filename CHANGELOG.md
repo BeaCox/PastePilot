@@ -4,15 +4,42 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-19
+
 ### Added
 
 - The update prompt now shows this version's release notes, generated from the
   matching CHANGELOG section and embedded into the signed appcast.
+- Image OCR can now be configured from Settings with Off, Fast, and Accurate
+  recognition modes plus System Language, English-only, and multilingual
+  language choices.
+- The menu bar panel now surfaces recoverable operational problems, including
+  history save failures, image save failures, image size-limit skips, and
+  global shortcut registration conflicts.
+
+### Changed
+
+- Clipboard capture now snapshots pasteboard contents off the main actor before
+  applying them, keeping the app responsive and avoiding hangs when remote copy
+  providers fail.
+- History writes are coalesced before saving so rapid clipboard changes avoid
+  unnecessary disk churn.
+
+### Fixed
+
+- Prevented clipboard capture from hanging when remote pasteboard data cannot
+  be loaded.
+- Invalid persisted shortcut, storage, appearance, and OCR settings now fall
+  back to supported defaults.
+- Static regex setup no longer uses force-try, so future regex mistakes cannot
+  crash the app at launch.
 
 ### Maintenance
 
 - Simplified content analysis by deriving the content kind once and computing
   the sensitive-data range a single time per scan.
+- Added localization coverage checks and expanded storage, OCR, settings, and
+  clipboard-capture tests.
 
 ## [0.4.0] - 2026-06-15
 

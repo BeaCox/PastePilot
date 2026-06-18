@@ -217,7 +217,7 @@ extension MenuBarView {
     func performAction(_ action: ClipboardAction) {
         let message = ClipboardActionFactory.perform(action, using: store)
         applyPasteCloseBehavior(forcePreviewClose: action.closesInlinePreview)
-        showNotice(message)
+        showNotice(PastePilotNotice(message))
     }
 
     func applyPasteCloseBehavior(forcePreviewClose: Bool) {
@@ -244,13 +244,24 @@ extension MenuBarView {
         ClipboardActionFactory.keyboardActions(for: item)
     }
 
-    func showNotice(_ message: String) {
+    func showNotice(_ notice: PastePilotNotice) {
         noticeTask?.cancel()
-        withAnimation { notice = message }
+        withAnimation { self.notice = notice }
         noticeTask = Task {
-            try? await Task.sleep(for: .seconds(1.3))
+            try? await Task.sleep(for: notice.style == .success ? .seconds(1.3) : .seconds(2.4))
             guard !Task.isCancelled else { return }
-            withAnimation { notice = nil }
+            withAnimation { self.notice = nil }
+        }
+    }
+
+    func noticeForegroundStyle(_ style: PastePilotNotice.Style) -> Color {
+        switch style {
+        case .success:
+            .primary
+        case .warning:
+            .orange
+        case .error:
+            .red
         }
     }
 }

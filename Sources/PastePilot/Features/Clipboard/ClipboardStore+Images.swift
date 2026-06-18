@@ -128,8 +128,31 @@ extension ClipboardStore {
             save()
             performOCR(on: ocrImage, itemID: id)
         case .failure(let error):
-            if !(error is ClipboardImageProcessingError) {
+            if let processingError = error as? ClipboardImageProcessingError {
+                switch processingError {
+                case .encodingFailed:
+                    NotificationCenter.default.postPastePilotNotice(
+                        PastePilotNotice(
+                            "Image could not be saved".localized,
+                            style: .error
+                        )
+                    )
+                case .exceedsSizeLimit:
+                    NotificationCenter.default.postPastePilotNotice(
+                        PastePilotNotice(
+                            "Image exceeds the size limit".localized,
+                            style: .warning
+                        )
+                    )
+                }
+            } else {
                 NSLog("PastePilot failed to save image: \(error)")
+                NotificationCenter.default.postPastePilotNotice(
+                    PastePilotNotice(
+                        "Image could not be saved".localized,
+                        style: .error
+                    )
+                )
             }
         }
     }
@@ -142,8 +165,17 @@ extension ClipboardStore {
     }
 
     func performOCR(on cgImage: CGImage, itemID: UUID) {
+        let recognitionMode = OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
+            ?? .accurate
+        guard recognitionMode != .off else { return }
+        let languageMode = OCRLanguageMode(rawValue: settings.ocrLanguageMode)
+            ?? .multilingual
         Task {
-            guard let text = await ocrService.recognizeText(in: cgImage),
+            guard let text = await ocrService.recognizeText(
+                in: cgImage,
+                recognitionMode: recognitionMode,
+                languageMode: languageMode
+            ),
                   let index = items.firstIndex(where: { $0.id == itemID }) else {
                 return
             }

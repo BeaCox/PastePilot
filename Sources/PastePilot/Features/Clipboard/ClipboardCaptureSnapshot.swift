@@ -209,15 +209,14 @@ final class ClipboardCaptureQueue {
         return (nil, localPath)
     }
 
-    private static let imgSrcRegex: NSRegularExpression = {
-        try! NSRegularExpression(
-            pattern: #"<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']"#,
-            options: [.caseInsensitive]
-        )
-    }()
+    private static let imgSrcRegex = RegexFactory.make(
+        #"<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']"#,
+        options: [.caseInsensitive]
+    )
 
     private static func imageSourceFromHTML(_ html: String) -> String? {
-        guard let match = imgSrcRegex.firstMatch(
+        guard let imgSrcRegex,
+              let match = imgSrcRegex.firstMatch(
             in: html,
             range: NSRange(html.startIndex..., in: html)
         ),

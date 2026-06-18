@@ -156,6 +156,9 @@ struct SettingsView: View {
                         "Choose a different shortcut; both global actions currently use the same keys.".localized
                     )
                     .foregroundStyle(.red)
+                } else if let warning = settings.hotKeyRegistrationWarning {
+                    SettingsNote(warning)
+                        .foregroundStyle(.orange)
                 } else {
                     SettingsNote(
                         "Only Paste as Plain Text requires Accessibility permission.".localized
@@ -245,6 +248,28 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 130)
                 }
+            }
+
+            SettingsGroup(title: "Image Text Recognition".localized) {
+                SettingsRow(title: "OCR Mode".localized) {
+                    Picker("", selection: $settings.ocrRecognitionMode) {
+                        ForEach(OCRRecognitionMode.allCases, id: \.rawValue) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 150)
+                }
+                SettingsRow(title: "OCR Languages".localized) {
+                    Picker("", selection: $settings.ocrLanguageMode) {
+                        ForEach(OCRLanguageMode.allCases, id: \.rawValue) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 150)
+                }
+                SettingsNote("OCR runs locally on copied images and makes visible text searchable.".localized)
             }
         }
     }

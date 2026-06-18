@@ -390,6 +390,43 @@ struct StorageTests {
         store.flushHistoryWrites()
     }
 
+    @Test
+    @MainActor
+    func ocrModeControlsImageTextRecognition() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotOCRTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService(result: "visible text")
+        )
+        let item = ClipboardItem(content: "image", kind: .image)
+        store.items = [item]
+        let image = try makeTestImage(width: 2, height: 2)
+
+        settings.ocrRecognitionMode = OCRRecognitionMode.off.rawValue
+        store.performOCR(on: image, itemID: item.id)
+        try await Task.sleep(nanoseconds: 20_000_000)
+        #expect(store.items.first?.ocrText == nil)
+
+        settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
+        settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
+        store.performOCR(on: image, itemID: item.id)
+        for _ in 0..<100 where store.items.first?.ocrText == nil {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(store.items.first?.ocrText == "visible text")
+        store.flushHistoryWrites()
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("PastePilotTests-\(UUID().uuidString)", isDirectory: true)
@@ -431,7 +468,17 @@ struct StorageTests {
 }
 
 private struct StubOCRService: OCRService {
-    func recognizeText(in image: CGImage) async -> String? {
-        nil
+    var result: String?
+
+    init(result: String? = nil) {
+        self.result = result
+    }
+
+    func recognizeText(
+        in image: CGImage,
+        recognitionMode: OCRRecognitionMode,
+        languageMode: OCRLanguageMode
+    ) async -> String? {
+        result
     }
 }

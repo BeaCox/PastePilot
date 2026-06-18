@@ -42,6 +42,10 @@ extension MenuBarView {
         .onReceive(NotificationCenter.default.publisher(for: .pastePilotCopyIndex)) { notification in
             copyItem(at: notification)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .pastePilotNotice)) { notification in
+            guard let notice = notification.object as? PastePilotNotice else { return }
+            showNotice(notice)
+        }
     }
 
     var footer: some View {
@@ -215,9 +219,9 @@ extension MenuBarView {
             }
             .overlay(alignment: .bottom) {
                 if let notice {
-                    Label(notice, systemImage: "checkmark.circle.fill")
+                    Label(notice.message, systemImage: notice.systemImage)
                         .font(.caption)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(noticeForegroundStyle(notice.style))
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
                         .background(.regularMaterial, in: Capsule())
