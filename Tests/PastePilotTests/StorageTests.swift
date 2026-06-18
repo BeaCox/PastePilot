@@ -205,7 +205,7 @@ struct StorageTests {
 
     @Test
     @MainActor
-    func plainTextCapturePreservesOriginalWhitespace() throws {
+    func plainTextCapturePreservesOriginalWhitespace() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let pasteboard = NSPasteboard(
@@ -222,7 +222,7 @@ struct StorageTests {
         pasteboard.setString(originalContent, forType: .string)
         store.captureCurrentClipboard()
 
-        let item = try #require(store.items.first)
+        let item = try await waitForCapturedItem(in: store)
         #expect(item.content == originalContent)
         #expect(item.kind == .command)
         store.flushHistoryWrites()
@@ -398,6 +398,17 @@ struct StorageTests {
             withIntermediateDirectories: true
         )
         return directory
+    }
+
+    @MainActor
+    private func waitForCapturedItem(in store: ClipboardStore) async throws -> ClipboardItem {
+        for _ in 0..<100 {
+            if let item = store.items.first {
+                return item
+            }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return try #require(store.items.first)
     }
 
     private func makeTestImage(width: Int, height: Int) throws -> CGImage {

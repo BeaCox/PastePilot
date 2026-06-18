@@ -18,21 +18,6 @@ extension ClipboardStore {
         )
     }
 
-    func captureImageIfAvailable() -> Bool {
-        guard let image = clipboardImage() else {
-            return false
-        }
-        let source = sourceApplication()
-        let imageOrigin = imageOriginMetadata()
-        return saveImage(
-            image,
-            source: source,
-            remoteURL: imageOrigin.remoteURL,
-            originalPath: imageOrigin.localPath,
-            pasteboardChangeCount: pasteboard.changeCount
-        )
-    }
-
     func saveImage(
         _ image: NSImage,
         source: (name: String?, bundleIdentifier: String?),
@@ -48,6 +33,24 @@ extension ClipboardStore {
         ) else {
             return false
         }
+
+        return saveImage(
+            cgImage,
+            source: source,
+            remoteURL: remoteURL,
+            originalPath: originalPath,
+            pasteboardChangeCount: pasteboardChangeCount
+        )
+    }
+
+    func saveImage(
+        _ cgImage: CGImage,
+        source: (name: String?, bundleIdentifier: String?),
+        remoteURL: String?,
+        originalPath: String?,
+        pasteboardChangeCount: Int?
+    ) -> Bool {
+        guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
 
         let id = UUID()
         let fileName = "\(id.uuidString).png"
@@ -131,84 +134,11 @@ extension ClipboardStore {
         }
     }
 
-    func clipboardImage() -> NSImage? {
-        if let image = NSImage(pasteboard: pasteboard) {
-            return image
-        }
-        guard let url = NSURL(from: pasteboard) as URL?,
-              url.isFileURL,
-              let type = UTType(filenameExtension: url.pathExtension),
-              type.conforms(to: .image) else {
-            return nil
-        }
-        return NSImage(contentsOf: url)
-    }
-
     func isImageFile(_ url: URL) -> Bool {
         guard let type = UTType(filenameExtension: url.pathExtension) else {
             return false
         }
         return type.conforms(to: .image)
-    }
-
-    func imageOriginMetadata() -> (remoteURL: String?, localPath: String?) {
-        let localURL = NSURL(from: pasteboard) as URL?
-        let localPath: String?
-        if let localURL,
-           localURL.isFileURL,
-           let type = UTType(filenameExtension: localURL.pathExtension),
-           type.conforms(to: .image) {
-            localPath = localURL.path
-        } else {
-            localPath = nil
-        }
-
-        if let html = pasteboard.string(forType: .html),
-           let source = imageSourceFromHTML(html) {
-            return (source, localPath)
-        }
-
-        let urlTypes = [
-            NSPasteboard.PasteboardType.URL,
-            NSPasteboard.PasteboardType(rawValue: "public.url"),
-            NSPasteboard.PasteboardType(rawValue: "WebURLsWithTitlesPboardType")
-        ]
-        for type in urlTypes {
-            guard let value = pasteboard.string(forType: type),
-                  let url = URL(string: value),
-                  ["http", "https"].contains(url.scheme?.lowercased()) else {
-                continue
-            }
-            return (url.absoluteString, localPath)
-        }
-
-        return (nil, localPath)
-    }
-
-    private static let imgSrcRegex: NSRegularExpression = {
-        try! NSRegularExpression(
-            pattern: #"<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']"#,
-            options: [.caseInsensitive]
-        )
-    }()
-
-    func imageSourceFromHTML(_ html: String) -> String? {
-        guard let match = Self.imgSrcRegex.firstMatch(
-            in: html,
-            range: NSRange(html.startIndex..., in: html)
-        ),
-        match.numberOfRanges > 1,
-        let range = Range(match.range(at: 1), in: html) else {
-            return nil
-        }
-        let rawValue = String(html[range])
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-        guard let url = URL(string: rawValue),
-              ["http", "https"].contains(url.scheme?.lowercased()) else {
-            return nil
-        }
-        return url.absoluteString
     }
 
     func performOCR(on cgImage: CGImage, itemID: UUID) {

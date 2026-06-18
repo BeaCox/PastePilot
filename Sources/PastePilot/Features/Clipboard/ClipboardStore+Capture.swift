@@ -7,20 +7,60 @@ extension ClipboardStore {
             lastPurgeCheck = Date()
             purgeExpired()
         }
-        guard pasteboard.changeCount != lastChangeCount else { return }
-        lastChangeCount = pasteboard.changeCount
-        if captureFileURLsIfAvailable() {
+        let changeCount = pasteboard.changeCount
+        guard changeCount != lastChangeCount else { return }
+        lastChangeCount = changeCount
+
+        pasteboardCaptureQueue.capture(
+            pasteboard: pasteboard,
+            changeCount: changeCount
+        ) { [weak self] snapshot in
+            Task { @MainActor in
+                guard let self, let snapshot else { return }
+                self.applyCaptureSnapshot(snapshot)
+            }
+        }
+    }
+
+    func applyCaptureSnapshot(_ snapshot: ClipboardCaptureSnapshot) {
+        guard pasteboard.changeCount == snapshot.changeCount else { return }
+        let source = sourceApplication(
+            pasteboardBundleIdentifier: snapshot.sourceBundleIdentifier
+        )
+
+        switch snapshot.payload {
+        case .files(let urls):
+            captureFiles(
+                urls: urls,
+                source: source,
+                pasteboardChangeCount: snapshot.changeCount
+            )
+        case .image(let cgImage, let remoteURL, let originalPath):
+            _ = saveImage(
+                cgImage,
+                source: source,
+                remoteURL: remoteURL,
+                originalPath: originalPath,
+                pasteboardChangeCount: snapshot.changeCount
+            )
+        case .richText(let rtfData, let html, let plainText):
+            _ = captureRichText(
+                rtfData: rtfData,
+                html: html,
+                plainText: plainText,
+                source: source
+            )
+        case .text(let content):
+            captureText(content, source: source)
+        case .none:
             return
         }
-        if captureImageIfAvailable() {
-            return
-        }
-        if captureRichTextIfAvailable() {
-            return
-        }
-        guard let content = pasteboard.string(forType: .string) else {
-            return
-        }
+    }
+
+    func captureText(
+        _ content: String,
+        source: (name: String?, bundleIdentifier: String?)
+    ) {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedContent.isEmpty else {
             return
@@ -32,7 +72,6 @@ extension ClipboardStore {
         guard items.first?.content != content else { return }
 
         let analysis = ContentAnalyzer.analyze(trimmedContent)
-        let source = sourceApplication()
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
         insertCaptured(duplicate: { $0.content == content }) { wasPinned in
             ClipboardItem(
@@ -44,23 +83,6 @@ extension ClipboardStore {
                 sourceBundleIdentifier: source.bundleIdentifier
             )
         }
-    }
-
-    func captureFileURLsIfAvailable() -> Bool {
-        let options: [NSPasteboard.ReadingOptionKey: Any] = [
-            .urlReadingFileURLsOnly: true
-        ]
-        let urls = pasteboard.readObjects(
-            forClasses: [NSURL.self],
-            options: options
-        ) as? [URL] ?? []
-        guard !urls.isEmpty else { return false }
-        captureFiles(
-            urls: urls,
-            source: sourceApplication(),
-            pasteboardChangeCount: pasteboard.changeCount
-        )
-        return true
     }
 
     func captureFiles(
@@ -102,33 +124,12 @@ extension ClipboardStore {
         }
     }
 
-    func captureRichTextIfAvailable() -> Bool {
-        let rtfData = pasteboard.data(forType: .rtf)
-        let html = pasteboard.string(forType: .html)
-        guard rtfData != nil || html != nil else { return false }
-
-        let attributedString: NSAttributedString?
-        if let rtfData {
-            attributedString = try? NSAttributedString(
-                data: rtfData,
-                options: [.documentType: NSAttributedString.DocumentType.rtf],
-                documentAttributes: nil
-            )
-        } else if let html,
-                  let data = html.data(using: .utf8) {
-            attributedString = try? NSAttributedString(
-                data: data,
-                options: [.documentType: NSAttributedString.DocumentType.html],
-                documentAttributes: nil
-            )
-        } else {
-            attributedString = nil
-        }
-
-        let plainText = attributedString?.string
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let plainText, !plainText.isEmpty else { return false }
-        let source = sourceApplication()
+    func captureRichText(
+        rtfData: Data?,
+        html: String?,
+        plainText: String,
+        source: (name: String?, bundleIdentifier: String?)
+    ) -> Bool {
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
         let rtfBase64 = rtfData?.base64EncodedString()
         guard items.first?.content != plainText
@@ -154,7 +155,14 @@ extension ClipboardStore {
     }
 
     func sourceApplication() -> (name: String?, bundleIdentifier: String?) {
-        let pasteboardBundleIdentifier = pasteboard.string(forType: Self.sourcePasteboardType)
+        sourceApplication(
+            pasteboardBundleIdentifier: pasteboard.string(forType: Self.sourcePasteboardType)
+        )
+    }
+
+    func sourceApplication(
+        pasteboardBundleIdentifier: String?
+    ) -> (name: String?, bundleIdentifier: String?) {
         let frontmostApplication = NSWorkspace.shared.frontmostApplication
         let bundleIdentifier = pasteboardBundleIdentifier
             ?? frontmostApplication?.bundleIdentifier

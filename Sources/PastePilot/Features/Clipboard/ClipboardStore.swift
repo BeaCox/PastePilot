@@ -11,6 +11,7 @@ final class ClipboardStore: ObservableObject {
     let historyWriteQueue: HistoryWriteQueue
     let imageStore: ClipboardImageStore
     let imageProcessingQueue: ClipboardImageProcessingQueue
+    let pasteboardCaptureQueue: ClipboardCaptureQueue
     let ocrService: any OCRService
     var timer: Timer?
     var lastChangeCount: Int
@@ -36,6 +37,7 @@ final class ClipboardStore: ObservableObject {
             directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
         )
         self.imageProcessingQueue = ClipboardImageProcessingQueue()
+        self.pasteboardCaptureQueue = ClipboardCaptureQueue()
         self.ocrService = ocrService
         self.lastChangeCount = pasteboard.changeCount
         load()
