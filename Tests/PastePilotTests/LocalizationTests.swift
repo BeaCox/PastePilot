@@ -15,10 +15,16 @@ struct LocalizationTests {
             )
         )
         let missingKeys = sourceKeys.subtracting(translatedKeys).sorted()
+        let unexpectedKeys = translatedKeys.subtracting(sourceKeys).sorted()
 
         if !missingKeys.isEmpty {
             Issue.record(
                 "Missing zh-Hans translations: \(missingKeys.joined(separator: ", "))"
+            )
+        }
+        if !unexpectedKeys.isEmpty {
+            Issue.record(
+                "Unused zh-Hans translations: \(unexpectedKeys.joined(separator: ", "))"
             )
         }
     }

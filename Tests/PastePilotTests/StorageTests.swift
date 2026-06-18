@@ -179,6 +179,31 @@ struct StorageTests {
 
     @Test
     @MainActor
+    func plainTextCapturePreservesOriginalWhitespace() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let originalContent = "  git status --short\n"
+
+        pasteboard.clearContents()
+        pasteboard.setString(originalContent, forType: .string)
+        store.captureCurrentClipboard()
+
+        let item = try #require(store.items.first)
+        #expect(item.content == originalContent)
+        #expect(item.kind == .command)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func clipboardStoreAppliesExpiryAndHistoryLimitWithInjectedStorage() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

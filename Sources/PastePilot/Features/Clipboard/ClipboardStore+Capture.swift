@@ -18,9 +18,11 @@ extension ClipboardStore {
         if captureRichTextIfAvailable() {
             return
         }
-        guard let content = pasteboard.string(forType: .string)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !content.isEmpty else {
+        guard let content = pasteboard.string(forType: .string) else {
+            return
+        }
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedContent.isEmpty else {
             return
         }
         if content == ignoredContent {
@@ -29,7 +31,7 @@ extension ClipboardStore {
         }
         guard items.first?.content != content else { return }
 
-        let analysis = ContentAnalyzer.analyze(content)
+        let analysis = ContentAnalyzer.analyze(trimmedContent)
         let source = sourceApplication()
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
         insertCaptured(duplicate: { $0.content == content }) { wasPinned in

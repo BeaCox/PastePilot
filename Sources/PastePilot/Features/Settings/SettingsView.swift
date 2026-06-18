@@ -216,21 +216,18 @@ struct SettingsView: View {
             SettingsGroup {
                 SettingsRow(title: "Keep up to".localized) {
                     Picker("", selection: $settings.historyLimit) {
-                        Text("50 items".localized).tag(50)
-                        Text("100 items".localized).tag(100)
-                        Text("200 items".localized).tag(200)
-                        Text("500 items".localized).tag(500)
+                        ForEach(AppSettings.supportedHistoryLimits, id: \.self) { limit in
+                            Text(historyLimitLabel(limit)).tag(limit)
+                        }
                     }
                     .labelsHidden()
                     .frame(width: 130)
                 }
                 SettingsRow(title: "Auto-delete After".localized) {
                     Picker("", selection: $settings.historyTimeoutSeconds) {
-                        Text("Never".localized).tag(0)
-                        Text("1 hour".localized).tag(3600)
-                        Text("24 hours".localized).tag(86400)
-                        Text("7 days".localized).tag(604800)
-                        Text("30 days".localized).tag(2592000)
+                        ForEach(AppSettings.supportedHistoryTimeoutsSeconds, id: \.self) { timeout in
+                            Text(historyTimeoutLabel(timeout)).tag(timeout)
+                        }
                     }
                     .labelsHidden()
                     .frame(width: 130)
@@ -241,16 +238,40 @@ struct SettingsView: View {
             SettingsGroup {
                 SettingsRow(title: "Image Size Limit".localized) {
                     Picker("", selection: $settings.imageSizeLimitMB) {
-                        Text("5 MB").tag(5)
-                        Text("10 MB").tag(10)
-                        Text("25 MB").tag(25)
-                        Text("50 MB").tag(50)
+                        ForEach(AppSettings.supportedImageSizeLimitsMB, id: \.self) { limit in
+                            Text(imageSizeLimitLabel(limit)).tag(limit)
+                        }
                     }
                     .labelsHidden()
                     .frame(width: 130)
                 }
             }
         }
+    }
+
+    private func historyLimitLabel(_ limit: Int) -> String {
+        "%d items".localized(limit)
+    }
+
+    private func historyTimeoutLabel(_ seconds: Int) -> String {
+        switch seconds {
+        case 0:
+            "Never".localized
+        case 3_600:
+            "1 hour".localized
+        case 86_400:
+            "24 hours".localized
+        case 604_800:
+            "7 days".localized
+        case 2_592_000:
+            "30 days".localized
+        default:
+            "\(seconds) s"
+        }
+    }
+
+    private func imageSizeLimitLabel(_ limit: Int) -> String {
+        "\(limit) MB"
     }
 
     private var appearancePage: some View {
