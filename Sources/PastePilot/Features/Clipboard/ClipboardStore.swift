@@ -11,10 +11,13 @@ final class ClipboardStore: ObservableObject {
     let historyWriteQueue: HistoryWriteQueue
     let imageStore: ClipboardImageStore
     let imageProcessingQueue: ClipboardImageProcessingQueue
-    let pasteboardCaptureQueue: ClipboardCaptureQueue
+    let pasteboardCaptureQueue: any ClipboardCapturing
     let ocrService: any OCRService
     var timer: Timer?
     var lastChangeCount: Int
+    var pendingCaptureChangeCount: Int?
+    var ocrTasksByItemID: [UUID: Task<Void, Never>] = [:]
+    var ocrTaskTokensByItemID: [UUID: UUID] = [:]
     var ignoredContent: String?
     var lastPurgeCheck: Date = .distantPast
     static let sourcePasteboardType = NSPasteboard.PasteboardType(
@@ -25,6 +28,7 @@ final class ClipboardStore: ObservableObject {
         pasteboard: NSPasteboard = .general,
         settings: AppSettings = .shared,
         dataDirectoryURL: URL? = nil,
+        pasteboardCaptureQueue: any ClipboardCapturing = ClipboardCaptureQueue(),
         ocrService: any OCRService = VisionOCRService()
     ) {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
@@ -37,7 +41,7 @@ final class ClipboardStore: ObservableObject {
             directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
         )
         self.imageProcessingQueue = ClipboardImageProcessingQueue()
-        self.pasteboardCaptureQueue = ClipboardCaptureQueue()
+        self.pasteboardCaptureQueue = pasteboardCaptureQueue
         self.ocrService = ocrService
         self.lastChangeCount = pasteboard.changeCount
         load()
@@ -56,11 +60,13 @@ final class ClipboardStore: ObservableObject {
     }
 
     func captureCurrentClipboard() {
+        pendingCaptureChangeCount = nil
         lastChangeCount = -1
         captureIfNeeded()
     }
 
     func acknowledgeCurrentClipboard() {
+        pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
     }
 
@@ -68,6 +74,7 @@ final class ClipboardStore: ObservableObject {
         ignoredContent = content
         pasteboard.clearContents()
         pasteboard.setString(content, forType: .string)
+        pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
     }
 
@@ -75,6 +82,7 @@ final class ClipboardStore: ObservableObject {
         guard let image = imageStore.image(fileName: fileName) else { return false }
         pasteboard.clearContents()
         let succeeded = pasteboard.writeObjects([image])
+        pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
         return succeeded
     }
@@ -84,6 +92,7 @@ final class ClipboardStore: ObservableObject {
         guard !existingURLs.isEmpty else { return false }
         pasteboard.clearContents()
         let succeeded = pasteboard.writeObjects(existingURLs as [NSURL])
+        pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
         return succeeded
     }
@@ -98,6 +107,7 @@ final class ClipboardStore: ObservableObject {
             pasteboard.setString(html, forType: .html)
         }
         pasteboard.setString(item.content, forType: .string)
+        pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
         return item.hasRichText
     }
@@ -123,6 +133,7 @@ final class ClipboardStore: ObservableObject {
 
     func delete(_ id: UUID) {
         if let item = items.first(where: { $0.id == id }) {
+            cancelOCR(for: item.id)
             deleteImageFile(for: item)
         }
         items.removeAll { $0.id == id }
@@ -130,7 +141,9 @@ final class ClipboardStore: ObservableObject {
     }
 
     func clearUnpinned() {
-        items.filter { !$0.isPinned }.forEach(deleteImageFile)
+        let removedItems = items.filter { !$0.isPinned }
+        cancelOCR(for: removedItems)
+        removedItems.forEach(deleteImageFile)
         items.removeAll { !$0.isPinned }
         save()
     }
@@ -146,6 +159,7 @@ final class ClipboardStore: ObservableObject {
         let cutoff = Date().addingTimeInterval(-Double(timeout))
         let expired = items.filter { !$0.isPinned && $0.createdAt < cutoff }
         guard !expired.isEmpty else { return }
+        cancelOCR(for: expired)
         expired.forEach(deleteImageFile)
         items.removeAll { !$0.isPinned && $0.createdAt < cutoff }
         save()

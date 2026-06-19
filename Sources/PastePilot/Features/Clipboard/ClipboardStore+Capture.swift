@@ -9,14 +9,19 @@ extension ClipboardStore {
         }
         let changeCount = pasteboard.changeCount
         guard changeCount != lastChangeCount else { return }
-        lastChangeCount = changeCount
+        guard pendingCaptureChangeCount != changeCount else { return }
+        pendingCaptureChangeCount = changeCount
 
         pasteboardCaptureQueue.capture(
             pasteboard: pasteboard,
             changeCount: changeCount
         ) { [weak self] snapshot in
             Task { @MainActor in
-                guard let self, let snapshot else { return }
+                guard let self else { return }
+                if self.pendingCaptureChangeCount == changeCount {
+                    self.pendingCaptureChangeCount = nil
+                }
+                guard let snapshot else { return }
                 self.applyCaptureSnapshot(snapshot)
             }
         }
@@ -24,6 +29,7 @@ extension ClipboardStore {
 
     func applyCaptureSnapshot(_ snapshot: ClipboardCaptureSnapshot) {
         guard pasteboard.changeCount == snapshot.changeCount else { return }
+        lastChangeCount = snapshot.changeCount
         let source = sourceApplication(
             pasteboardBundleIdentifier: snapshot.sourceBundleIdentifier
         )

@@ -52,6 +52,15 @@ extension AppDelegate {
                 self?.store.purgeExpired()
             }
             .store(in: &cancellables)
+
+        settings.$ocrRecognitionMode
+            .dropFirst()
+            .sink { [weak self] mode in
+                if OCRRecognitionMode(rawValue: mode) == .off {
+                    self?.store.cancelAllOCRTasks()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     func updateLoginItem(enabled: Bool) {

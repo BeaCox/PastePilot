@@ -119,9 +119,11 @@ extension ClipboardStore {
                 imageOriginalPath: originalPath,
                 filePaths: originalPath.map { [$0] }
             )
-            items.filter {
+            let duplicateItems = items.filter {
                 $0.imageDigest == processedImage.digest
-            }.forEach(deleteImageFile)
+            }
+            cancelOCR(for: duplicateItems)
+            duplicateItems.forEach(deleteImageFile)
             items.removeAll { $0.imageDigest == processedImage.digest }
             items.insert(item, at: 0)
             trimHistory(limit: settings.historyLimit)
@@ -165,22 +167,35 @@ extension ClipboardStore {
     }
 
     func performOCR(on cgImage: CGImage, itemID: UUID) {
+        cancelOCR(for: itemID)
         let recognitionMode = OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
             ?? .accurate
         guard recognitionMode != .off else { return }
         let languageMode = OCRLanguageMode(rawValue: settings.ocrLanguageMode)
             ?? .multilingual
-        Task {
-            guard let text = await ocrService.recognizeText(
+        let ocrService = ocrService
+        let taskToken = UUID()
+        ocrTaskTokensByItemID[itemID] = taskToken
+        ocrTasksByItemID[itemID] = Task { [weak self] in
+            let text = await ocrService.recognizeText(
                 in: cgImage,
                 recognitionMode: recognitionMode,
                 languageMode: languageMode
-            ),
-                  let index = items.firstIndex(where: { $0.id == itemID }) else {
+            )
+            guard let self else { return }
+            defer {
+                if self.ocrTaskTokensByItemID[itemID] == taskToken {
+                    self.ocrTasksByItemID[itemID] = nil
+                    self.ocrTaskTokensByItemID[itemID] = nil
+                }
+            }
+            guard !Task.isCancelled,
+                  let text,
+                  let index = self.items.firstIndex(where: { $0.id == itemID }) else {
                 return
             }
-            items[index].ocrText = text
-            save()
+            self.items[index].ocrText = text
+            self.save()
         }
     }
 }

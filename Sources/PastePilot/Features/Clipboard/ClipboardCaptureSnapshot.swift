@@ -15,6 +15,14 @@ struct ClipboardCaptureSnapshot {
     let payload: Payload?
 }
 
+protocol ClipboardCapturing {
+    func capture(
+        pasteboard: NSPasteboard,
+        changeCount: Int,
+        completion: @escaping (ClipboardCaptureSnapshot?) -> Void
+    )
+}
+
 final class ClipboardCaptureQueue {
     private static let sourcePasteboardType = NSPasteboard.PasteboardType(
         rawValue: "org.nspasteboard.source"
@@ -234,6 +242,8 @@ final class ClipboardCaptureQueue {
         return url.absoluteString
     }
 }
+
+extension ClipboardCaptureQueue: ClipboardCapturing {}
 
 private final class CompletionGate {
     private let lock = NSLock()

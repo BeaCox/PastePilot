@@ -9,7 +9,9 @@ extension ClipboardStore {
         let pinned = items.filter(\.isPinned)
         let recent = items.filter { !$0.isPinned }.prefix(max(1, limit))
         let retainedIDs = Set((pinned + recent).map(\.id))
-        items.filter { !retainedIDs.contains($0.id) }.forEach(deleteImageFile)
+        let removedItems = items.filter { !retainedIDs.contains($0.id) }
+        cancelOCR(for: removedItems)
+        removedItems.forEach(deleteImageFile)
         items = items.filter { retainedIDs.contains($0.id) }
         sortItems()
     }
@@ -56,5 +58,21 @@ extension ClipboardStore {
     func deleteImageFile(for item: ClipboardItem) {
         guard let fileName = item.imageFileName else { return }
         imageStore.delete(fileName: fileName)
+    }
+
+    func cancelOCR(for itemID: UUID) {
+        ocrTasksByItemID[itemID]?.cancel()
+        ocrTasksByItemID[itemID] = nil
+        ocrTaskTokensByItemID[itemID] = nil
+    }
+
+    func cancelOCR(for items: [ClipboardItem]) {
+        items.forEach { cancelOCR(for: $0.id) }
+    }
+
+    func cancelAllOCRTasks() {
+        ocrTasksByItemID.values.forEach { $0.cancel() }
+        ocrTasksByItemID.removeAll()
+        ocrTaskTokensByItemID.removeAll()
     }
 }

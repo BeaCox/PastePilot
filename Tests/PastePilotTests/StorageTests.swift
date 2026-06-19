@@ -230,6 +230,43 @@ struct StorageTests {
 
     @Test
     @MainActor
+    func captureTimeoutDoesNotAcknowledgeChangeAndAllowsRetry() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let captureQueue = StubClipboardCaptureQueue(results: [
+            .timeout,
+            .payload(.text("retry text"))
+        ])
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            pasteboardCaptureQueue: captureQueue,
+            ocrService: StubOCRService()
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setString("retry text", forType: .string)
+        let changeCount = pasteboard.changeCount
+
+        store.captureIfNeeded()
+        await Task.yield()
+        #expect(captureQueue.captureCalls == 1)
+        #expect(store.lastChangeCount != changeCount)
+        #expect(store.items.isEmpty)
+
+        store.captureIfNeeded()
+        await Task.yield()
+        #expect(captureQueue.captureCalls == 2)
+        #expect(store.lastChangeCount == changeCount)
+        #expect(store.items.first?.content == "retry text")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func clipboardStoreAppliesExpiryAndHistoryLimitWithInjectedStorage() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -427,6 +464,40 @@ struct StorageTests {
         store.flushHistoryWrites()
     }
 
+    @Test
+    @MainActor
+    func cancelAllOCRTasksPreventsPendingOCRWrite() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotOCRCancelTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: DelayedStubOCRService(
+                result: "stale text",
+                delayNanoseconds: 80_000_000
+            )
+        )
+        let item = ClipboardItem(content: "image", kind: .image)
+        store.items = [item]
+
+        store.performOCR(on: try makeTestImage(width: 2, height: 2), itemID: item.id)
+        #expect(store.ocrTasksByItemID[item.id] != nil)
+        store.cancelAllOCRTasks()
+
+        try await Task.sleep(nanoseconds: 120_000_000)
+        #expect(store.items.first?.ocrText == nil)
+        #expect(store.ocrTasksByItemID.isEmpty)
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("PastePilotTests-\(UUID().uuidString)", isDirectory: true)
@@ -480,5 +551,55 @@ private struct StubOCRService: OCRService {
         languageMode: OCRLanguageMode
     ) async -> String? {
         result
+    }
+}
+
+private struct DelayedStubOCRService: OCRService {
+    var result: String?
+    var delayNanoseconds: UInt64
+
+    func recognizeText(
+        in image: CGImage,
+        recognitionMode: OCRRecognitionMode,
+        languageMode: OCRLanguageMode
+    ) async -> String? {
+        try? await Task.sleep(nanoseconds: delayNanoseconds)
+        return result
+    }
+}
+
+private enum StubCaptureResult {
+    case timeout
+    case payload(ClipboardCaptureSnapshot.Payload?)
+}
+
+private final class StubClipboardCaptureQueue: ClipboardCapturing {
+    private var results: [StubCaptureResult]
+    private(set) var captureCalls = 0
+
+    init(results: [StubCaptureResult]) {
+        self.results = results
+    }
+
+    func capture(
+        pasteboard: NSPasteboard,
+        changeCount: Int,
+        completion: @escaping (ClipboardCaptureSnapshot?) -> Void
+    ) {
+        captureCalls += 1
+        guard !results.isEmpty else {
+            completion(nil)
+            return
+        }
+        switch results.removeFirst() {
+        case .timeout:
+            completion(nil)
+        case .payload(let payload):
+            completion(ClipboardCaptureSnapshot(
+                changeCount: changeCount,
+                sourceBundleIdentifier: nil,
+                payload: payload
+            ))
+        }
     }
 }
