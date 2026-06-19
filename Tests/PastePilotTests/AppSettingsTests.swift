@@ -111,5 +111,46 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(defaults.integer(forKey: "historyLimit") == AppSettings.defaultHistoryLimit)
+        #expect(
+            defaults.integer(forKey: "imageSizeLimitMB")
+                == AppSettings.defaultImageSizeLimitMB
+        )
+        #expect(
+            defaults.integer(forKey: "historyTimeoutSeconds")
+                == AppSettings.defaultHistoryTimeoutSeconds
+        )
+        #expect(
+            defaults.string(forKey: "menuBarIconStyle")
+                == MenuBarIconStyle.pastepilot.rawValue
+        )
+        #expect(
+            defaults.string(forKey: "pasteCloseBehavior")
+                == PasteCloseBehavior.closePreview.rawValue
+        )
+        #expect(
+            defaults.integer(forKey: "hotKeyCode")
+                == AppSettings.defaultOpenHotKeyCode
+        )
+        #expect(
+            UInt32(defaults.integer(forKey: "hotKeyModifiers"))
+                == AppSettings.defaultOpenHotKeyModifiers
+        )
+        #expect(
+            defaults.integer(forKey: "plainTextHotKeyCode")
+                == AppSettings.defaultPlainTextHotKeyCode
+        )
+        #expect(
+            UInt32(defaults.integer(forKey: "plainTextHotKeyModifiers"))
+                == AppSettings.defaultPlainTextHotKeyModifiers
+        )
+        #expect(
+            defaults.string(forKey: "ocrRecognitionMode")
+                == AppSettings.defaultOCRRecognitionMode
+        )
+        #expect(
+            defaults.string(forKey: "ocrLanguageMode")
+                == AppSettings.defaultOCRLanguageMode
+        )
     }
 }

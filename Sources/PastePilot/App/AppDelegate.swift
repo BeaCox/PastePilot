@@ -25,6 +25,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var cancellables: Set<AnyCancellable> = []
     var isSynchronizingLoginItem = false
     var didShowAccessibilityAlert = false
+    var lastAccessibilityAlertShownAt = Date.distantPast
+    let accessibilityAlertCooldown: TimeInterval = 30
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = AppIconRenderer.icon(size: 512)

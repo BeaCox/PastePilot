@@ -251,6 +251,7 @@ final class AppSettings: ObservableObject {
         ocrLanguageMode = storedOCRLanguageMode
             .flatMap(OCRLanguageMode.init(rawValue:))?
             .rawValue ?? Self.defaultOCRLanguageMode
+        persistCurrentValues()
     }
 
     var ignoredBundleIdentifierSet: Set<String> {
@@ -301,5 +302,27 @@ final class AppSettings: ObservableObject {
             return (defaultKeyCode, defaultModifiers)
         }
         return (keyCode, modifiers)
+    }
+
+    private func persistCurrentValues() {
+        defaults.set(monitoringEnabled, forKey: Key.monitoringEnabled)
+        defaults.set(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled)
+        defaults.set(historyLimit, forKey: Key.historyLimit)
+        defaults.set(launchAtLogin, forKey: Key.launchAtLogin)
+        defaults.set(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
+        defaults.set(ignoredBundleIdentifiers, forKey: Key.ignoredBundleIdentifiers)
+        defaults.set(hotKeyCode, forKey: Key.hotKeyCode)
+        defaults.set(Int(hotKeyModifiers), forKey: Key.hotKeyModifiers)
+        defaults.set(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
+        defaults.set(
+            Int(plainTextHotKeyModifiers),
+            forKey: Key.plainTextHotKeyModifiers
+        )
+        defaults.set(menuBarIconStyle, forKey: Key.menuBarIconStyle)
+        defaults.set(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
+        defaults.set(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
+        defaults.set(previewAnimationEnabled, forKey: Key.previewAnimationEnabled)
+        defaults.set(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
+        defaults.set(ocrLanguageMode, forKey: Key.ocrLanguageMode)
     }
 }

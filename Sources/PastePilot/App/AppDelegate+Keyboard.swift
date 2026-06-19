@@ -229,7 +229,20 @@ extension AppDelegate {
 
     func showAccessibilityRequiredAlert() {
         guard !didShowAccessibilityAlert else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastAccessibilityAlertShownAt)
+            >= accessibilityAlertCooldown else {
+            NotificationCenter.default.postPastePilotNotice(
+                PastePilotNotice(
+                    "Accessibility Permission Required".localized,
+                    style: .warning
+                )
+            )
+            return
+        }
         didShowAccessibilityAlert = true
+        lastAccessibilityAlertShownAt = now
+        defer { didShowAccessibilityAlert = false }
 
         let alert = NSAlert()
         alert.alertStyle = .informational
@@ -238,9 +251,8 @@ extension AppDelegate {
         alert.addButton(withTitle: "Open Accessibility Settings".localized)
         alert.addButton(withTitle: "Not Now".localized)
         NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn,
-           EventPostingPermission.request() {
-            didShowAccessibilityAlert = false
+        if alert.runModal() == .alertFirstButtonReturn {
+            EventPostingPermission.request()
         }
     }
 
