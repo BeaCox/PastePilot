@@ -151,6 +151,7 @@
 "Click a shortcut field and press a new combination; press Delete to reset." = "点击任一快捷键框后录制新组合；按 Delete 恢复默认值。";
 "Choose a different shortcut; both global actions currently use the same keys." = "请选择其他快捷键；两个全局操作当前使用了相同的按键。";
 "Only Paste as Plain Text requires Accessibility permission." = "只有粘贴为纯文本需要辅助功能权限。";
+"Global shortcut listener could not be installed." = "全局快捷键监听器无法安装。";
 "Open PastePilot shortcut is already in use." = "打开 PastePilot 的快捷键已被占用。";
 "Paste as Plain Text shortcut is already in use." = "粘贴为纯文本的快捷键已被占用。";
 "Accessibility Permission Granted" = "辅助功能权限已生效";

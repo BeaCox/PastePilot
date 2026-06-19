@@ -12,7 +12,7 @@ TEST_FLAGS := --enable-swift-testing \
 	-Xlinker -rpath -Xlinker "$(TESTING_FRAMEWORK_DIR)" \
 	-Xlinker -rpath -Xlinker "$(TESTING_LIBRARY_DIR)"
 
-.PHONY: app dmg build run test
+.PHONY: app dmg build run test check-env
 
 app:
 	sh Scripts/build-app.sh
@@ -26,5 +26,12 @@ build:
 run:
 	swift run PastePilot
 
-test:
+check-env:
+	@test -d "$(TESTING_FRAMEWORK_DIR)" || ( \
+		echo "Swift Testing framework not found at $(TESTING_FRAMEWORK_DIR)."; \
+		echo "Install Xcode 16+ or Swift command-line tools, then run make test again."; \
+		exit 1; \
+	)
+
+test: check-env
 	CLANG_MODULE_CACHE_PATH="$(CLANG_MODULE_CACHE_PATH)" swift test $(TEST_SCRATCH_FLAG) $(SWIFT_TEST_SANDBOX_FLAGS) $(TEST_FLAGS)

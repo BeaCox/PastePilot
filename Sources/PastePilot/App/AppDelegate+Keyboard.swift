@@ -72,11 +72,14 @@ extension AppDelegate {
     }
 
     func registerHotKey() {
-        installHotKeyHandler()
         registerConfiguredHotKeys()
     }
 
     func registerConfiguredHotKeys() {
+        guard installHotKeyHandler() else {
+            unregisterHotKeys()
+            return
+        }
         unregisterHotKeys()
         settings.hotKeyRegistrationWarning = nil
         registerHotKey(
@@ -137,14 +140,15 @@ extension AppDelegate {
         hotKeyRefs.removeAll()
     }
 
-    func installHotKeyHandler() {
-        guard hotKeyHandler == nil else { return }
+    @discardableResult
+    func installHotKeyHandler() -> Bool {
+        guard hotKeyHandler == nil else { return true }
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: OSType(kEventHotKeyPressed)
         )
         let pointer = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(
+        let status = InstallEventHandler(
             GetApplicationEventTarget(),
             { _, event, userData in
                 guard let event, let userData else { return noErr }
@@ -177,6 +181,21 @@ extension AppDelegate {
             pointer,
             &hotKeyHandler
         )
+        guard status == noErr else {
+            hotKeyHandler = nil
+            handleHotKeyHandlerInstallationFailure(status)
+            return false
+        }
+        return true
+    }
+
+    func handleHotKeyHandlerInstallationFailure(_ status: OSStatus) {
+        let message = "Global shortcut listener could not be installed.".localized
+        settings.hotKeyRegistrationWarning = message
+        NotificationCenter.default.postPastePilotNotice(
+            PastePilotNotice(message, style: .warning)
+        )
+        NSLog("PastePilot failed to install hot key handler: \(status)")
     }
 
     func pasteAsPlainText() {
