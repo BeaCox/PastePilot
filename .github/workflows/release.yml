@@ -35,6 +35,10 @@ jobs:
         run: |
           [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           test "$(uname -m)" = "$ARCH"
+          xcode-select -p
+          xcodebuild -version
+          swift --version
+          find /Applications /Library/Developer/CommandLineTools -path '*Testing.framework' -maxdepth 8 -print 2>/dev/null || true
 
       - name: Run core checks
         run: make test
