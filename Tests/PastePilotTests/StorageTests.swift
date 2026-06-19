@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 @testable import PastePilot
 
 @Suite(.serialized)
@@ -225,6 +226,45 @@ struct StorageTests {
         let item = try await waitForCapturedItem(in: store)
         #expect(item.content == originalContent)
         #expect(item.kind == .command)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func imageCaptureReadsPasteboardImageData() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let image = try makeTestImage(width: 4, height: 3)
+        let imageData = try #require(
+            NSBitmapImageRep(cgImage: image)
+                .representation(using: .png, properties: [:])
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setData(
+            imageData,
+            forType: NSPasteboard.PasteboardType(UTType.png.identifier)
+        )
+        store.captureCurrentClipboard()
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.kind == .image)
+        #expect(item.imageWidth == 4)
+        #expect(item.imageHeight == 3)
+        let fileName = try #require(item.imageFileName)
+        #expect(
+            FileManager.default.fileExists(
+                atPath: store.imagePath(fileName: fileName)
+            )
+        )
         store.flushHistoryWrites()
     }
 

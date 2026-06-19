@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ImageIO
 import UniformTypeIdentifiers
 
 struct ClipboardCaptureSnapshot {
@@ -45,12 +46,15 @@ final class ClipboardCaptureQueue {
     ) {
         let gate = CompletionGate()
 
-        queue.async {
-            let snapshot = Self.makeSnapshot(
-                pasteboard: pasteboard,
-                changeCount: changeCount
-            )
-            gate.complete { completion(snapshot) }
+        DispatchQueue.main.async { [queue] in
+            let pasteboardData = Self.readPasteboardData(from: pasteboard)
+            queue.async {
+                let snapshot = Self.makeSnapshot(
+                    pasteboardData: pasteboardData,
+                    changeCount: changeCount
+                )
+                gate.complete { completion(snapshot) }
+            }
         }
 
         queue.asyncAfter(deadline: .now() + timeout) {
@@ -58,28 +62,9 @@ final class ClipboardCaptureQueue {
         }
     }
 
-    private static func makeSnapshot(
-        pasteboard: NSPasteboard,
-        changeCount: Int
-    ) -> ClipboardCaptureSnapshot {
-        let sourceBundleIdentifier = pasteboard.string(
-            forType: sourcePasteboardType
-        )
-        let payload = filePayload(from: pasteboard)
-            ?? imagePayload(from: pasteboard)
-            ?? richTextPayload(from: pasteboard)
-            ?? textPayload(from: pasteboard)
-
-        return ClipboardCaptureSnapshot(
-            changeCount: changeCount,
-            sourceBundleIdentifier: sourceBundleIdentifier,
-            payload: payload
-        )
-    }
-
-    private static func filePayload(
+    private static func readPasteboardData(
         from pasteboard: NSPasteboard
-    ) -> ClipboardCaptureSnapshot.Payload? {
+    ) -> CapturedPasteboardData {
         let options: [NSPasteboard.ReadingOptionKey: Any] = [
             .urlReadingFileURLsOnly: true
         ]
@@ -87,9 +72,55 @@ final class ClipboardCaptureQueue {
             forClasses: [NSURL.self],
             options: options
         ) as? [URL] ?? []
-        guard !urls.isEmpty else { return nil }
+        let types = pasteboard.types ?? []
+        let imageRepresentations = types.compactMap { type -> ImageRepresentation? in
+            guard let data = pasteboard.data(forType: type),
+                  let uniformType = UTType(type.rawValue),
+                  uniformType.conforms(to: .image) else {
+                return nil
+            }
+            return ImageRepresentation(
+                data: data,
+                typeIdentifier: uniformType.identifier
+            )
+        }
+        let urlTypes = Self.urlPasteboardTypes
+        let urlStrings = urlTypes.compactMap { pasteboard.string(forType: $0) }
 
-        let normalized = urls
+        return CapturedPasteboardData(
+            sourceBundleIdentifier: pasteboard.string(forType: sourcePasteboardType),
+            fileURLs: urls,
+            pasteboardURL: NSURL(from: pasteboard) as URL?,
+            imageRepresentations: imageRepresentations,
+            rtfData: pasteboard.data(forType: .rtf),
+            html: pasteboard.string(forType: .html),
+            text: pasteboard.string(forType: .string),
+            urlStrings: urlStrings
+        )
+    }
+
+    private static func makeSnapshot(
+        pasteboardData: CapturedPasteboardData,
+        changeCount: Int
+    ) -> ClipboardCaptureSnapshot {
+        let payload = filePayload(from: pasteboardData)
+            ?? imagePayload(from: pasteboardData)
+            ?? richTextPayload(from: pasteboardData)
+            ?? textPayload(from: pasteboardData)
+
+        return ClipboardCaptureSnapshot(
+            changeCount: changeCount,
+            sourceBundleIdentifier: pasteboardData.sourceBundleIdentifier,
+            payload: payload
+        )
+    }
+
+    private static func filePayload(
+        from pasteboardData: CapturedPasteboardData
+    ) -> ClipboardCaptureSnapshot.Payload? {
+        guard !pasteboardData.fileURLs.isEmpty else { return nil }
+
+        let normalized = pasteboardData.fileURLs
             .filter(\.isFileURL)
             .map(\.standardizedFileURL)
         if normalized.count == 1,
@@ -98,16 +129,17 @@ final class ClipboardCaptureQueue {
             return imagePayload
         }
 
-        return .files(urls)
+        return .files(pasteboardData.fileURLs)
     }
 
     private static func imagePayload(
-        from pasteboard: NSPasteboard
+        from pasteboardData: CapturedPasteboardData
     ) -> ClipboardCaptureSnapshot.Payload? {
-        let origin = imageOriginMetadata(from: pasteboard)
+        let origin = imageOriginMetadata(from: pasteboardData)
 
-        if let image = NSImage(pasteboard: pasteboard),
-           let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+        if let cgImage = pasteboardData.imageRepresentations.lazy
+            .compactMap(cgImage)
+            .first {
             return .image(
                 cgImage,
                 remoteURL: origin.remoteURL,
@@ -115,12 +147,11 @@ final class ClipboardCaptureQueue {
             )
         }
 
-        guard let url = NSURL(from: pasteboard) as URL?,
+        guard let url = pasteboardData.pasteboardURL,
               url.isFileURL,
               let type = UTType(filenameExtension: url.pathExtension),
               type.conforms(to: .image),
-              let image = NSImage(contentsOf: url),
-              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+              let cgImage = cgImage(contentsOf: url) else {
             return nil
         }
         return .image(cgImage, remoteURL: origin.remoteURL, originalPath: url.path)
@@ -131,18 +162,17 @@ final class ClipboardCaptureQueue {
     ) -> ClipboardCaptureSnapshot.Payload? {
         guard let type = UTType(filenameExtension: url.pathExtension),
               type.conforms(to: .image),
-              let image = NSImage(contentsOf: url),
-              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+              let cgImage = cgImage(contentsOf: url) else {
             return nil
         }
         return .image(cgImage, remoteURL: nil, originalPath: url.path)
     }
 
     private static func richTextPayload(
-        from pasteboard: NSPasteboard
+        from pasteboardData: CapturedPasteboardData
     ) -> ClipboardCaptureSnapshot.Payload? {
-        let rtfData = pasteboard.data(forType: .rtf)
-        let html = pasteboard.string(forType: .html)
+        let rtfData = pasteboardData.rtfData
+        let html = pasteboardData.html
         guard rtfData != nil || html != nil else { return nil }
 
         let attributedString: NSAttributedString?
@@ -172,9 +202,9 @@ final class ClipboardCaptureQueue {
     }
 
     private static func textPayload(
-        from pasteboard: NSPasteboard
+        from pasteboardData: CapturedPasteboardData
     ) -> ClipboardCaptureSnapshot.Payload? {
-        guard let content = pasteboard.string(forType: .string),
+        guard let content = pasteboardData.text,
               !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
         }
@@ -182,9 +212,9 @@ final class ClipboardCaptureQueue {
     }
 
     private static func imageOriginMetadata(
-        from pasteboard: NSPasteboard
+        from pasteboardData: CapturedPasteboardData
     ) -> (remoteURL: String?, localPath: String?) {
-        let localURL = NSURL(from: pasteboard) as URL?
+        let localURL = pasteboardData.pasteboardURL
         let localPath: String?
         if let localURL,
            localURL.isFileURL,
@@ -195,19 +225,13 @@ final class ClipboardCaptureQueue {
             localPath = nil
         }
 
-        if let html = pasteboard.string(forType: .html),
+        if let html = pasteboardData.html,
            let source = imageSourceFromHTML(html) {
             return (source, localPath)
         }
 
-        let urlTypes = [
-            NSPasteboard.PasteboardType.URL,
-            NSPasteboard.PasteboardType(rawValue: "public.url"),
-            NSPasteboard.PasteboardType(rawValue: "WebURLsWithTitlesPboardType")
-        ]
-        for type in urlTypes {
-            guard let value = pasteboard.string(forType: type),
-                  let url = URL(string: value),
+        for value in pasteboardData.urlStrings {
+            guard let url = URL(string: value),
                   ["http", "https"].contains(url.scheme?.lowercased()) else {
                 continue
             }
@@ -215,6 +239,50 @@ final class ClipboardCaptureQueue {
         }
 
         return (nil, localPath)
+    }
+
+    private static func cgImage(
+        from representation: ImageRepresentation
+    ) -> CGImage? {
+        let options = [
+            kCGImageSourceTypeIdentifierHint: representation.typeIdentifier
+        ] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(
+            representation.data as CFData,
+            options
+        ) else {
+            return nil
+        }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    }
+
+    private static func cgImage(contentsOf url: URL) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return nil
+        }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    }
+
+    private static let urlPasteboardTypes = [
+        NSPasteboard.PasteboardType.URL,
+        NSPasteboard.PasteboardType(rawValue: "public.url"),
+        NSPasteboard.PasteboardType(rawValue: "WebURLsWithTitlesPboardType")
+    ]
+
+    private struct CapturedPasteboardData {
+        let sourceBundleIdentifier: String?
+        let fileURLs: [URL]
+        let pasteboardURL: URL?
+        let imageRepresentations: [ImageRepresentation]
+        let rtfData: Data?
+        let html: String?
+        let text: String?
+        let urlStrings: [String]
+    }
+
+    private struct ImageRepresentation {
+        let data: Data
+        let typeIdentifier: String
     }
 
     private static let imgSrcRegex = RegexFactory.make(
