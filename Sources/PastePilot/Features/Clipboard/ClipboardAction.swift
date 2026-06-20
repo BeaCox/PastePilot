@@ -190,10 +190,12 @@ enum ClipboardActionFactory {
                     title: "Wrap in Markdown Code Block".localized,
                     detail: "Ready to paste into issues or chats".localized,
                     symbol: "text.badge.checkmark",
-                    effect: .copy("```\n\(item.content)\n```")
+                    effect: .copy(ContentTransformer.markdownCodeBlock(item.content))
                 )
             )
-        case .markdown, .code, .text:
+        case .code:
+            actions.append(contentsOf: codeActions(for: item.content))
+        case .markdown, .text:
             if let extracted = ContentTransformer.extractShellCommands(item.content) {
                 actions.append(contentsOf: extractedCommandActions(extracted))
             }
@@ -351,7 +353,7 @@ extension ContentKind {
         case .command: "Terminal command detected. Never auto-executed.".localized
         case .error: "Error detected. Clean up and share in an issue or chat.".localized
         case .markdown: "Markdown detected. Transform naming or string format.".localized
-        case .code: "Code detected. Copy or escape for string embedding.".localized
+        case .code: "Code detected. Copy or wrap as Markdown.".localized
         case .text: "Convert naming style or escape as a string.".localized
         }
     }

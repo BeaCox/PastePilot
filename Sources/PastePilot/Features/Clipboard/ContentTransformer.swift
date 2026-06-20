@@ -43,6 +43,16 @@ enum ContentTransformer {
         return "```sh\n\(body.trimmingCharacters(in: .whitespacesAndNewlines))\n```"
     }
 
+    static func markdownCodeBlock(_ text: String, language: String? = nil) -> String {
+        let body = text.trimmingCharacters(in: .newlines)
+        var fence = "```"
+        while body.contains(fence) {
+            fence.append("`")
+        }
+        let languageTag = language ?? ""
+        return "\(fence)\(languageTag)\n\(body)\n\(fence)"
+    }
+
     static func imageMarkdown(reference: String, altText: String = "image") -> String {
         let escapedAltText = altText
             .replacingOccurrences(of: "\\", with: "\\\\")

@@ -18,6 +18,11 @@ struct ContentBehaviorTests {
             ContentAnalyzer.analyze("TypeError: undefined\n at index.js:10").kind
                 == .error
         )
+        #expect(
+            ContentAnalyzer.analyze(
+                "function greet(name) {\n  return `Hello ${name}`;\n}"
+            ).kind == .code
+        )
     }
 
     @Test
@@ -69,6 +74,14 @@ struct ContentBehaviorTests {
                 altText: "demo"
             ) == "![demo](<https://example.com/image one.png>)"
         )
+        #expect(
+            ContentTransformer.markdownCodeBlock("let value = 1")
+                == "```\nlet value = 1\n```"
+        )
+        #expect(
+            ContentTransformer.markdownCodeBlock("```swift\nlet value = 1\n```")
+                == "````\n```swift\nlet value = 1\n```\n````"
+        )
     }
 
     @Test
@@ -117,6 +130,30 @@ struct ContentBehaviorTests {
         #expect(
             actions.map(\.id)
                 == ["extract-shell", "extracted-shell-code-block", "quote-command"]
+        )
+    }
+
+    @Test
+    func codeActionsPreferMarkdownCodeBlockOverStringTransforms() {
+        let item = ClipboardItem(
+            content: "function greet(name) {\n  return `Hello ${name}`;\n}",
+            kind: .code
+        )
+        let actions = ClipboardActionFactory.actions(for: item)
+        let actionIDs = actions.map(\.id)
+
+        #expect(actionIDs == ["copy", "markdown-code-block"])
+        #expect(!actionIDs.contains("camel-case"))
+        #expect(!actionIDs.contains("snake-case"))
+        #expect(!actionIDs.contains("escape"))
+        #expect(
+            ClipboardActionFactory.compactActions(for: item).map(\.id)
+                == ["markdown-code-block"]
+        )
+        #expect(
+            actions.compactMap(\.preview).contains(
+                "```\nfunction greet(name) {\n  return `Hello ${name}`;\n}\n```"
+            )
         )
     }
 

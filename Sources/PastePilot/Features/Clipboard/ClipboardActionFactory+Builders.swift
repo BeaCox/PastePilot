@@ -27,6 +27,18 @@ extension ClipboardActionFactory {
         ]
     }
 
+    static func codeActions(for content: String) -> [ClipboardAction] {
+        [
+            ClipboardAction(
+                id: "markdown-code-block",
+                title: "Wrap in Markdown Code Block".localized,
+                detail: "Ready to paste into issues or chats".localized,
+                symbol: "text.badge.checkmark",
+                effect: .copy(ContentTransformer.markdownCodeBlock(content))
+            )
+        ]
+    }
+
     static func shellActions(for content: String) -> [ClipboardAction] {
         if let extracted = ContentTransformer.extractShellCommands(content),
            extracted.trimmingCharacters(in: .whitespacesAndNewlines)

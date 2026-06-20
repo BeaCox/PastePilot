@@ -21,7 +21,7 @@
 "Terminal command detected. Never auto-executed." = "识别到终端命令，不会自动执行。";
 "Error detected. Clean up and share in an issue or chat." = "识别到报错内容，可以整理后发到 Issue 或聊天。";
 "Markdown detected. Transform naming or string format." = "识别到 Markdown，可以继续处理命名或字符串格式。";
-"Code detected. Copy or escape for string embedding." = "识别到代码片段，可以复制或转义后嵌入字符串。";
+"Code detected. Copy or wrap as Markdown." = "识别到代码片段，可以复制或包成 Markdown。";
 "Convert naming style or escape as a string." = "可以转换变量命名风格或转义为字符串。";
 
 /* ClipboardStore */
