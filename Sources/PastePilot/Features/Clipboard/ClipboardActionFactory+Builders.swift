@@ -117,21 +117,25 @@ extension ClipboardActionFactory {
                     effect: .copy(sourceURL)
                 )
             )
-        } else {
+        } else if usesCachedFile {
             actions.append(ClipboardAction(
                 id: "copy-image-file",
                 title: "Copy File".localized,
-                detail: usesCachedFile
-                    ? "Write the cached PNG file back to the clipboard".localized
-                    : "Write the original files back to the clipboard".localized,
+                detail: "Write the cached PNG file back to the clipboard".localized,
                 symbol: "doc.on.doc",
-                effect: usesCachedFile
-                    ? .copyCachedImageFile(fileName)
-                    : .copyFiles(fileURL.map { [$0] } ?? [])
+                effect: .copyCachedImageFile(fileName)
+            ))
+        } else if let fileURL {
+            actions.append(ClipboardAction(
+                id: "copy-image-file",
+                title: "Copy File".localized,
+                detail: "Write the original files back to the clipboard".localized,
+                symbol: "doc.on.doc",
+                effect: .copyFiles([fileURL])
             ))
         }
 
-        actions.append(contentsOf: [
+        actions.append(
             ClipboardAction(
                 id: "copy-image-markdown",
                 title: "Copy Markdown".localized,
@@ -142,28 +146,40 @@ extension ClipboardActionFactory {
                     sourceURL: sourceURL,
                     originalPath: originalPath
                 )
-            ),
-            ClipboardAction(
+            )
+        )
+
+        if usesCachedFile {
+            actions.append(ClipboardAction(
                 id: "quick-look",
                 title: "Quick Look".localized,
                 detail: "Preview using the macOS system viewer".localized,
                 symbol: "eye",
-                effect: usesCachedFile
-                    ? .quickLookCachedImageFile(fileName)
-                    : .quickLook(fileURL.map { [$0] } ?? [])
-            ),
-            ClipboardAction(
+                effect: .quickLookCachedImageFile(fileName)
+            ))
+            actions.append(ClipboardAction(
                 id: "reveal-files",
                 title: "Show in Finder".localized,
-                detail: usesCachedFile
-                    ? "Reveal the cached PNG file".localized
-                    : "Reveal the original file location".localized,
+                detail: "Reveal the cached PNG file".localized,
                 symbol: "folder",
-                effect: usesCachedFile
-                    ? .revealCachedImageFile(fileName)
-                    : .revealFiles(fileURL.map { [$0] } ?? [])
-            )
-        ])
+                effect: .revealCachedImageFile(fileName)
+            ))
+        } else if let fileURL {
+            actions.append(ClipboardAction(
+                id: "quick-look",
+                title: "Quick Look".localized,
+                detail: "Preview using the macOS system viewer".localized,
+                symbol: "eye",
+                effect: .quickLook([fileURL])
+            ))
+            actions.append(ClipboardAction(
+                id: "reveal-files",
+                title: "Show in Finder".localized,
+                detail: "Reveal the original file location".localized,
+                symbol: "folder",
+                effect: .revealFiles([fileURL])
+            ))
+        }
 
         return actions
     }

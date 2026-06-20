@@ -20,6 +20,9 @@ final class ClipboardStore: ObservableObject {
     var ocrTaskTokensByItemID: [UUID: UUID] = [:]
     var ignoredContent: String?
     var lastPurgeCheck: Date = .distantPast
+    var imageSaveGeneration = 0
+    var discardAllImageSavesBeforeGeneration = 0
+    var deletedImageDigestGenerations: [String: Int] = [:]
     static let sourcePasteboardType = NSPasteboard.PasteboardType(
         rawValue: "org.nspasteboard.source"
     )
@@ -141,6 +144,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     func clearUnpinned() {
+        discardPendingImageSaves()
         let removedItems = items.filter { !$0.isPinned }
         cancelOCR(for: removedItems)
         removedItems.forEach(deleteImageFile)

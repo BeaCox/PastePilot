@@ -103,28 +103,28 @@ final class AppSettings: ObservableObject {
     private let defaults: UserDefaults
 
     @Published var monitoringEnabled: Bool {
-        didSet { defaults.set(monitoringEnabled, forKey: Key.monitoringEnabled) }
+        didSet { persist(monitoringEnabled, forKey: Key.monitoringEnabled) }
     }
 
     @Published var hoverPreviewEnabled: Bool {
-        didSet { defaults.set(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled) }
+        didSet { persist(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled) }
     }
 
     @Published var historyLimit: Int {
-        didSet { defaults.set(historyLimit, forKey: Key.historyLimit) }
+        didSet { persist(historyLimit, forKey: Key.historyLimit) }
     }
 
     @Published var launchAtLogin: Bool {
-        didSet { defaults.set(launchAtLogin, forKey: Key.launchAtLogin) }
+        didSet { persist(launchAtLogin, forKey: Key.launchAtLogin) }
     }
 
     @Published var imageSizeLimitMB: Int {
-        didSet { defaults.set(imageSizeLimitMB, forKey: Key.imageSizeLimitMB) }
+        didSet { persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB) }
     }
 
     @Published var ignoredBundleIdentifiers: String {
         didSet {
-            defaults.set(
+            persist(
                 ignoredBundleIdentifiers,
                 forKey: Key.ignoredBundleIdentifiers
             )
@@ -132,48 +132,48 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var hotKeyCode: Int {
-        didSet { defaults.set(hotKeyCode, forKey: Key.hotKeyCode) }
+        didSet { persist(hotKeyCode, forKey: Key.hotKeyCode) }
     }
 
     @Published var hotKeyModifiers: UInt32 {
-        didSet { defaults.set(Int(hotKeyModifiers), forKey: Key.hotKeyModifiers) }
+        didSet { persist(hotKeyModifiers, forKey: Key.hotKeyModifiers) }
     }
 
     @Published var plainTextHotKeyCode: Int {
-        didSet { defaults.set(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode) }
+        didSet { persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode) }
     }
 
     @Published var plainTextHotKeyModifiers: UInt32 {
         didSet {
-            defaults.set(
-                Int(plainTextHotKeyModifiers),
+            persist(
+                plainTextHotKeyModifiers,
                 forKey: Key.plainTextHotKeyModifiers
             )
         }
     }
 
     @Published var menuBarIconStyle: String {
-        didSet { defaults.set(menuBarIconStyle, forKey: Key.menuBarIconStyle) }
+        didSet { persist(menuBarIconStyle, forKey: Key.menuBarIconStyle) }
     }
 
     @Published var historyTimeoutSeconds: Int {
-        didSet { defaults.set(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds) }
+        didSet { persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds) }
     }
 
     @Published var pasteCloseBehavior: String {
-        didSet { defaults.set(pasteCloseBehavior, forKey: Key.pasteCloseBehavior) }
+        didSet { persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior) }
     }
 
     @Published var previewAnimationEnabled: Bool {
-        didSet { defaults.set(previewAnimationEnabled, forKey: Key.previewAnimationEnabled) }
+        didSet { persist(previewAnimationEnabled, forKey: Key.previewAnimationEnabled) }
     }
 
     @Published var ocrRecognitionMode: String {
-        didSet { defaults.set(ocrRecognitionMode, forKey: Key.ocrRecognitionMode) }
+        didSet { persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode) }
     }
 
     @Published var ocrLanguageMode: String {
-        didSet { defaults.set(ocrLanguageMode, forKey: Key.ocrLanguageMode) }
+        didSet { persist(ocrLanguageMode, forKey: Key.ocrLanguageMode) }
     }
 
     @Published var hotKeyRegistrationWarning: String?
@@ -305,24 +305,37 @@ final class AppSettings: ObservableObject {
     }
 
     private func persistCurrentValues() {
-        defaults.set(monitoringEnabled, forKey: Key.monitoringEnabled)
-        defaults.set(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled)
-        defaults.set(historyLimit, forKey: Key.historyLimit)
-        defaults.set(launchAtLogin, forKey: Key.launchAtLogin)
-        defaults.set(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
-        defaults.set(ignoredBundleIdentifiers, forKey: Key.ignoredBundleIdentifiers)
-        defaults.set(hotKeyCode, forKey: Key.hotKeyCode)
-        defaults.set(Int(hotKeyModifiers), forKey: Key.hotKeyModifiers)
-        defaults.set(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
-        defaults.set(
-            Int(plainTextHotKeyModifiers),
-            forKey: Key.plainTextHotKeyModifiers
-        )
-        defaults.set(menuBarIconStyle, forKey: Key.menuBarIconStyle)
-        defaults.set(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
-        defaults.set(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
-        defaults.set(previewAnimationEnabled, forKey: Key.previewAnimationEnabled)
-        defaults.set(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
-        defaults.set(ocrLanguageMode, forKey: Key.ocrLanguageMode)
+        persist(monitoringEnabled, forKey: Key.monitoringEnabled)
+        persist(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled)
+        persist(historyLimit, forKey: Key.historyLimit)
+        persist(launchAtLogin, forKey: Key.launchAtLogin)
+        persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
+        persist(ignoredBundleIdentifiers, forKey: Key.ignoredBundleIdentifiers)
+        persist(hotKeyCode, forKey: Key.hotKeyCode)
+        persist(hotKeyModifiers, forKey: Key.hotKeyModifiers)
+        persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
+        persist(plainTextHotKeyModifiers, forKey: Key.plainTextHotKeyModifiers)
+        persist(menuBarIconStyle, forKey: Key.menuBarIconStyle)
+        persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
+        persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
+        persist(previewAnimationEnabled, forKey: Key.previewAnimationEnabled)
+        persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
+        persist(ocrLanguageMode, forKey: Key.ocrLanguageMode)
+    }
+
+    private func persist(_ value: Bool, forKey key: String) {
+        defaults.set(value, forKey: key)
+    }
+
+    private func persist(_ value: Int, forKey key: String) {
+        defaults.set(value, forKey: key)
+    }
+
+    private func persist(_ value: UInt32, forKey key: String) {
+        defaults.set(Int(value), forKey: key)
+    }
+
+    private func persist(_ value: String, forKey key: String) {
+        defaults.set(value, forKey: key)
     }
 }

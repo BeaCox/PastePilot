@@ -193,9 +193,8 @@ final class ClipboardCaptureQueue {
             attributedString = nil
         }
 
-        guard let plainText = attributedString?.string
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !plainText.isEmpty else {
+        guard let plainText = attributedString?.string,
+              !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
         }
         return .richText(rtfData: rtfData, html: html, plainText: plainText)

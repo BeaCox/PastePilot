@@ -231,6 +231,41 @@ struct StorageTests {
 
     @Test
     @MainActor
+    func richTextCapturePreservesOriginalWhitespace() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let originalContent = "  Formatted text\n"
+        let attributed = NSAttributedString(
+            string: originalContent,
+            attributes: [.font: NSFont.systemFont(ofSize: 13)]
+        )
+        let rtfData = try #require(
+            attributed.rtf(
+                from: NSRange(location: 0, length: attributed.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setData(rtfData, forType: .rtf)
+        store.captureCurrentClipboard()
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.content == originalContent)
+        #expect(item.kind == .richText)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func imageCaptureReadsPasteboardImageData() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -465,6 +500,102 @@ struct StorageTests {
             )
         )
         store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func clearingHistoryCancelsPendingImageSave() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        try imageStore.save(Data("new".utf8), fileName: "new.png")
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let saveGeneration = store.imageSaveGeneration
+
+        store.clearUnpinned()
+        store.finishSavingImage(
+            .success(ProcessedClipboardImage(
+                fileName: "new.png",
+                byteCount: 3,
+                digest: "new-digest",
+                width: 3,
+                height: 2
+            )),
+            id: UUID(),
+            source: (nil, nil),
+            remoteURL: nil,
+            originalPath: nil,
+            pasteboardChangeCount: nil,
+            ocrImage: try makeTestImage(width: 3, height: 2),
+            imageSaveGeneration: saveGeneration
+        )
+
+        #expect(store.items.isEmpty)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "new.png")
+            )
+        )
+    }
+
+    @Test
+    @MainActor
+    func deletingDuplicateImageCancelsPendingReplacementSave() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        try imageStore.save(Data("old".utf8), fileName: "old.png")
+        try imageStore.save(Data("new".utf8), fileName: "new.png")
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let oldItem = ClipboardItem(
+            content: "old image",
+            kind: .image,
+            imageFileName: "old.png",
+            imageDigest: "same-digest"
+        )
+        store.items = [oldItem]
+        let saveGeneration = store.imageSaveGeneration
+
+        store.delete(oldItem.id)
+        store.finishSavingImage(
+            .success(ProcessedClipboardImage(
+                fileName: "new.png",
+                byteCount: 3,
+                digest: "same-digest",
+                width: 3,
+                height: 2
+            )),
+            id: UUID(),
+            source: (nil, nil),
+            remoteURL: nil,
+            originalPath: nil,
+            pasteboardChangeCount: nil,
+            ocrImage: try makeTestImage(width: 3, height: 2),
+            imageSaveGeneration: saveGeneration
+        )
+
+        #expect(store.items.isEmpty)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "new.png")
+            )
+        )
     }
 
     @Test

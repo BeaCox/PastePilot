@@ -55,6 +55,7 @@ extension ClipboardStore {
         let id = UUID()
         let fileName = "\(id.uuidString).png"
         let sizeLimitBytes = settings.imageSizeLimitMB * 1_024 * 1_024
+        let saveGeneration = imageSaveGeneration
         imageProcessingQueue.encodeAndSave(
             cgImage,
             fileName: fileName,
@@ -70,7 +71,8 @@ extension ClipboardStore {
                     remoteURL: remoteURL,
                     originalPath: originalPath,
                     pasteboardChangeCount: pasteboardChangeCount,
-                    ocrImage: cgImage
+                    ocrImage: cgImage,
+                    imageSaveGeneration: saveGeneration
                 )
             }
         }
@@ -84,7 +86,8 @@ extension ClipboardStore {
         remoteURL: String?,
         originalPath: String?,
         pasteboardChangeCount: Int?,
-        ocrImage: CGImage
+        ocrImage: CGImage,
+        imageSaveGeneration: Int? = nil
     ) {
         switch result {
         case .success(let processedImage):
@@ -93,6 +96,13 @@ extension ClipboardStore {
                 return
             }
             guard items.first?.imageDigest != processedImage.digest else {
+                imageStore.delete(fileName: processedImage.fileName)
+                return
+            }
+            guard !shouldDiscardImageSave(
+                processedImage,
+                startedAt: imageSaveGeneration
+            ) else {
                 imageStore.delete(fileName: processedImage.fileName)
                 return
             }
@@ -157,6 +167,21 @@ extension ClipboardStore {
                 )
             }
         }
+    }
+
+    func shouldDiscardImageSave(
+        _ processedImage: ProcessedClipboardImage,
+        startedAt generation: Int?
+    ) -> Bool {
+        guard let generation else { return false }
+        if generation < discardAllImageSavesBeforeGeneration {
+            return true
+        }
+        if let deletedGeneration = deletedImageDigestGenerations[processedImage.digest],
+           generation < deletedGeneration {
+            return true
+        }
+        return false
     }
 
     func isImageFile(_ url: URL) -> Bool {

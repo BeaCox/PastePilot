@@ -225,6 +225,45 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func imageActionsSkipUnavailableOriginalFileOperations() {
+        let actions = ClipboardActionFactory.imageActions(
+            fileName: "cached.png",
+            sourceURL: nil,
+            originalPath: nil,
+            fileURL: nil,
+            usesCachedFile: false
+        )
+
+        #expect(actions.map(\.id) == ["copy-image", "copy-image-markdown"])
+        for action in actions {
+            switch action.effect {
+            case .copyFiles(let urls), .quickLook(let urls), .revealFiles(let urls):
+                #expect(!urls.isEmpty)
+            default:
+                break
+            }
+        }
+    }
+
+    @Test
+    @MainActor
+    func hotKeyRegistrationWarningsDescribeAllFailures() {
+        #expect(AppDelegate.hotKeyRegistrationWarning(for: []) == nil)
+        #expect(
+            AppDelegate.hotKeyRegistrationWarning(for: [.openPanel])
+                == "Open PastePilot shortcut is already in use.".localized
+        )
+        #expect(
+            AppDelegate.hotKeyRegistrationWarning(for: [.pastePlainText])
+                == "Paste as Plain Text shortcut is already in use.".localized
+        )
+        #expect(
+            AppDelegate.hotKeyRegistrationWarning(for: [.openPanel, .pastePlainText])
+                == "Open PastePilot and Paste as Plain Text shortcuts are already in use.".localized
+        )
+    }
+
+    @Test
     func clipboardItemCompatibilityAndOrdering() throws {
         let legacyJSON = """
         {

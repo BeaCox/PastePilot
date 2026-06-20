@@ -82,23 +82,32 @@ extension AppDelegate {
         }
         unregisterHotKeys()
         settings.hotKeyRegistrationWarning = nil
-        registerHotKey(
+        var failures: [GlobalHotKey] = []
+        if !registerHotKey(
             .openPanel,
             keyCode: settings.hotKeyCode,
             modifiers: settings.hotKeyModifiers
-        )
-        registerHotKey(
+        ) {
+            failures.append(.openPanel)
+        }
+        if !registerHotKey(
             .pastePlainText,
             keyCode: settings.plainTextHotKeyCode,
             modifiers: settings.plainTextHotKeyModifiers
+        ) {
+            failures.append(.pastePlainText)
+        }
+        settings.hotKeyRegistrationWarning = Self.hotKeyRegistrationWarning(
+            for: failures
         )
     }
 
+    @discardableResult
     func registerHotKey(
         _ hotKey: GlobalHotKey,
         keyCode: Int,
         modifiers: UInt32
-    ) {
+    ) -> Bool {
         let signature = OSType(0x50504C54) // PPLT
         let hotKeyID = EventHotKeyID(signature: signature, id: hotKey.rawValue)
         var reference: EventHotKeyRef?
@@ -112,25 +121,40 @@ extension AppDelegate {
         )
         if status == noErr, let reference {
             hotKeyRefs[hotKey] = reference
+            return true
         } else {
             let message = hotKeyRegistrationFailureMessage(for: hotKey)
-            settings.hotKeyRegistrationWarning = message
             NotificationCenter.default.postPastePilotNotice(
                 PastePilotNotice(message, style: .warning)
             )
             NSLog(
                 "PastePilot failed to register hot key \(hotKey.rawValue): \(status)"
             )
+            return false
         }
     }
 
     func hotKeyRegistrationFailureMessage(for hotKey: GlobalHotKey) -> String {
+        Self.hotKeyRegistrationFailureMessage(for: hotKey)
+    }
+
+    static func hotKeyRegistrationFailureMessage(for hotKey: GlobalHotKey) -> String {
         switch hotKey {
         case .openPanel:
             "Open PastePilot shortcut is already in use.".localized
         case .pastePlainText:
             "Paste as Plain Text shortcut is already in use.".localized
         }
+    }
+
+    static func hotKeyRegistrationWarning(for failures: [GlobalHotKey]) -> String? {
+        let uniqueFailures = Array(Set(failures))
+        guard !uniqueFailures.isEmpty else { return nil }
+        if uniqueFailures.count == 1,
+           let hotKey = uniqueFailures.first {
+            return hotKeyRegistrationFailureMessage(for: hotKey)
+        }
+        return "Open PastePilot and Paste as Plain Text shortcuts are already in use.".localized
     }
 
     func unregisterHotKeys() {

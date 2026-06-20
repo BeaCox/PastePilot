@@ -56,8 +56,20 @@ extension ClipboardStore {
     }
 
     func deleteImageFile(for item: ClipboardItem) {
+        markDeletedImageDigest(for: item)
         guard let fileName = item.imageFileName else { return }
         imageStore.delete(fileName: fileName)
+    }
+
+    func discardPendingImageSaves() {
+        imageSaveGeneration += 1
+        discardAllImageSavesBeforeGeneration = imageSaveGeneration
+    }
+
+    func markDeletedImageDigest(for item: ClipboardItem) {
+        guard let digest = item.imageDigest else { return }
+        imageSaveGeneration += 1
+        deletedImageDigestGenerations[digest] = imageSaveGeneration
     }
 
     func cancelOCR(for itemID: UUID) {
