@@ -73,17 +73,10 @@ final class ClipboardCaptureQueue {
             options: options
         ) as? [URL] ?? []
         let types = pasteboard.types ?? []
-        let imageRepresentations = types.compactMap { type -> ImageRepresentation? in
-            guard let data = pasteboard.data(forType: type),
-                  let uniformType = UTType(type.rawValue),
-                  uniformType.conforms(to: .image) else {
-                return nil
-            }
-            return ImageRepresentation(
-                data: data,
-                typeIdentifier: uniformType.identifier
-            )
-        }
+        let imageRepresentation = Self.firstImageRepresentation(
+            from: pasteboard,
+            types: types
+        )
         let urlTypes = Self.urlPasteboardTypes
         let urlStrings = urlTypes.compactMap { pasteboard.string(forType: $0) }
 
@@ -91,7 +84,7 @@ final class ClipboardCaptureQueue {
             sourceBundleIdentifier: pasteboard.string(forType: sourcePasteboardType),
             fileURLs: urls,
             pasteboardURL: NSURL(from: pasteboard) as URL?,
-            imageRepresentations: imageRepresentations,
+            imageRepresentation: imageRepresentation,
             rtfData: pasteboard.data(forType: .rtf),
             html: pasteboard.string(forType: .html),
             text: pasteboard.string(forType: .string),
@@ -137,9 +130,8 @@ final class ClipboardCaptureQueue {
     ) -> ClipboardCaptureSnapshot.Payload? {
         let origin = imageOriginMetadata(from: pasteboardData)
 
-        if let cgImage = pasteboardData.imageRepresentations.lazy
-            .compactMap(cgImage)
-            .first {
+        if let representation = pasteboardData.imageRepresentation,
+           let cgImage = cgImage(from: representation) {
             return .image(
                 cgImage,
                 remoteURL: origin.remoteURL,
@@ -255,6 +247,31 @@ final class ClipboardCaptureQueue {
         return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
+    private static func firstImageRepresentation(
+        from pasteboard: NSPasteboard,
+        types: [NSPasteboard.PasteboardType]
+    ) -> ImageRepresentation? {
+        let orderedTypes = preferredImagePasteboardTypes
+            .filter(types.contains)
+            + types.filter { type in
+                !preferredImagePasteboardTypes.contains(type)
+                    && UTType(type.rawValue)?.conforms(to: .image) == true
+            }
+
+        for type in orderedTypes {
+            guard let data = pasteboard.data(forType: type),
+                  let uniformType = UTType(type.rawValue),
+                  uniformType.conforms(to: .image) else {
+                continue
+            }
+            return ImageRepresentation(
+                data: data,
+                typeIdentifier: uniformType.identifier
+            )
+        }
+        return nil
+    }
+
     private static func cgImage(contentsOf url: URL) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             return nil
@@ -268,11 +285,16 @@ final class ClipboardCaptureQueue {
         NSPasteboard.PasteboardType(rawValue: "WebURLsWithTitlesPboardType")
     ]
 
+    private static let preferredImagePasteboardTypes: [NSPasteboard.PasteboardType] = [
+        .png,
+        .tiff
+    ]
+
     private struct CapturedPasteboardData {
         let sourceBundleIdentifier: String?
         let fileURLs: [URL]
         let pasteboardURL: URL?
-        let imageRepresentations: [ImageRepresentation]
+        let imageRepresentation: ImageRepresentation?
         let rtfData: Data?
         let html: String?
         let text: String?
