@@ -111,7 +111,18 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var historyLimit: Int {
-        didSet { persist(historyLimit, forKey: Key.historyLimit) }
+        didSet {
+            let supportedValue = Self.supportedValue(
+                historyLimit,
+                in: Self.supportedHistoryLimits,
+                default: Self.defaultHistoryLimit
+            )
+            guard historyLimit == supportedValue else {
+                historyLimit = supportedValue
+                return
+            }
+            persist(historyLimit, forKey: Key.historyLimit)
+        }
     }
 
     @Published var launchAtLogin: Bool {
@@ -119,7 +130,18 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var imageSizeLimitMB: Int {
-        didSet { persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB) }
+        didSet {
+            let supportedValue = Self.supportedValue(
+                imageSizeLimitMB,
+                in: Self.supportedImageSizeLimitsMB,
+                default: Self.defaultImageSizeLimitMB
+            )
+            guard imageSizeLimitMB == supportedValue else {
+                imageSizeLimitMB = supportedValue
+                return
+            }
+            persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
+        }
     }
 
     @Published var ignoredBundleIdentifiers: String {
@@ -132,19 +154,51 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var hotKeyCode: Int {
-        didSet { persist(hotKeyCode, forKey: Key.hotKeyCode) }
+        didSet {
+            let supportedValue = Self.supportedHotKeyCode(hotKeyCode)
+            guard hotKeyCode == supportedValue else {
+                hotKeyCode = supportedValue
+                return
+            }
+            persist(hotKeyCode, forKey: Key.hotKeyCode)
+        }
     }
 
     @Published var hotKeyModifiers: UInt32 {
-        didSet { persist(hotKeyModifiers, forKey: Key.hotKeyModifiers) }
+        didSet {
+            let supportedValue = Self.supportedHotKeyModifiers(hotKeyModifiers)
+            guard hotKeyModifiers == supportedValue else {
+                hotKeyModifiers = supportedValue
+                return
+            }
+            persist(hotKeyModifiers, forKey: Key.hotKeyModifiers)
+        }
     }
 
     @Published var plainTextHotKeyCode: Int {
-        didSet { persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode) }
+        didSet {
+            let supportedValue = Self.supportedHotKeyCode(
+                plainTextHotKeyCode,
+                default: Self.defaultPlainTextHotKeyCode
+            )
+            guard plainTextHotKeyCode == supportedValue else {
+                plainTextHotKeyCode = supportedValue
+                return
+            }
+            persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
+        }
     }
 
     @Published var plainTextHotKeyModifiers: UInt32 {
         didSet {
+            let supportedValue = Self.supportedHotKeyModifiers(
+                plainTextHotKeyModifiers,
+                default: Self.defaultPlainTextHotKeyModifiers
+            )
+            guard plainTextHotKeyModifiers == supportedValue else {
+                plainTextHotKeyModifiers = supportedValue
+                return
+            }
             persist(
                 plainTextHotKeyModifiers,
                 forKey: Key.plainTextHotKeyModifiers
@@ -153,15 +207,42 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var menuBarIconStyle: String {
-        didSet { persist(menuBarIconStyle, forKey: Key.menuBarIconStyle) }
+        didSet {
+            let supportedValue = Self.supportedMenuBarIconStyle(menuBarIconStyle)
+            guard menuBarIconStyle == supportedValue else {
+                menuBarIconStyle = supportedValue
+                return
+            }
+            persist(menuBarIconStyle, forKey: Key.menuBarIconStyle)
+        }
     }
 
     @Published var historyTimeoutSeconds: Int {
-        didSet { persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds) }
+        didSet {
+            let supportedValue = Self.supportedValue(
+                historyTimeoutSeconds,
+                in: Self.supportedHistoryTimeoutsSeconds,
+                default: Self.defaultHistoryTimeoutSeconds
+            )
+            guard historyTimeoutSeconds == supportedValue else {
+                historyTimeoutSeconds = supportedValue
+                return
+            }
+            persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
+        }
     }
 
     @Published var pasteCloseBehavior: String {
-        didSet { persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior) }
+        didSet {
+            let supportedValue = Self.supportedPasteCloseBehavior(
+                pasteCloseBehavior
+            )
+            guard pasteCloseBehavior == supportedValue else {
+                pasteCloseBehavior = supportedValue
+                return
+            }
+            persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
+        }
     }
 
     @Published var previewAnimationEnabled: Bool {
@@ -169,11 +250,27 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var ocrRecognitionMode: String {
-        didSet { persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode) }
+        didSet {
+            let supportedValue = Self.supportedOCRRecognitionMode(
+                ocrRecognitionMode
+            )
+            guard ocrRecognitionMode == supportedValue else {
+                ocrRecognitionMode = supportedValue
+                return
+            }
+            persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
+        }
     }
 
     @Published var ocrLanguageMode: String {
-        didSet { persist(ocrLanguageMode, forKey: Key.ocrLanguageMode) }
+        didSet {
+            let supportedValue = Self.supportedOCRLanguageMode(ocrLanguageMode)
+            guard ocrLanguageMode == supportedValue else {
+                ocrLanguageMode = supportedValue
+                return
+            }
+            persist(ocrLanguageMode, forKey: Key.ocrLanguageMode)
+        }
     }
 
     @Published var hotKeyRegistrationWarning: String?
@@ -302,6 +399,42 @@ final class AppSettings: ObservableObject {
             return (defaultKeyCode, defaultModifiers)
         }
         return (keyCode, modifiers)
+    }
+
+    private static func supportedHotKeyCode(
+        _ keyCode: Int,
+        default defaultKeyCode: Int = defaultOpenHotKeyCode
+    ) -> Int {
+        supportedHotKeyCodes.contains(keyCode) ? keyCode : defaultKeyCode
+    }
+
+    private static func supportedHotKeyModifiers(
+        _ modifiers: UInt32,
+        default defaultModifiers: UInt32 = defaultOpenHotKeyModifiers
+    ) -> UInt32 {
+        let modifiersAreSupported = modifiers != 0
+            && modifiers & ~supportedHotKeyModifierMask == 0
+        return modifiersAreSupported ? modifiers : defaultModifiers
+    }
+
+    private static func supportedMenuBarIconStyle(_ value: String) -> String {
+        MenuBarIconStyle(rawValue: value)?.rawValue
+            ?? MenuBarIconStyle.pastepilot.rawValue
+    }
+
+    private static func supportedPasteCloseBehavior(_ value: String) -> String {
+        PasteCloseBehavior(rawValue: value)?.rawValue
+            ?? PasteCloseBehavior.closePreview.rawValue
+    }
+
+    private static func supportedOCRRecognitionMode(_ value: String) -> String {
+        OCRRecognitionMode(rawValue: value)?.rawValue
+            ?? defaultOCRRecognitionMode
+    }
+
+    private static func supportedOCRLanguageMode(_ value: String) -> String {
+        OCRLanguageMode(rawValue: value)?.rawValue
+            ?? defaultOCRLanguageMode
     }
 
     private func persistCurrentValues() {

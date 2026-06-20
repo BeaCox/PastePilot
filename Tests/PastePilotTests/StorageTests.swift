@@ -386,18 +386,18 @@ struct StorageTests {
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         defaults.removePersistentDomain(forName: defaultsName)
         let settings = AppSettings(defaults: defaults)
-        settings.historyTimeoutSeconds = 60
+        settings.historyTimeoutSeconds = 3_600
 
         let pinned = ClipboardItem(
             content: "pinned",
             kind: .text,
-            createdAt: Date(timeIntervalSinceNow: -3_600),
+            createdAt: Date(timeIntervalSinceNow: -7_200),
             isPinned: true
         )
         let expired = ClipboardItem(
             content: "expired",
             kind: .text,
-            createdAt: Date(timeIntervalSinceNow: -3_600)
+            createdAt: Date(timeIntervalSinceNow: -7_200)
         )
         let recent = ClipboardItem(content: "recent", kind: .text)
         let repository = HistoryRepository(dataDirectoryURL: directory)

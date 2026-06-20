@@ -153,4 +153,87 @@ struct AppSettingsTests {
                 == AppSettings.defaultOCRLanguageMode
         )
     }
+
+    @Test
+    func invalidRuntimeValuesFallBackToSupportedDefaults() throws {
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = AppSettings(defaults: defaults)
+        settings.historyLimit = 999
+        settings.imageSizeLimitMB = 1_024
+        settings.historyTimeoutSeconds = 42
+        settings.menuBarIconStyle = "missing-icon"
+        settings.pasteCloseBehavior = "close-everything"
+        settings.hotKeyCode = 999
+        settings.hotKeyModifiers = 0
+        settings.plainTextHotKeyCode = -1
+        settings.plainTextHotKeyModifiers = UInt32.max
+        settings.ocrRecognitionMode = "slow"
+        settings.ocrLanguageMode = "everywhere"
+
+        #expect(settings.historyLimit == AppSettings.defaultHistoryLimit)
+        #expect(settings.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
+        #expect(
+            settings.historyTimeoutSeconds
+                == AppSettings.defaultHistoryTimeoutSeconds
+        )
+        #expect(settings.menuBarIconStyle == MenuBarIconStyle.pastepilot.rawValue)
+        #expect(settings.pasteCloseBehavior == PasteCloseBehavior.closePreview.rawValue)
+        #expect(settings.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
+        #expect(settings.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
+        #expect(
+            settings.plainTextHotKeyCode
+                == AppSettings.defaultPlainTextHotKeyCode
+        )
+        #expect(
+            settings.plainTextHotKeyModifiers
+                == AppSettings.defaultPlainTextHotKeyModifiers
+        )
+        #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
+        #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(defaults.integer(forKey: "historyLimit") == AppSettings.defaultHistoryLimit)
+        #expect(
+            defaults.integer(forKey: "imageSizeLimitMB")
+                == AppSettings.defaultImageSizeLimitMB
+        )
+        #expect(
+            defaults.integer(forKey: "historyTimeoutSeconds")
+                == AppSettings.defaultHistoryTimeoutSeconds
+        )
+        #expect(
+            defaults.string(forKey: "menuBarIconStyle")
+                == MenuBarIconStyle.pastepilot.rawValue
+        )
+        #expect(
+            defaults.string(forKey: "pasteCloseBehavior")
+                == PasteCloseBehavior.closePreview.rawValue
+        )
+        #expect(
+            defaults.integer(forKey: "hotKeyCode")
+                == AppSettings.defaultOpenHotKeyCode
+        )
+        #expect(
+            UInt32(defaults.integer(forKey: "hotKeyModifiers"))
+                == AppSettings.defaultOpenHotKeyModifiers
+        )
+        #expect(
+            defaults.integer(forKey: "plainTextHotKeyCode")
+                == AppSettings.defaultPlainTextHotKeyCode
+        )
+        #expect(
+            UInt32(defaults.integer(forKey: "plainTextHotKeyModifiers"))
+                == AppSettings.defaultPlainTextHotKeyModifiers
+        )
+        #expect(
+            defaults.string(forKey: "ocrRecognitionMode")
+                == AppSettings.defaultOCRRecognitionMode
+        )
+        #expect(
+            defaults.string(forKey: "ocrLanguageMode")
+                == AppSettings.defaultOCRLanguageMode
+        )
+    }
 }
