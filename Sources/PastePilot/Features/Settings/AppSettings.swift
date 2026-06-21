@@ -119,6 +119,7 @@ final class AppSettings: ObservableObject {
             )
             guard historyLimit == supportedValue else {
                 historyLimit = supportedValue
+                persist(supportedValue, forKey: Key.historyLimit)
                 return
             }
             persist(historyLimit, forKey: Key.historyLimit)
@@ -138,6 +139,7 @@ final class AppSettings: ObservableObject {
             )
             guard imageSizeLimitMB == supportedValue else {
                 imageSizeLimitMB = supportedValue
+                persist(supportedValue, forKey: Key.imageSizeLimitMB)
                 return
             }
             persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
@@ -158,6 +160,7 @@ final class AppSettings: ObservableObject {
             let supportedValue = Self.supportedHotKeyCode(hotKeyCode)
             guard hotKeyCode == supportedValue else {
                 hotKeyCode = supportedValue
+                persist(supportedValue, forKey: Key.hotKeyCode)
                 return
             }
             persist(hotKeyCode, forKey: Key.hotKeyCode)
@@ -169,6 +172,7 @@ final class AppSettings: ObservableObject {
             let supportedValue = Self.supportedHotKeyModifiers(hotKeyModifiers)
             guard hotKeyModifiers == supportedValue else {
                 hotKeyModifiers = supportedValue
+                persist(supportedValue, forKey: Key.hotKeyModifiers)
                 return
             }
             persist(hotKeyModifiers, forKey: Key.hotKeyModifiers)
@@ -183,6 +187,7 @@ final class AppSettings: ObservableObject {
             )
             guard plainTextHotKeyCode == supportedValue else {
                 plainTextHotKeyCode = supportedValue
+                persist(supportedValue, forKey: Key.plainTextHotKeyCode)
                 return
             }
             persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
@@ -197,6 +202,7 @@ final class AppSettings: ObservableObject {
             )
             guard plainTextHotKeyModifiers == supportedValue else {
                 plainTextHotKeyModifiers = supportedValue
+                persist(supportedValue, forKey: Key.plainTextHotKeyModifiers)
                 return
             }
             persist(
@@ -211,6 +217,7 @@ final class AppSettings: ObservableObject {
             let supportedValue = Self.supportedMenuBarIconStyle(menuBarIconStyle)
             guard menuBarIconStyle == supportedValue else {
                 menuBarIconStyle = supportedValue
+                persist(supportedValue, forKey: Key.menuBarIconStyle)
                 return
             }
             persist(menuBarIconStyle, forKey: Key.menuBarIconStyle)
@@ -226,6 +233,7 @@ final class AppSettings: ObservableObject {
             )
             guard historyTimeoutSeconds == supportedValue else {
                 historyTimeoutSeconds = supportedValue
+                persist(supportedValue, forKey: Key.historyTimeoutSeconds)
                 return
             }
             persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
@@ -239,6 +247,7 @@ final class AppSettings: ObservableObject {
             )
             guard pasteCloseBehavior == supportedValue else {
                 pasteCloseBehavior = supportedValue
+                persist(supportedValue, forKey: Key.pasteCloseBehavior)
                 return
             }
             persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
@@ -256,6 +265,7 @@ final class AppSettings: ObservableObject {
             )
             guard ocrRecognitionMode == supportedValue else {
                 ocrRecognitionMode = supportedValue
+                persist(supportedValue, forKey: Key.ocrRecognitionMode)
                 return
             }
             persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
@@ -267,6 +277,7 @@ final class AppSettings: ObservableObject {
             let supportedValue = Self.supportedOCRLanguageMode(ocrLanguageMode)
             guard ocrLanguageMode == supportedValue else {
                 ocrLanguageMode = supportedValue
+                persist(supportedValue, forKey: Key.ocrLanguageMode)
                 return
             }
             persist(ocrLanguageMode, forKey: Key.ocrLanguageMode)

@@ -341,6 +341,37 @@ struct StorageTests {
 
     @Test
     @MainActor
+    func imageCaptureFallsBackWhenPreferredRepresentationIsInvalid() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let tiffImage = try makeTestImage(width: 9, height: 7)
+        let tiffData = try #require(
+            NSBitmapImageRep(cgImage: tiffImage)
+                .representation(using: .tiff, properties: [:])
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setData(Data("not a png".utf8), forType: .png)
+        pasteboard.setData(tiffData, forType: .tiff)
+        store.captureCurrentClipboard()
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.kind == .image)
+        #expect(item.imageWidth == 9)
+        #expect(item.imageHeight == 7)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func captureTimeoutDoesNotAcknowledgeChangeAndAllowsRetry() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

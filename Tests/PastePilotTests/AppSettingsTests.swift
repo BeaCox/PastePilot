@@ -162,6 +162,18 @@ struct AppSettingsTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let settings = AppSettings(defaults: defaults)
+        settings.historyLimit = 200
+        settings.imageSizeLimitMB = 50
+        settings.historyTimeoutSeconds = 3_600
+        settings.menuBarIconStyle = MenuBarIconStyle.clipboard.rawValue
+        settings.pasteCloseBehavior = PasteCloseBehavior.keepOpen.rawValue
+        settings.hotKeyCode = 8
+        settings.hotKeyModifiers = 256
+        settings.plainTextHotKeyCode = 9
+        settings.plainTextHotKeyModifiers = 4_096
+        settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
+        settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
+
         settings.historyLimit = 999
         settings.imageSizeLimitMB = 1_024
         settings.historyTimeoutSeconds = 42
@@ -235,5 +247,26 @@ struct AppSettingsTests {
             defaults.string(forKey: "ocrLanguageMode")
                 == AppSettings.defaultOCRLanguageMode
         )
+        let restored = AppSettings(defaults: defaults)
+        #expect(restored.historyLimit == AppSettings.defaultHistoryLimit)
+        #expect(restored.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
+        #expect(
+            restored.historyTimeoutSeconds
+                == AppSettings.defaultHistoryTimeoutSeconds
+        )
+        #expect(restored.menuBarIconStyle == MenuBarIconStyle.pastepilot.rawValue)
+        #expect(restored.pasteCloseBehavior == PasteCloseBehavior.closePreview.rawValue)
+        #expect(restored.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
+        #expect(restored.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
+        #expect(
+            restored.plainTextHotKeyCode
+                == AppSettings.defaultPlainTextHotKeyCode
+        )
+        #expect(
+            restored.plainTextHotKeyModifiers
+                == AppSettings.defaultPlainTextHotKeyModifiers
+        )
+        #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
+        #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
     }
 }
