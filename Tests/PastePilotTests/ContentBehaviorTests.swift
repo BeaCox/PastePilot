@@ -34,7 +34,7 @@ struct ContentBehaviorTests {
 
     @Test
     func textPreviewKeepsLargeContentBounded() {
-        let content = String(repeating: "a", count: TextPreview.detailCharacterLimit + 1)
+        let content = String(repeating: "a", count: TextPreview.countScanCharacterLimit + 1)
         let item = ClipboardItem(content: content, kind: .text)
         let snippet = TextPreview.detailSnippet(for: item, revealsSensitiveContent: false)
 
