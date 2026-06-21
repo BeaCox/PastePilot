@@ -79,14 +79,17 @@ final class ClipboardCaptureQueue {
         )
         let urlTypes = Self.urlPasteboardTypes
         let urlStrings = urlTypes.compactMap { pasteboard.string(forType: $0) }
+        let rtfData = pasteboard.data(forType: .rtf)
+        let html = pasteboard.string(forType: .html)
 
         return CapturedPasteboardData(
             sourceBundleIdentifier: pasteboard.string(forType: sourcePasteboardType),
             fileURLs: urls,
             pasteboardURL: NSURL(from: pasteboard) as URL?,
             imageRepresentations: imageRepresentations,
-            rtfData: pasteboard.data(forType: .rtf),
-            html: pasteboard.string(forType: .html),
+            rtfData: rtfData,
+            html: html,
+            richTextPlainText: plainText(rtfData: rtfData, html: html),
             text: pasteboard.string(forType: .string),
             urlStrings: urlStrings
         )
@@ -168,6 +171,14 @@ final class ClipboardCaptureQueue {
         let html = pasteboardData.html
         guard rtfData != nil || html != nil else { return nil }
 
+        guard let plainText = pasteboardData.richTextPlainText,
+              !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return .richText(rtfData: rtfData, html: html, plainText: plainText)
+    }
+
+    private static func plainText(rtfData: Data?, html: String?) -> String? {
         let attributedString: NSAttributedString?
         if let rtfData {
             attributedString = try? NSAttributedString(
@@ -185,12 +196,7 @@ final class ClipboardCaptureQueue {
         } else {
             attributedString = nil
         }
-
-        guard let plainText = attributedString?.string,
-              !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return nil
-        }
-        return .richText(rtfData: rtfData, html: html, plainText: plainText)
+        return attributedString?.string
     }
 
     private static func textPayload(
@@ -297,6 +303,7 @@ final class ClipboardCaptureQueue {
         let imageRepresentations: [ImageRepresentation]
         let rtfData: Data?
         let html: String?
+        let richTextPlainText: String?
         let text: String?
         let urlStrings: [String]
     }
