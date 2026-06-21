@@ -121,10 +121,7 @@ struct CompactHistoryItem: View {
     }
 
     private var summary: String {
-        let content = item.containsSensitiveData
-            ? ContentAnalyzer.redacted(item.content)
-            : item.content
-        return content.replacingOccurrences(of: "\n", with: " ")
+        TextPreview.summary(for: item)
     }
 
     private var showsActions: Bool {

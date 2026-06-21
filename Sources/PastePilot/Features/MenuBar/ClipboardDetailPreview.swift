@@ -42,7 +42,8 @@ struct ClipboardDetailPreview: View {
                     if item.kind == .file {
                         FileListPreview(urls: item.fileURLs)
                             .frame(minHeight: 60, maxHeight: 220)
-                    } else if item.kind == .richText {
+                    } else if item.kind == .richText,
+                              !TextPreview.shouldUsePlainTextFallback(forRichText: item) {
                         RichTextPreview(item: item)
                             .frame(minHeight: 80, maxHeight: 180)
                     } else if let image {
@@ -52,12 +53,10 @@ struct ClipboardDetailPreview: View {
                             .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 240)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                     } else {
-                        ScrollView {
-                            Text(previewContent)
-                                .font(.system(.caption, design: previewFontDesign))
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                        }
+                        PlainTextPreview(
+                            item: item,
+                            revealsSensitiveContent: revealsSensitiveContent
+                        )
                         .frame(minHeight: 50, maxHeight: 160)
                     }
                 }
@@ -77,9 +76,9 @@ struct ClipboardDetailPreview: View {
                         Text("·")
                         Text(byteCount)
                     } else {
-                        Text("%d characters".localized(item.content.count))
+                        Text(TextPreview.characterCountDescription(for: item.content))
                         Text("·")
-                        Text("%d lines".localized(lineCount))
+                        Text(TextPreview.lineCountDescription(for: item.content))
                     }
                 }
                 .font(.caption2)
@@ -202,25 +201,6 @@ struct ClipboardDetailPreview: View {
         return NSWorkspace.shared.icon(forFile: applicationURL.path)
     }
 
-    private var previewContent: AttributedString {
-        if item.containsSensitiveData && !revealsSensitiveContent {
-            return AttributedString(ContentAnalyzer.redacted(item.content))
-        }
-        if item.kind == .json,
-           let formatted = ContentTransformer.formatJSON(item.content) {
-            return JSONSyntaxHighlighter.highlight(formatted)
-        }
-        return AttributedString(item.content)
-    }
-
-    private var previewFontDesign: Font.Design {
-        item.kind == .text || item.kind == .markdown ? .default : .monospaced
-    }
-
-    private var lineCount: Int {
-        item.content.components(separatedBy: .newlines).count
-    }
-
     private var imageDimensions: String {
         guard let width = item.imageWidth, let height = item.imageHeight else {
             return "Unknown size".localized
@@ -233,6 +213,59 @@ struct ClipboardDetailPreview: View {
             fromByteCount: Int64(item.imageByteCount ?? 0),
             countStyle: .file
         )
+    }
+}
+
+private struct PlainTextPreview: View {
+    let item: ClipboardItem
+    let revealsSensitiveContent: Bool
+
+    var body: some View {
+        let preview = renderedPreview
+        VStack(alignment: .leading, spacing: 6) {
+            ScrollView {
+                Text(preview.content)
+                    .font(.system(.caption, design: previewFontDesign))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+
+            if preview.isTruncated {
+                Label(
+                    "Preview limited to first %d characters".localized(
+                        TextPreview.detailCharacterLimit
+                    ),
+                    systemImage: "scissors"
+                )
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private var renderedPreview: (content: AttributedString, isTruncated: Bool) {
+        if item.kind == .json,
+           (!item.containsSensitiveData || revealsSensitiveContent),
+           TextPreview.canFormatJSON(item.content),
+           let formatted = ContentTransformer.formatJSON(item.content) {
+            let snippet = TextPreview.clippedText(
+                from: formatted,
+                maxCharacters: TextPreview.detailCharacterLimit
+            )
+            return (JSONSyntaxHighlighter.highlight(snippet.text), snippet.isTruncated)
+        }
+
+        let snippet = TextPreview.detailSnippet(
+            for: item,
+            revealsSensitiveContent: revealsSensitiveContent
+        )
+        return (AttributedString(snippet.text), snippet.isTruncated)
+    }
+
+    private var previewFontDesign: Font.Design {
+        item.kind == .text || item.kind == .markdown || item.kind == .richText
+            ? .default
+            : .monospaced
     }
 }
 

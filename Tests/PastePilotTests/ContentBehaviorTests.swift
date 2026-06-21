@@ -33,6 +33,29 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func textPreviewKeepsLargeContentBounded() {
+        let content = String(repeating: "a", count: TextPreview.detailCharacterLimit + 1)
+        let item = ClipboardItem(content: content, kind: .text)
+        let snippet = TextPreview.detailSnippet(for: item, revealsSensitiveContent: false)
+
+        #expect(snippet.text.count == TextPreview.detailCharacterLimit)
+        #expect(snippet.isTruncated)
+        #expect(
+            TextPreview.characterCountDescription(for: content)
+                .hasPrefix("\(TextPreview.countScanCharacterLimit)+")
+        )
+    }
+
+    @Test
+    func rowSummaryUsesOnlyAPrefix() {
+        let content = "first line\n" + String(repeating: "secret", count: 1_000)
+        let item = ClipboardItem(content: content, kind: .text)
+
+        #expect(TextPreview.summary(for: item).count <= TextPreview.summaryCharacterLimit)
+        #expect(!TextPreview.summary(for: item).contains("\n"))
+    }
+
+    @Test
     func jsonTransforms() {
         let json = #"{"b":2,"a":1}"#
         #expect(ContentTransformer.formatJSON(json)?.contains("\n") == true)
