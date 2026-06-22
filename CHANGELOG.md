@@ -4,6 +4,29 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-22
+
+### Changed
+
+- Large plain-text clipboard items are now stored outside `history.json` while
+  keeping a bounded preview snippet in history for fast startup and list
+  rendering.
+- Text previews now use a TextKit-backed view with incremental "show more"
+  loading, avoiding SwiftUI text layout stalls on long clipboard entries.
+- Search now keeps the list responsive by matching the in-history preview first
+  and scanning externalized full text asynchronously.
+- History rows load cached image thumbnails instead of decoding original images
+  for every list render.
+- Startup work was reduced by lazily creating the popover and avoiding an
+  immediate clipboard capture on app launch.
+
+### Fixed
+
+- Reduced memory pressure and UI stalls when copying, searching, or previewing
+  multi-thousand-character text.
+- Deleting or replacing clipboard items now also cleans up externalized text
+  files.
+
 ## [0.5.0] - 2026-06-19
 
 ### Added
