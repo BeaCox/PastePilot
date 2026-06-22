@@ -29,7 +29,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let accessibilityAlertCooldown: TimeInterval = 30
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.applicationIconImage = AppIconRenderer.icon(size: 512)
         NSApp.setActivationPolicy(.accessory)
         configureStatusItem()
         registerHotKey()
@@ -39,7 +38,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateController.start()
         if settings.monitoringEnabled {
             store.startMonitoring()
-            store.captureCurrentClipboard()
         }
         if !showWelcomeIfNeeded() {
             showPermissionReminderIfNeeded()

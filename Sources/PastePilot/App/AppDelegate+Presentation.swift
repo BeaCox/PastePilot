@@ -4,7 +4,8 @@ import SwiftUI
 
 extension AppDelegate {
     @objc func togglePopover() {
-        guard let popover, let button = statusItem?.button else { return }
+        guard let button = statusItem?.button else { return }
+        let popover = ensurePopover()
         if popover.isShown {
             popover.performClose(nil)
         } else {
@@ -123,6 +124,33 @@ extension AppDelegate {
         }
         statusItem = item
 
+        store.$items
+            .map { !$0.isEmpty }
+            .removeDuplicates()
+            .sink { [weak self] hasItems in
+                self?.statusItem?.button?.image = self?.statusImage(filled: hasItems)
+                self?.statusItem?.button?.image?.isTemplate = true
+            }
+            .store(in: &cancellables)
+
+        settings.$menuBarIconStyle
+            .removeDuplicates()
+            .sink { [weak self] styleValue in
+                guard let self else { return }
+                let style = MenuBarIconStyle(rawValue: styleValue) ?? .pastepilot
+                let filled = !self.store.items.isEmpty
+                let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
+                image?.isTemplate = true
+                self.statusItem?.button?.image = image
+            }
+            .store(in: &cancellables)
+    }
+
+    func ensurePopover() -> NSPopover {
+        if let popover {
+            return popover
+        }
+
         let popover = NSPopover()
         popover.behavior = .transient
         popover.animates = false
@@ -144,27 +172,7 @@ extension AppDelegate {
             )
         )
         self.popover = popover
-
-        store.$items
-            .map { !$0.isEmpty }
-            .removeDuplicates()
-            .sink { [weak self] hasItems in
-                self?.statusItem?.button?.image = self?.statusImage(filled: hasItems)
-                self?.statusItem?.button?.image?.isTemplate = true
-            }
-            .store(in: &cancellables)
-
-        settings.$menuBarIconStyle
-            .removeDuplicates()
-            .sink { [weak self] styleValue in
-                guard let self else { return }
-                let style = MenuBarIconStyle(rawValue: styleValue) ?? .pastepilot
-                let filled = !self.store.items.isEmpty
-                let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
-                image?.isTemplate = true
-                self.statusItem?.button?.image = image
-            }
-            .store(in: &cancellables)
+        return popover
     }
 
     func handleStatusItemDrop(_ urls: [URL]) {

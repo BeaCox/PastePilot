@@ -47,7 +47,6 @@ install_name_tool -add_rpath @loader_path/../Frameworks "$CONTENTS/MacOS/PastePi
 lipo "$CONTENTS/MacOS/PastePilot" -verify_arch "$ARCH"
 ditto "$RELEASE/Sparkle.framework" "$FRAMEWORKS/Sparkle.framework"
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
-cp "$ROOT/Resources/AppIconSource.png" "$CONTENTS/Resources/AppIconSource.png"
 cp "$ROOT/Resources/MenuBarIconTemplate.png" "$CONTENTS/Resources/MenuBarIconTemplate.png"
 
 BUNDLE="$RELEASE/PastePilot_PastePilot.bundle"

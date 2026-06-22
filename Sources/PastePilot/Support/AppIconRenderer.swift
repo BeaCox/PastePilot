@@ -30,13 +30,9 @@ enum MenuBarIconStyle: String, CaseIterable {
 enum AppIconRenderer {
     static let menuBarPointSize = 18
     private static let pastePilotPickerPreviewPointSize = 15
+    private static var menuBarImageCache: [String: NSImage] = [:]
 
     static func icon(size: Int) -> NSImage {
-        if let image = resourceImage(named: "AppIconSource") {
-            image.size = NSSize(width: size, height: size)
-            return image
-        }
-
         let s = CGFloat(size)
         let rep = makeBitmapRep(pixels: size)
         NSGraphicsContext.saveGraphicsState()
@@ -50,14 +46,24 @@ enum AppIconRenderer {
     }
 
     static func menuBarImage(style: MenuBarIconStyle, filled: Bool) -> NSImage? {
+        let cacheKey = "\(style.rawValue)-\(filled)"
+        if let image = menuBarImageCache[cacheKey] {
+            return image
+        }
+
+        let image: NSImage?
         switch style {
         case .pastepilot:
-            return customMenuBarImage()
+            image = customMenuBarImage()
         case .clipboard:
-            return sfSymbol(filled ? "clipboard.fill" : "clipboard")
+            image = sfSymbol(filled ? "clipboard.fill" : "clipboard")
         case .paperplane:
-            return sfSymbol(filled ? "paperplane.fill" : "paperplane")
+            image = sfSymbol(filled ? "paperplane.fill" : "paperplane")
         }
+        if let image {
+            menuBarImageCache[cacheKey] = image
+        }
+        return image
     }
 
     static func menuBarPreviewImage(style: MenuBarIconStyle) -> NSImage? {
