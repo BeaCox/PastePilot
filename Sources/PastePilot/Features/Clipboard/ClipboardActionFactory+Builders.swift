@@ -203,6 +203,8 @@ extension ClipboardActionFactory {
             switch action.effect {
             case let .copy(content):
                 key = "copy:\(content)"
+            case let .copyItem(id):
+                key = "copy-item:\(id.uuidString)"
             case let .copyImage(fileName):
                 key = "image:\(fileName)"
             case let .copyImageMarkdown(fileName, sourceURL, originalPath):

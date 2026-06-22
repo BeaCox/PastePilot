@@ -31,12 +31,14 @@ enum TextPreview {
         maxCharacters: Int = detailCharacterLimit
     ) -> Snippet {
         let snippet = clippedText(from: item.content, maxCharacters: maxCharacters)
+        let isTruncated = snippet.isTruncated
+            || (item.contentCharacterCount ?? snippet.text.count) > snippet.text.count
         guard item.containsSensitiveData && !revealsSensitiveContent else {
-            return snippet
+            return Snippet(text: snippet.text, isTruncated: isTruncated)
         }
         return Snippet(
             text: ContentAnalyzer.redacted(snippet.text),
-            isTruncated: snippet.isTruncated
+            isTruncated: isTruncated
         )
     }
 
@@ -81,6 +83,13 @@ enum TextPreview {
         return "%d characters".localized(count.value)
     }
 
+    static func characterCountDescription(for item: ClipboardItem) -> String {
+        if let count = item.contentCharacterCount {
+            return "%d characters".localized(count)
+        }
+        return characterCountDescription(for: item.content)
+    }
+
     static func lineCountDescription(for text: String) -> String {
         var index = text.startIndex
         var scanned = 0
@@ -98,6 +107,13 @@ enum TextPreview {
         }
 
         return "%d lines".localized(lines)
+    }
+
+    static func lineCountDescription(for item: ClipboardItem) -> String {
+        if let count = item.contentLineCount {
+            return "%d lines".localized(count)
+        }
+        return lineCountDescription(for: item.content)
     }
 
     private static func cappedCharacterCount(for text: String) -> (

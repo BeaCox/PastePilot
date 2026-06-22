@@ -4,6 +4,7 @@ import Foundation
 struct ClipboardAction: Identifiable {
     enum Effect {
         case copy(String)
+        case copyItem(UUID)
         case copyImage(String)
         case copyImageMarkdown(
             fileName: String,
@@ -37,6 +38,7 @@ struct ClipboardAction: Identifiable {
              .quickLook:
             return true
         case .copy,
+             .copyItem,
              .copyImage,
              .copyImageMarkdown,
              .copyCachedImageFile,
@@ -81,7 +83,9 @@ enum ClipboardActionFactory {
                 title: "Copy Original".localized,
                 detail: "Copy as-is back to the clipboard".localized,
                 symbol: "doc.on.doc",
-                effect: .copy(item.content)
+                effect: item.hasExternalContent
+                    ? .copyItem(item.id)
+                    : .copy(item.content)
             )
         ]
 
@@ -113,6 +117,7 @@ enum ClipboardActionFactory {
         case .image:
             break
         case .json:
+            guard !item.hasExternalContent else { break }
             if let formatted = ContentTransformer.formatJSON(item.content) {
                 actions.append(
                     ClipboardAction(
@@ -147,6 +152,7 @@ enum ClipboardActionFactory {
                 )
             }
         case .url:
+            guard !item.hasExternalContent else { break }
             if let url = URL(string: item.content) {
                 actions.insert(
                     ClipboardAction(
@@ -160,6 +166,7 @@ enum ClipboardActionFactory {
                 )
             }
         case .color:
+            guard !item.hasExternalContent else { break }
             actions.append(
                 ClipboardAction(
                     id: "uppercase-color",
@@ -170,6 +177,7 @@ enum ClipboardActionFactory {
                 )
             )
         case .command:
+            guard !item.hasExternalContent else { break }
             actions.append(contentsOf: shellActions(for: item.content))
             actions.append(
                 ClipboardAction(
@@ -181,6 +189,7 @@ enum ClipboardActionFactory {
                 )
             )
         case .error:
+            guard !item.hasExternalContent else { break }
             if let extracted = ContentTransformer.extractShellCommands(item.content) {
                 actions.append(contentsOf: extractedCommandActions(extracted))
             }
@@ -194,8 +203,10 @@ enum ClipboardActionFactory {
                 )
             )
         case .code:
+            guard !item.hasExternalContent else { break }
             actions.append(contentsOf: codeActions(for: item.content))
         case .markdown, .text:
+            guard !item.hasExternalContent else { break }
             if let extracted = ContentTransformer.extractShellCommands(item.content) {
                 actions.append(contentsOf: extractedCommandActions(extracted))
             }
@@ -245,7 +256,9 @@ enum ClipboardActionFactory {
             title: "Copy Original".localized,
             detail: "Copy as-is back to the clipboard".localized,
             symbol: "doc.on.doc",
-            effect: .copy(item.content)
+            effect: item.hasExternalContent
+                ? .copyItem(item.id)
+                : .copy(item.content)
         )
     }
 
@@ -258,6 +271,13 @@ enum ClipboardActionFactory {
     static func perform(_ action: ClipboardAction, using store: ClipboardStore) -> String {
         switch action.effect {
         case let .copy(content):
+            store.copy(content)
+            return "Copied: %@".localized(action.title)
+        case let .copyItem(id):
+            guard let item = store.items.first(where: { $0.id == id }),
+                  let content = store.content(for: item) else {
+                return "Content is no longer available".localized
+            }
             store.copy(content)
             return "Copied: %@".localized(action.title)
         case let .copyImage(fileName):

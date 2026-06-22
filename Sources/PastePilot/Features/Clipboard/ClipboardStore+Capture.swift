@@ -79,14 +79,21 @@ extension ClipboardStore {
 
         let analysis = ContentAnalyzer.analyze(trimmedContent)
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
-        insertCaptured(duplicate: { $0.content == content }) { wasPinned in
+        let id = UUID()
+        let storedContent = storedTextContent(for: content, id: id)
+        insertCaptured(duplicate: { self.content($0, matches: content) }) { wasPinned in
             ClipboardItem(
-                content: content,
+                id: id,
+                content: storedContent.content,
                 kind: analysis.kind,
                 isPinned: wasPinned,
                 containsSensitiveData: analysis.containsSensitiveData,
                 sourceAppName: source.name,
-                sourceBundleIdentifier: source.bundleIdentifier
+                sourceBundleIdentifier: source.bundleIdentifier,
+                contentFileName: storedContent.fileName,
+                contentCharacterCount: storedContent.characterCount,
+                contentLineCount: storedContent.lineCount,
+                contentByteCount: storedContent.byteCount
             )
         }
     }
@@ -144,17 +151,24 @@ extension ClipboardStore {
             return true
         }
 
+        let id = UUID()
+        let storedContent = storedTextContent(for: plainText, id: id)
         insertCaptured(
-            duplicate: { $0.content == plainText && $0.kind == .richText }
+            duplicate: { self.content($0, matches: plainText) && $0.kind == .richText }
         ) { wasPinned in
             ClipboardItem(
-                content: plainText,
+                id: id,
+                content: storedContent.content,
                 kind: .richText,
                 isPinned: wasPinned,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier,
                 richTextRTFBase64: rtfBase64,
-                richTextHTML: html
+                richTextHTML: html,
+                contentFileName: storedContent.fileName,
+                contentCharacterCount: storedContent.characterCount,
+                contentLineCount: storedContent.lineCount,
+                contentByteCount: storedContent.byteCount
             )
         }
         return true
@@ -204,11 +218,72 @@ extension ClipboardStore {
         duplicate: (ClipboardItem) -> Bool,
         make: (_ wasPinned: Bool) -> ClipboardItem
     ) -> Bool {
-        let wasPinned = items.first(where: duplicate)?.isPinned ?? false
+        let duplicateItems = items.filter(duplicate)
+        let wasPinned = duplicateItems.first?.isPinned ?? false
+        duplicateItems.forEach(deleteStoredResources)
         items.removeAll(where: duplicate)
         items.insert(make(wasPinned), at: 0)
         trimHistory(limit: settings.historyLimit)
         save()
         return wasPinned
     }
+
+    private func content(_ item: ClipboardItem, matches content: String) -> Bool {
+        if let fileName = item.contentFileName {
+            return textStore.content(fileName: fileName) == content
+        }
+        return item.content == content
+    }
+
+    private func storedTextContent(
+        for content: String,
+        id: UUID
+    ) -> StoredTextContent {
+        let characterCount = content.count
+        let lineCount = content.reduce(1) { count, character in
+            character.isNewline ? count + 1 : count
+        }
+        let byteCount = content.utf8.count
+        guard byteCount > ClipboardTextStore.externalizationByteLimit else {
+            return StoredTextContent(
+                content: content,
+                fileName: nil,
+                characterCount: characterCount,
+                lineCount: lineCount,
+                byteCount: byteCount
+            )
+        }
+
+        let fileName = "\(id.uuidString).txt"
+        do {
+            try textStore.save(content, fileName: fileName)
+            return StoredTextContent(
+                content: TextPreview.clippedText(
+                    from: content,
+                    maxCharacters: TextPreview.initialDetailCharacterLimit
+                ).text,
+                fileName: fileName,
+                characterCount: characterCount,
+                lineCount: lineCount,
+                byteCount: byteCount
+            )
+        } catch {
+            NSLog("PastePilot failed to externalize text content: \(error)")
+            return StoredTextContent(
+                content: content,
+                fileName: nil,
+                characterCount: characterCount,
+                lineCount: lineCount,
+                byteCount: byteCount
+            )
+        }
+    }
+}
+
+private struct StoredTextContent {
+    let content: String
+    let fileName: String?
+    let characterCount: Int
+    let lineCount: Int
+    let byteCount: Int
 }

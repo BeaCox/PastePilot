@@ -10,6 +10,7 @@ final class ClipboardStore: ObservableObject {
     let historyRepository: HistoryRepository
     let historyWriteQueue: HistoryWriteQueue
     let imageStore: ClipboardImageStore
+    let textStore: ClipboardTextStore
     let imageProcessingQueue: ClipboardImageProcessingQueue
     let pasteboardCaptureQueue: any ClipboardCapturing
     let ocrService: any OCRService
@@ -23,6 +24,7 @@ final class ClipboardStore: ObservableObject {
     var imageSaveGeneration = 0
     var discardAllImageSavesBeforeGeneration = 0
     var deletedImageDigestGenerations: [String: Int] = [:]
+    let thumbnailCache = NSCache<NSString, NSImage>()
     static let sourcePasteboardType = NSPasteboard.PasteboardType(
         rawValue: "org.nspasteboard.source"
     )
@@ -42,6 +44,9 @@ final class ClipboardStore: ObservableObject {
         self.historyWriteQueue = HistoryWriteQueue(repository: historyRepository)
         self.imageStore = ClipboardImageStore(
             directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
+        )
+        self.textStore = ClipboardTextStore(
+            directoryURL: dataDirectoryURL.appendingPathComponent("text", isDirectory: true)
         )
         self.imageProcessingQueue = ClipboardImageProcessingQueue()
         self.pasteboardCaptureQueue = pasteboardCaptureQueue
@@ -109,10 +114,51 @@ final class ClipboardStore: ObservableObject {
         if let html = item.richTextHTML {
             pasteboard.setString(html, forType: .html)
         }
-        pasteboard.setString(item.content, forType: .string)
+        pasteboard.setString(content(for: item) ?? item.content, forType: .string)
         pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
         return item.hasRichText
+    }
+
+    func content(for item: ClipboardItem) -> String? {
+        guard let fileName = item.contentFileName else {
+            return item.content
+        }
+        return textStore.content(fileName: fileName)
+    }
+
+    func previewSnippet(
+        for item: ClipboardItem,
+        maxCharacters: Int,
+        revealsSensitiveContent: Bool
+    ) -> TextPreview.Snippet {
+        guard let fileName = item.contentFileName,
+              let prefix = textStore.prefix(
+                fileName: fileName,
+                maxCharacters: maxCharacters
+              ) else {
+            return TextPreview.detailSnippet(
+                for: item,
+                revealsSensitiveContent: revealsSensitiveContent,
+                maxCharacters: maxCharacters
+            )
+        }
+
+        let isTruncated = (item.contentCharacterCount ?? prefix.count) > prefix.count
+        guard item.containsSensitiveData && !revealsSensitiveContent else {
+            return TextPreview.Snippet(text: prefix, isTruncated: isTruncated)
+        }
+        return TextPreview.Snippet(
+            text: ContentAnalyzer.redacted(prefix),
+            isTruncated: isTruncated
+        )
+    }
+
+    func externalContentSearchTargets() -> [(id: UUID, fileName: String)] {
+        items.compactMap { item in
+            guard let fileName = item.contentFileName else { return nil }
+            return (item.id, fileName)
+        }
     }
 
     func importFiles(_ urls: [URL]) {
@@ -122,6 +168,22 @@ final class ClipboardStore: ObservableObject {
     func image(for item: ClipboardItem) -> NSImage? {
         guard let fileName = item.imageFileName else { return nil }
         return imageStore.image(fileName: fileName)
+    }
+
+    func thumbnail(for item: ClipboardItem, pointSize: CGFloat = 22) -> NSImage? {
+        guard let fileName = item.imageFileName else { return nil }
+        let key = "\(fileName)-\(Int(pointSize))" as NSString
+        if let image = thumbnailCache.object(forKey: key) {
+            return image
+        }
+        guard let image = imageStore.thumbnail(
+            fileName: fileName,
+            pointSize: pointSize
+        ) else {
+            return nil
+        }
+        thumbnailCache.setObject(image, forKey: key)
+        return image
     }
 
     func imagePath(fileName: String) -> String {
@@ -137,7 +199,7 @@ final class ClipboardStore: ObservableObject {
     func delete(_ id: UUID) {
         if let item = items.first(where: { $0.id == id }) {
             cancelOCR(for: item.id)
-            deleteImageFile(for: item)
+            deleteStoredResources(for: item)
         }
         items.removeAll { $0.id == id }
         save()
@@ -147,7 +209,7 @@ final class ClipboardStore: ObservableObject {
         discardPendingImageSaves()
         let removedItems = items.filter { !$0.isPinned }
         cancelOCR(for: removedItems)
-        removedItems.forEach(deleteImageFile)
+        removedItems.forEach(deleteStoredResources)
         items.removeAll { !$0.isPinned }
         save()
     }

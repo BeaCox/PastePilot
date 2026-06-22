@@ -84,6 +84,7 @@
 /* Action perform messages */
 "Files copied" = "已复制文件";
 "Files are no longer available" = "原始文件已不存在";
+"Content is no longer available" = "原始内容已不可用";
 "Rich text copied" = "已复制富文本";
 "Rich text is no longer available" = "富文本已不可用";
 "Shown in Finder" = "已在 Finder 中显示";

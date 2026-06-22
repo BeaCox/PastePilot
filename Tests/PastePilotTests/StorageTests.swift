@@ -231,6 +231,90 @@ struct StorageTests {
 
     @Test
     @MainActor
+    func largeTextCaptureExternalizesOriginalContent() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let originalContent = String(
+            repeating: "large clipboard text\n",
+            count: ClipboardTextStore.externalizationByteLimit / 8
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setString(originalContent, forType: .string)
+        store.captureCurrentClipboard()
+
+        let item = try await waitForCapturedItem(in: store)
+        let fileName = try #require(item.contentFileName)
+        #expect(item.content.count == TextPreview.initialDetailCharacterLimit)
+        #expect(item.contentCharacterCount == originalContent.count)
+        #expect(store.content(for: item) == originalContent)
+
+        let copyMessage = ClipboardActionFactory.perform(
+            ClipboardActionFactory.copyAction(for: item),
+            using: store
+        )
+        #expect(copyMessage == "Copied: %@".localized("Copy Original".localized))
+        #expect(pasteboard.string(forType: .string) == originalContent)
+
+        store.delete(item.id)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: directory
+                    .appendingPathComponent("text", isDirectory: true)
+                    .appendingPathComponent(fileName)
+                    .path
+            )
+        )
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func loadingLargeLegacyTextExternalizesContent() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let originalContent = String(
+            repeating: "legacy clipboard text\n",
+            count: ClipboardTextStore.externalizationByteLimit / 8
+        )
+        let legacyItem = ClipboardItem(content: originalContent, kind: .text)
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        try repository.save([legacyItem])
+
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        let item = try #require(store.items.first)
+        let fileName = try #require(item.contentFileName)
+        #expect(item.id == legacyItem.id)
+        #expect(item.content.count == TextPreview.initialDetailCharacterLimit)
+        #expect(store.content(for: item) == originalContent)
+        #expect(
+            FileManager.default.fileExists(
+                atPath: directory
+                    .appendingPathComponent("text", isDirectory: true)
+                    .appendingPathComponent(fileName)
+                    .path
+            )
+        )
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func richTextCapturePreservesOriginalWhitespace() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

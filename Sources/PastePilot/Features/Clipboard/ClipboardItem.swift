@@ -66,6 +66,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let filePaths: [String]?
     let richTextRTFBase64: String?
     let richTextHTML: String?
+    let contentFileName: String?
+    let contentCharacterCount: Int?
+    let contentLineCount: Int?
+    let contentByteCount: Int?
     var ocrText: String?
 
     init(
@@ -87,6 +91,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         filePaths: [String]? = nil,
         richTextRTFBase64: String? = nil,
         richTextHTML: String? = nil,
+        contentFileName: String? = nil,
+        contentCharacterCount: Int? = nil,
+        contentLineCount: Int? = nil,
+        contentByteCount: Int? = nil,
         ocrText: String? = nil
     ) {
         self.id = id
@@ -107,6 +115,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.filePaths = filePaths
         self.richTextRTFBase64 = richTextRTFBase64
         self.richTextHTML = richTextHTML
+        self.contentFileName = contentFileName
+        self.contentCharacterCount = contentCharacterCount
+        self.contentLineCount = contentLineCount
+        self.contentByteCount = contentByteCount
         self.ocrText = ocrText
     }
 
@@ -121,6 +133,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     var hasRichText: Bool {
         richTextRTFBase64 != nil || richTextHTML != nil
     }
+
+    var hasExternalContent: Bool {
+        contentFileName != nil
+    }
 }
 
 enum ClipboardHistoryOrdering {
@@ -128,5 +144,40 @@ enum ClipboardHistoryOrdering {
         let chronological = items.sorted { $0.createdAt > $1.createdAt }
         return chronological.filter(\.isPinned)
             + chronological.filter { !$0.isPinned }
+    }
+}
+
+extension ClipboardItem {
+    func externalizedContent(fileName: String) -> ClipboardItem {
+        ClipboardItem(
+            id: id,
+            content: TextPreview.clippedText(
+                from: content,
+                maxCharacters: TextPreview.initialDetailCharacterLimit
+            ).text,
+            kind: kind,
+            createdAt: createdAt,
+            isPinned: isPinned,
+            containsSensitiveData: containsSensitiveData,
+            sourceAppName: sourceAppName,
+            sourceBundleIdentifier: sourceBundleIdentifier,
+            imageFileName: imageFileName,
+            imageWidth: imageWidth,
+            imageHeight: imageHeight,
+            imageByteCount: imageByteCount,
+            imageDigest: imageDigest,
+            imageSourceURL: imageSourceURL,
+            imageOriginalPath: imageOriginalPath,
+            filePaths: filePaths,
+            richTextRTFBase64: richTextRTFBase64,
+            richTextHTML: richTextHTML,
+            contentFileName: fileName,
+            contentCharacterCount: content.count,
+            contentLineCount: content.reduce(1) { count, character in
+                character.isNewline ? count + 1 : count
+            },
+            contentByteCount: content.utf8.count,
+            ocrText: ocrText
+        )
     }
 }

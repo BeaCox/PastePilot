@@ -6,7 +6,9 @@ struct ClipboardDetailPreview: View {
     let image: NSImage?
     let performAction: (ClipboardAction) -> Void
     let hoverChanged: (Bool) -> Void
+    let previewSnippet: (ClipboardItem, Int, Bool) -> TextPreview.Snippet
     @State private var revealsSensitiveContent = false
+    @State private var keyboardActions: [ClipboardAction] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -55,7 +57,8 @@ struct ClipboardDetailPreview: View {
                     } else {
                         PlainTextPreview(
                             item: item,
-                            revealsSensitiveContent: revealsSensitiveContent
+                            revealsSensitiveContent: revealsSensitiveContent,
+                            previewSnippet: previewSnippet
                         )
                         .frame(minHeight: 50, maxHeight: 160)
                     }
@@ -76,9 +79,9 @@ struct ClipboardDetailPreview: View {
                         Text("·")
                         Text(byteCount)
                     } else {
-                        Text(TextPreview.characterCountDescription(for: item.content))
+                        Text(TextPreview.characterCountDescription(for: item))
                         Text("·")
-                        Text(TextPreview.lineCountDescription(for: item.content))
+                        Text(TextPreview.lineCountDescription(for: item))
                     }
                 }
                 .font(.caption2)
@@ -135,8 +138,12 @@ struct ClipboardDetailPreview: View {
         .padding(16)
         .frame(width: 340, alignment: .topLeading)
         .onHover(perform: hoverChanged)
+        .onAppear {
+            keyboardActions = ClipboardActionFactory.keyboardActions(for: item)
+        }
         .onChange(of: item.id) {
             revealsSensitiveContent = false
+            keyboardActions = ClipboardActionFactory.keyboardActions(for: item)
         }
     }
 
@@ -172,10 +179,6 @@ struct ClipboardDetailPreview: View {
             }
         }
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var keyboardActions: [ClipboardAction] {
-        ClipboardActionFactory.keyboardActions(for: item)
     }
 
     @ViewBuilder
@@ -219,17 +222,16 @@ struct ClipboardDetailPreview: View {
 private struct PlainTextPreview: View {
     let item: ClipboardItem
     let revealsSensitiveContent: Bool
+    let previewSnippet: (ClipboardItem, Int, Bool) -> TextPreview.Snippet
     @State private var visibleCharacterLimit = TextPreview.initialDetailCharacterLimit
 
     var body: some View {
         let preview = renderedPreview
         VStack(alignment: .leading, spacing: 6) {
-            ScrollView {
-                Text(preview.content)
-                    .font(.system(.caption, design: previewFontDesign))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
+            TextKitPreview(
+                content: preview.content,
+                fontDesign: previewFontDesign
+            )
 
             if preview.isTruncated {
                 loadingControls
@@ -278,6 +280,7 @@ private struct PlainTextPreview: View {
 
     private var renderedPreview: (content: AttributedString, isTruncated: Bool) {
         if item.kind == .json,
+           !item.hasExternalContent,
            (!item.containsSensitiveData || revealsSensitiveContent),
            TextPreview.canFormatJSON(item.content),
            let formatted = ContentTransformer.formatJSON(item.content) {
@@ -288,11 +291,7 @@ private struct PlainTextPreview: View {
             return (JSONSyntaxHighlighter.highlight(snippet.text), snippet.isTruncated)
         }
 
-        let snippet = TextPreview.detailSnippet(
-            for: item,
-            revealsSensitiveContent: revealsSensitiveContent,
-            maxCharacters: visibleCharacterLimit
-        )
+        let snippet = previewSnippet(item, visibleCharacterLimit, revealsSensitiveContent)
         return (AttributedString(snippet.text), snippet.isTruncated)
     }
 
@@ -310,6 +309,61 @@ private struct PlainTextPreview: View {
 
     private func resetVisibleLimit() {
         visibleCharacterLimit = TextPreview.initialDetailCharacterLimit
+    }
+}
+
+private struct TextKitPreview: NSViewRepresentable {
+    let content: AttributedString
+    let fontDesign: Font.Design
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 0, height: 0)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.allowsUndo = false
+        textView.usesFindPanel = false
+        textView.layoutManager?.allowsNonContiguousLayout = true
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+
+        let attributedString = NSMutableAttributedString(content)
+        attributedString.addAttributes(
+            [.font: font],
+            range: NSRange(location: 0, length: attributedString.length)
+        )
+
+        if textView.string != attributedString.string {
+            textView.textStorage?.setAttributedString(attributedString)
+            textView.scrollRangeToVisible(NSRange(location: 0, length: 0))
+        }
+        textView.font = font
+    }
+
+    private var font: NSFont {
+        switch fontDesign {
+        case .monospaced:
+            return .monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        default:
+            return .systemFont(ofSize: NSFont.smallSystemFontSize)
+        }
     }
 }
 

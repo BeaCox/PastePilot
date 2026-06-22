@@ -134,7 +134,8 @@ extension MenuBarView {
 
     @ViewBuilder
     var historyList: some View {
-        if filteredItems.isEmpty {
+        let items = filteredItems
+        if items.isEmpty {
             ContentUnavailableView(
                 store.items.isEmpty
                     ? "Waiting for content".localized
@@ -151,13 +152,13 @@ extension MenuBarView {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
-                            if shouldShowPinnedHeader(at: index) {
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                            if shouldShowPinnedHeader(at: index, in: items) {
                                 HistorySectionHeader(
                                     title: "Pinned".localized,
                                     detail: "Always on top, kept when history is cleared".localized
                                 )
-                            } else if shouldShowRecentHeader(at: index) {
+                            } else if shouldShowRecentHeader(at: index, in: items) {
                                 HistorySectionHeader(
                                     title: "Recent".localized,
                                     detail: nil
@@ -165,7 +166,7 @@ extension MenuBarView {
                             }
                             CompactHistoryItem(
                                 item: item,
-                                image: store.image(for: item),
+                                image: store.thumbnail(for: item),
                                 shortcutNumber: index < 9 ? index + 1 : nil,
                                 isSelected: selectedID == item.id,
                                 select: { selectedID = item.id },
@@ -242,7 +243,8 @@ extension MenuBarView {
                             item: item,
                             image: store.image(for: item),
                             performAction: performAction,
-                            hoverChanged: handlePreviewHover
+                            hoverChanged: handlePreviewHover,
+                            previewSnippet: store.previewSnippet
                         )
                     }
                 }

@@ -11,7 +11,7 @@ extension ClipboardStore {
         let retainedIDs = Set((pinned + recent).map(\.id))
         let removedItems = items.filter { !retainedIDs.contains($0.id) }
         cancelOCR(for: removedItems)
-        removedItems.forEach(deleteImageFile)
+        removedItems.forEach(deleteStoredResources)
         items = items.filter { retainedIDs.contains($0.id) }
         sortItems()
     }
@@ -19,13 +19,19 @@ extension ClipboardStore {
     func load() {
         let result = historyRepository.load()
         items = result.items
+        let externalizedLoadedText = externalizeLoadedLargeTextContent()
         switch result.source {
         case .primary:
+            if externalizedLoadedText {
+                save()
+            }
             removeOrphanedImages()
+            removeOrphanedText()
         case .backup:
             NSLog("PastePilot recovered clipboard history from backup")
             save()
             removeOrphanedImages()
+            removeOrphanedText()
         case .unrecoverable:
             NSLog("PastePilot could not decode clipboard history or its backup")
         case .empty:
@@ -35,9 +41,38 @@ extension ClipboardStore {
         purgeExpired()
     }
 
+    func externalizeLoadedLargeTextContent() -> Bool {
+        var didExternalize = false
+        items = items.map { item in
+            guard item.contentFileName == nil,
+                  item.kind != .file,
+                  item.kind != .image,
+                  item.content.utf8.count > ClipboardTextStore.externalizationByteLimit else {
+                return item
+            }
+
+            let fileName = "\(item.id.uuidString).txt"
+            do {
+                try textStore.save(item.content, fileName: fileName)
+                didExternalize = true
+                return item.externalizedContent(fileName: fileName)
+            } catch {
+                NSLog("PastePilot failed to externalize loaded text content: \(error)")
+                return item
+            }
+        }
+        return didExternalize
+    }
+
     func removeOrphanedImages() {
         imageStore.removeOrphans(
             retaining: Set(items.compactMap(\.imageFileName))
+        )
+    }
+
+    func removeOrphanedText() {
+        textStore.removeOrphans(
+            retaining: Set(items.compactMap(\.contentFileName))
         )
     }
 
@@ -58,7 +93,18 @@ extension ClipboardStore {
     func deleteImageFile(for item: ClipboardItem) {
         markDeletedImageDigest(for: item)
         guard let fileName = item.imageFileName else { return }
+        thumbnailCache.removeObject(forKey: "\(fileName)-22" as NSString)
         imageStore.delete(fileName: fileName)
+    }
+
+    func deleteTextFile(for item: ClipboardItem) {
+        guard let fileName = item.contentFileName else { return }
+        textStore.delete(fileName: fileName)
+    }
+
+    func deleteStoredResources(for item: ClipboardItem) {
+        deleteImageFile(for: item)
+        deleteTextFile(for: item)
     }
 
     func discardPendingImageSaves() {
