@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build release (${{ matrix.arch }})
+  test:
+    name: Build and test (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     strategy:
@@ -40,8 +40,43 @@ jobs:
           swift --version
           find /Applications /Library/Developer/CommandLineTools -path '*Testing.framework' -maxdepth 8 -print 2>/dev/null || true
 
+      - name: Build debug executable
+        run: make build
+
       - name: Run core checks
         run: make test
+
+  build:
+    name: Build release (${{ matrix.arch }})
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-15-intel
+    env:
+      ARCH: ${{ matrix.arch }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate release tag and runner
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(uname -m)" = "$ARCH"
+          xcode-select -p
+          xcodebuild -version
+          swift --version
+          find /Applications /Library/Developer/CommandLineTools -path '*Testing.framework' -maxdepth 8 -print 2>/dev/null || true
 
       - name: Build release DMG
         shell: bash
