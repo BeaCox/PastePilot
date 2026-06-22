@@ -2,7 +2,10 @@ import Foundation
 
 enum TextPreview {
     static let summaryCharacterLimit = 240
-    static let detailCharacterLimit = 20_000
+    static let initialDetailCharacterLimit = 20_000
+    static let detailLoadStep = 20_000
+    static let maxInteractiveDetailCharacterLimit = 120_000
+    static let detailCharacterLimit = initialDetailCharacterLimit
     static let countScanCharacterLimit = 100_000
     static let richTextPreviewByteLimit = 120_000
     static let jsonFormattingByteLimit = 80_000
@@ -24,9 +27,10 @@ enum TextPreview {
 
     static func detailSnippet(
         for item: ClipboardItem,
-        revealsSensitiveContent: Bool
+        revealsSensitiveContent: Bool,
+        maxCharacters: Int = detailCharacterLimit
     ) -> Snippet {
-        let snippet = clippedText(from: item.content, maxCharacters: detailCharacterLimit)
+        let snippet = clippedText(from: item.content, maxCharacters: maxCharacters)
         guard item.containsSensitiveData && !revealsSensitiveContent else {
             return snippet
         }
@@ -34,6 +38,10 @@ enum TextPreview {
             text: ContentAnalyzer.redacted(snippet.text),
             isTruncated: snippet.isTruncated
         )
+    }
+
+    static func nextDetailCharacterLimit(after currentLimit: Int) -> Int {
+        min(currentLimit + detailLoadStep, maxInteractiveDetailCharacterLimit)
     }
 
     static func clippedText(from text: String, maxCharacters: Int) -> Snippet {

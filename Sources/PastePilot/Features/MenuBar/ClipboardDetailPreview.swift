@@ -219,6 +219,7 @@ struct ClipboardDetailPreview: View {
 private struct PlainTextPreview: View {
     let item: ClipboardItem
     let revealsSensitiveContent: Bool
+    @State private var visibleCharacterLimit = TextPreview.initialDetailCharacterLimit
 
     var body: some View {
         let preview = renderedPreview
@@ -231,14 +232,46 @@ private struct PlainTextPreview: View {
             }
 
             if preview.isTruncated {
-                Label(
-                    "Preview limited to first %d characters".localized(
-                        TextPreview.detailCharacterLimit
-                    ),
-                    systemImage: "scissors"
-                )
+                loadingControls
+            }
+        }
+        .onChange(of: item.id) {
+            resetVisibleLimit()
+        }
+        .onChange(of: revealsSensitiveContent) {
+            resetVisibleLimit()
+        }
+    }
+
+    private var canLoadMore: Bool {
+        visibleCharacterLimit < TextPreview.maxInteractiveDetailCharacterLimit
+    }
+
+    private var loadingStatus: String {
+        if canLoadMore {
+            return "Showing first %d characters".localized(visibleCharacterLimit)
+        }
+        return "Preview limited to first %d characters".localized(visibleCharacterLimit)
+    }
+
+    private var loadingSystemImage: String {
+        canLoadMore ? "text.append" : "scissors"
+    }
+
+    private var loadingControls: some View {
+        HStack(spacing: 8) {
+            Label(loadingStatus, systemImage: loadingSystemImage)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+
+            Spacer()
+
+            if canLoadMore {
+                Button("Show More".localized) {
+                    loadMore()
+                }
+                .buttonStyle(.link)
+                .font(.caption2)
             }
         }
     }
@@ -250,14 +283,15 @@ private struct PlainTextPreview: View {
            let formatted = ContentTransformer.formatJSON(item.content) {
             let snippet = TextPreview.clippedText(
                 from: formatted,
-                maxCharacters: TextPreview.detailCharacterLimit
+                maxCharacters: visibleCharacterLimit
             )
             return (JSONSyntaxHighlighter.highlight(snippet.text), snippet.isTruncated)
         }
 
         let snippet = TextPreview.detailSnippet(
             for: item,
-            revealsSensitiveContent: revealsSensitiveContent
+            revealsSensitiveContent: revealsSensitiveContent,
+            maxCharacters: visibleCharacterLimit
         )
         return (AttributedString(snippet.text), snippet.isTruncated)
     }
@@ -266,6 +300,16 @@ private struct PlainTextPreview: View {
         item.kind == .text || item.kind == .markdown || item.kind == .richText
             ? .default
             : .monospaced
+    }
+
+    private func loadMore() {
+        visibleCharacterLimit = TextPreview.nextDetailCharacterLimit(
+            after: visibleCharacterLimit
+        )
+    }
+
+    private func resetVisibleLimit() {
+        visibleCharacterLimit = TextPreview.initialDetailCharacterLimit
     }
 }
 

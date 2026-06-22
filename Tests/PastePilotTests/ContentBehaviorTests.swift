@@ -38,11 +38,37 @@ struct ContentBehaviorTests {
         let item = ClipboardItem(content: content, kind: .text)
         let snippet = TextPreview.detailSnippet(for: item, revealsSensitiveContent: false)
 
-        #expect(snippet.text.count == TextPreview.detailCharacterLimit)
+        #expect(snippet.text.count == TextPreview.initialDetailCharacterLimit)
         #expect(snippet.isTruncated)
         #expect(
             TextPreview.characterCountDescription(for: content)
                 .hasPrefix("\(TextPreview.countScanCharacterLimit)+")
+        )
+    }
+
+    @Test
+    func textPreviewLoadsMoreInBoundedChunks() {
+        let content = String(
+            repeating: "a",
+            count: TextPreview.maxInteractiveDetailCharacterLimit + 1
+        )
+        let item = ClipboardItem(content: content, kind: .text)
+        let nextLimit = TextPreview.nextDetailCharacterLimit(
+            after: TextPreview.initialDetailCharacterLimit
+        )
+        let snippet = TextPreview.detailSnippet(
+            for: item,
+            revealsSensitiveContent: false,
+            maxCharacters: nextLimit
+        )
+
+        #expect(nextLimit == TextPreview.initialDetailCharacterLimit + TextPreview.detailLoadStep)
+        #expect(snippet.text.count == nextLimit)
+        #expect(snippet.isTruncated)
+        #expect(
+            TextPreview.nextDetailCharacterLimit(
+                after: TextPreview.maxInteractiveDetailCharacterLimit
+            ) == TextPreview.maxInteractiveDetailCharacterLimit
         )
     }
 

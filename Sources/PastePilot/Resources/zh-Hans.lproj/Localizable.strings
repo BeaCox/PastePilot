@@ -132,7 +132,9 @@
 "%d+ characters" = "%d+ 字符";
 "%d lines" = "%d 行";
 "%d+ lines" = "%d+ 行";
+"Showing first %d characters" = "正在显示前 %d 个字符";
 "Preview limited to first %d characters" = "预览仅显示前 %d 个字符";
+"Show More" = "显示更多";
 "Folder" = "文件夹";
 
 /* SettingsView */
