@@ -55,6 +55,11 @@ final class ClipboardStore: ObservableObject {
         load()
     }
 
+    deinit {
+        timer?.invalidate()
+        ocrTasksByItemID.values.forEach { $0.cancel() }
+    }
+
     func startMonitoring() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in

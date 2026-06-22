@@ -18,6 +18,9 @@ extension MenuBarView {
         .onAppear {
             handleAppear()
         }
+        .onDisappear {
+            handleDisappear()
+        }
         .onChange(of: searchText) {
             handleSearchChange()
         }

@@ -124,12 +124,14 @@ final class PlainTextPasteService {
         let temporaryChangeCount = pasteboard.changeCount
         postPasteShortcut()
         restoreTask = Task {
+            defer {
+                restoreTask = nil
+            }
             try? await Task.sleep(for: restoreDelay)
             guard !Task.isCancelled else { return }
             if pasteboard.changeCount == temporaryChangeCount {
                 snapshot.restore(to: pasteboard)
             }
-            restoreTask = nil
             completion()
         }
         return .pasted

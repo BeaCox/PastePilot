@@ -12,6 +12,13 @@ extension MenuBarView {
         resize(preferredSize)
     }
 
+    func handleDisappear() {
+        previewTask?.cancel()
+        closePreviewTask?.cancel()
+        noticeTask?.cancel()
+        fullTextSearchTask?.cancel()
+    }
+
     func handlePanelHover(_ hovering: Bool) {
         closePreviewTask?.cancel()
         guard !hovering, previewedItem != nil else { return }
