@@ -26,8 +26,41 @@ extension MenuBarView {
     }
 
     func handleSearchChange() {
+        scheduleFullTextSearch()
         selectFirstItem()
         resize(preferredSize)
+    }
+
+    func scheduleFullTextSearch() {
+        fullTextSearchTask?.cancel()
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let targets = store.externalContentSearchTargets()
+        guard !query.isEmpty, !targets.isEmpty else {
+            fullTextSearchQuery = query
+            fullTextSearchIDs = []
+            return
+        }
+        let textDirectoryURL = store.textStore.directoryURL
+
+        fullTextSearchTask = Task {
+            try? await Task.sleep(for: .milliseconds(180))
+            guard !Task.isCancelled else { return }
+            let ids = await Task.detached(priority: .userInitiated) {
+                let textStore = ClipboardTextStore(directoryURL: textDirectoryURL)
+                return Set(targets.compactMap { target in
+                    textStore.content(fileName: target.fileName, contains: query)
+                        ? target.id
+                        : nil
+                })
+            }.value
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                fullTextSearchQuery = query
+                fullTextSearchIDs = ids
+                selectFirstItem()
+                resize(preferredSize)
+            }
+        }
     }
 
     func handleFirstItemChange() {
@@ -55,6 +88,8 @@ extension MenuBarView {
             closePreview()
         } else if !searchText.isEmpty {
             searchText = ""
+            fullTextSearchIDs = []
+            fullTextSearchQuery = ""
         } else {
             closePopover()
         }
@@ -94,6 +129,8 @@ extension MenuBarView {
             searchFocused = true
         case .clearSearch:
             searchText = ""
+            fullTextSearchIDs = []
+            fullTextSearchQuery = ""
             searchFocused = true
         case .clearUnpinned:
             showsClearConfirmation = true
@@ -120,16 +157,23 @@ extension MenuBarView {
     }
 
     func shouldShowPinnedHeader(at index: Int) -> Bool {
-        index == 0
-            && filteredItems.first?.isPinned == true
+        shouldShowPinnedHeader(at: index, in: filteredItems)
+    }
+
+    func shouldShowPinnedHeader(at index: Int, in items: [ClipboardItem]) -> Bool {
+        index == 0 && items.first?.isPinned == true
     }
 
     func shouldShowRecentHeader(at index: Int) -> Bool {
-        guard index < filteredItems.count,
-              !filteredItems[index].isPinned else {
+        shouldShowRecentHeader(at: index, in: filteredItems)
+    }
+
+    func shouldShowRecentHeader(at index: Int, in items: [ClipboardItem]) -> Bool {
+        guard index < items.count,
+              !items[index].isPinned else {
             return false
         }
-        return index == 0 || filteredItems[index - 1].isPinned
+        return index == 0 || items[index - 1].isPinned
     }
 
     func moveSelection(_ direction: MoveCommandDirection) {

@@ -33,17 +33,26 @@ struct MenuBarView: View {
     @State var previewTask: Task<Void, Never>?
     @State var closePreviewTask: Task<Void, Never>?
     @State var noticeTask: Task<Void, Never>?
+    @State var fullTextSearchTask: Task<Void, Never>?
+    @State var fullTextSearchQuery = ""
+    @State var fullTextSearchIDs: Set<UUID> = []
     @State var historyItemFrames: [UUID: CGRect] = [:]
     @State var previewClosesInstantly = false
     @FocusState var searchFocused: Bool
 
     var filteredItems: [ClipboardItem] {
-        let matches = searchText.isEmpty ? store.items : store.items.filter {
-            $0.content.localizedCaseInsensitiveContains(searchText)
-                || $0.kind.localizedTitle.localizedCaseInsensitiveContains(searchText)
-                || ($0.ocrText?.localizedCaseInsensitiveContains(searchText) ?? false)
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fullTextIDs = fullTextSearchQuery == query ? fullTextSearchIDs : []
+        let matches = query.isEmpty ? store.items : store.items.filter {
+            shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
         }
         return ClipboardHistoryOrdering.pinnedFirst(matches)
+    }
+
+    func shortSearchMatches(_ item: ClipboardItem, query: String) -> Bool {
+        item.content.localizedCaseInsensitiveContains(query)
+            || item.kind.localizedTitle.localizedCaseInsensitiveContains(query)
+            || (item.ocrText?.localizedCaseInsensitiveContains(query) ?? false)
     }
 
     var selectedItem: ClipboardItem? {

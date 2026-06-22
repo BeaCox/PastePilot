@@ -15,6 +15,33 @@ struct ClipboardImageStore {
         NSImage(contentsOf: url(fileName: fileName))
     }
 
+    func thumbnail(fileName: String, pointSize: CGFloat) -> NSImage? {
+        guard let image = image(fileName: fileName) else { return nil }
+        let size = NSSize(width: pointSize, height: pointSize)
+        let thumbnail = NSImage(size: size)
+        thumbnail.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+
+        let sourceSize = image.size
+        let scale = max(
+            size.width / max(sourceSize.width, 1),
+            size.height / max(sourceSize.height, 1)
+        )
+        let drawSize = NSSize(
+            width: sourceSize.width * scale,
+            height: sourceSize.height * scale
+        )
+        let drawRect = NSRect(
+            x: (size.width - drawSize.width) / 2,
+            y: (size.height - drawSize.height) / 2,
+            width: drawSize.width,
+            height: drawSize.height
+        )
+        image.draw(in: drawRect)
+        thumbnail.unlockFocus()
+        return thumbnail
+    }
+
     func path(fileName: String) -> String {
         url(fileName: fileName).path
     }
