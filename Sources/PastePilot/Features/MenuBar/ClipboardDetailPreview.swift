@@ -145,6 +145,9 @@ struct ClipboardDetailPreview: View {
             revealsSensitiveContent = false
             keyboardActions = ClipboardActionFactory.keyboardActions(for: item)
         }
+        .onDisappear {
+            keyboardActions.removeAll(keepingCapacity: false)
+        }
     }
 
     @ViewBuilder
@@ -357,6 +360,17 @@ private struct TextKitPreview: NSViewRepresentable {
         textView.font = font
     }
 
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: ()) {
+        clearTextView(in: scrollView)
+    }
+
+    private static func clearTextView(in scrollView: NSScrollView) {
+        if let textView = scrollView.documentView as? NSTextView {
+            textView.textStorage?.setAttributedString(NSAttributedString())
+        }
+        scrollView.documentView = nil
+    }
+
     private var font: NSFont {
         switch fontDesign {
         case .monospaced:
@@ -467,6 +481,13 @@ private struct RichTextPreview: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         textView.textStorage?.setAttributedString(attributedString)
+    }
+
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: ()) {
+        if let textView = scrollView.documentView as? NSTextView {
+            textView.textStorage?.setAttributedString(NSAttributedString())
+        }
+        scrollView.documentView = nil
     }
 
     private var attributedString: NSAttributedString {

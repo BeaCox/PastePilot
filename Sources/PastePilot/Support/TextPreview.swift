@@ -2,13 +2,13 @@ import Foundation
 
 enum TextPreview {
     static let summaryCharacterLimit = 240
-    static let initialDetailCharacterLimit = 20_000
-    static let detailLoadStep = 20_000
-    static let maxInteractiveDetailCharacterLimit = 120_000
+    static let initialDetailCharacterLimit = 8_000
+    static let detailLoadStep = 8_000
+    static let maxInteractiveDetailCharacterLimit = 40_000
     static let detailCharacterLimit = initialDetailCharacterLimit
     static let countScanCharacterLimit = 100_000
-    static let richTextPreviewByteLimit = 120_000
-    static let jsonFormattingByteLimit = 80_000
+    static let richTextPreviewByteLimit = 48_000
+    static let jsonFormattingByteLimit = 32_000
 
     struct Snippet: Equatable {
         let text: String

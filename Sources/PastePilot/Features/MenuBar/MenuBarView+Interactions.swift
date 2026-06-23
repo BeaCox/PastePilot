@@ -17,6 +17,13 @@ extension MenuBarView {
         closePreviewTask?.cancel()
         noticeTask?.cancel()
         fullTextSearchTask?.cancel()
+        previewTask = nil
+        closePreviewTask = nil
+        noticeTask = nil
+        fullTextSearchTask = nil
+        previewedID = nil
+        notice = nil
+        historyItemFrames.removeAll(keepingCapacity: false)
     }
 
     func handlePanelHover(_ hovering: Bool) {

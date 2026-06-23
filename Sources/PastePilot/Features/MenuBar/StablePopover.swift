@@ -63,20 +63,14 @@ struct StablePopover<Content: View>: NSViewRepresentable {
             // When the panel is being dismissed (e.g. the user clicked another
             // app), close without animation so the preview vanishes together
             // with the panel. Otherwise honor the user's animation preference.
-            coordinator.popover?.animates = animationEnabled && !instantClose
-            coordinator.popover?.close()
-            coordinator.popover = nil
-            coordinator.hosting = nil
+            coordinator.close(animationEnabled: animationEnabled, instantClose: instantClose)
         }
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
         // The host view only tears down when the whole panel is closing, so the
         // preview must vanish instantly alongside it rather than animate out.
-        coordinator.popover?.animates = false
-        coordinator.popover?.close()
-        coordinator.popover = nil
-        coordinator.hosting = nil
+        coordinator.close(animationEnabled: false, instantClose: true)
     }
 
     private func resolvedAnchorRect(in view: NSView) -> NSRect {
@@ -115,6 +109,14 @@ struct StablePopover<Content: View>: NSViewRepresentable {
     final class Coordinator {
         var popover: NSPopover?
         var hosting: NSHostingController<Content>?
+
+        func close(animationEnabled: Bool, instantClose: Bool) {
+            popover?.animates = animationEnabled && !instantClose
+            popover?.close()
+            popover?.contentViewController = nil
+            hosting = nil
+            popover = nil
+        }
     }
 }
 
