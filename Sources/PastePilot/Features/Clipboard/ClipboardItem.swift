@@ -67,6 +67,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let richTextRTFBase64: String?
     let richTextHTML: String?
     let contentFileName: String?
+    let contentDigest: String?
     let contentCharacterCount: Int?
     let contentLineCount: Int?
     let contentByteCount: Int?
@@ -92,6 +93,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         richTextRTFBase64: String? = nil,
         richTextHTML: String? = nil,
         contentFileName: String? = nil,
+        contentDigest: String? = nil,
         contentCharacterCount: Int? = nil,
         contentLineCount: Int? = nil,
         contentByteCount: Int? = nil,
@@ -116,6 +118,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.richTextRTFBase64 = richTextRTFBase64
         self.richTextHTML = richTextHTML
         self.contentFileName = contentFileName
+        self.contentDigest = contentDigest
         self.contentCharacterCount = contentCharacterCount
         self.contentLineCount = contentLineCount
         self.contentByteCount = contentByteCount
@@ -148,7 +151,7 @@ enum ClipboardHistoryOrdering {
 }
 
 extension ClipboardItem {
-    func externalizedContent(fileName: String) -> ClipboardItem {
+    func externalizedContent(fileName: String, digest: String? = nil) -> ClipboardItem {
         ClipboardItem(
             id: id,
             content: TextPreview.clippedText(
@@ -172,6 +175,7 @@ extension ClipboardItem {
             richTextRTFBase64: richTextRTFBase64,
             richTextHTML: richTextHTML,
             contentFileName: fileName,
+            contentDigest: digest ?? contentDigest ?? ContentDigest.sha256Hex(for: content),
             contentCharacterCount: content.count,
             contentLineCount: content.reduce(1) { count, character in
                 character.isNewline ? count + 1 : count

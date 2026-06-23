@@ -68,3 +68,79 @@ struct ClipboardTextStore {
         directoryURL.appendingPathComponent(fileName)
     }
 }
+
+struct ProcessedClipboardText {
+    let content: String
+    let fileName: String?
+    let characterCount: Int
+    let lineCount: Int
+    let byteCount: Int
+    let digest: String
+}
+
+final class ClipboardTextWriteQueue {
+    private let queue = DispatchQueue(
+        label: "PastePilot.TextWriteQueue",
+        qos: .userInitiated
+    )
+
+    func processAndSave(
+        _ content: String,
+        id: UUID,
+        textStore: ClipboardTextStore,
+        completion: @escaping (ProcessedClipboardText) -> Void
+    ) {
+        queue.async {
+            completion(Self.process(content, id: id, textStore: textStore))
+        }
+    }
+
+    static func process(
+        _ content: String,
+        id: UUID,
+        textStore: ClipboardTextStore
+    ) -> ProcessedClipboardText {
+        let characterCount = content.count
+        let lineCount = content.reduce(1) { count, character in
+            character.isNewline ? count + 1 : count
+        }
+        let byteCount = content.utf8.count
+        let digest = ContentDigest.sha256Hex(for: content)
+        guard byteCount > ClipboardTextStore.externalizationByteLimit else {
+            return ProcessedClipboardText(
+                content: content,
+                fileName: nil,
+                characterCount: characterCount,
+                lineCount: lineCount,
+                byteCount: byteCount,
+                digest: digest
+            )
+        }
+
+        let fileName = "\(id.uuidString).txt"
+        do {
+            try textStore.save(content, fileName: fileName)
+            return ProcessedClipboardText(
+                content: TextPreview.clippedText(
+                    from: content,
+                    maxCharacters: TextPreview.initialDetailCharacterLimit
+                ).text,
+                fileName: fileName,
+                characterCount: characterCount,
+                lineCount: lineCount,
+                byteCount: byteCount,
+                digest: digest
+            )
+        } catch {
+            NSLog("PastePilot failed to externalize text content: \(error)")
+            return ProcessedClipboardText(
+                content: content,
+                fileName: nil,
+                characterCount: characterCount,
+                lineCount: lineCount,
+                byteCount: byteCount,
+                digest: digest
+            )
+        }
+    }
+}

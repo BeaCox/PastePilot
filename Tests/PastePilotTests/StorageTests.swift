@@ -254,6 +254,7 @@ struct StorageTests {
         let item = try await waitForCapturedItem(in: store)
         let fileName = try #require(item.contentFileName)
         #expect(item.content.count == TextPreview.initialDetailCharacterLimit)
+        #expect(item.contentDigest == ContentDigest.sha256Hex(for: originalContent))
         #expect(item.contentCharacterCount == originalContent.count)
         #expect(store.content(for: item) == originalContent)
 
@@ -301,12 +302,71 @@ struct StorageTests {
         let fileName = try #require(item.contentFileName)
         #expect(item.id == legacyItem.id)
         #expect(item.content.count == TextPreview.initialDetailCharacterLimit)
+        #expect(item.contentDigest == ContentDigest.sha256Hex(for: originalContent))
         #expect(store.content(for: item) == originalContent)
         #expect(
             FileManager.default.fileExists(
                 atPath: directory
                     .appendingPathComponent("text", isDirectory: true)
                     .appendingPathComponent(fileName)
+                    .path
+            )
+        )
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func duplicateLargeTextCaptureUsesDigestAndPreservesPinnedState() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let originalContent = String(
+            repeating: "duplicate large clipboard text\n",
+            count: ClipboardTextStore.externalizationByteLimit / 8
+        )
+        let oldFileName = "old-large.txt"
+        try store.textStore.save(originalContent, fileName: oldFileName)
+        let oldItem = ClipboardItem(
+            content: TextPreview.clippedText(
+                from: originalContent,
+                maxCharacters: TextPreview.initialDetailCharacterLimit
+            ).text,
+            kind: .text,
+            isPinned: true,
+            contentFileName: oldFileName,
+            contentDigest: ContentDigest.sha256Hex(for: originalContent),
+            contentCharacterCount: originalContent.count,
+            contentLineCount: originalContent.reduce(1) { count, character in
+                character.isNewline ? count + 1 : count
+            },
+            contentByteCount: originalContent.utf8.count
+        )
+        store.items = [oldItem]
+
+        pasteboard.clearContents()
+        pasteboard.setString(originalContent, forType: .string)
+        store.captureCurrentClipboard()
+
+        let newItem = try await waitForCapturedItem(in: store) { item in
+            item.id != oldItem.id
+        }
+        #expect(store.items.count == 1)
+        #expect(newItem.isPinned)
+        #expect(newItem.contentDigest == oldItem.contentDigest)
+        #expect(newItem.contentFileName != oldFileName)
+        #expect(store.content(for: newItem) == originalContent)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: store.textStore.directoryURL
+                    .appendingPathComponent(oldFileName)
                     .path
             )
         )
@@ -585,6 +645,47 @@ struct StorageTests {
         #expect(store.items.isEmpty)
         #expect(textStore.content(fileName: fileName) == nil)
         store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func textSaveResultIsDiscardedWhenClipboardHasChanged() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let fileName = "stale.txt"
+        try store.textStore.save("stale large text", fileName: fileName)
+        let processedText = ProcessedClipboardText(
+            content: "stale large text",
+            fileName: fileName,
+            characterCount: 16,
+            lineCount: 1,
+            byteCount: 16,
+            digest: ContentDigest.sha256Hex(for: "stale large text")
+        )
+        let staleChangeCount = pasteboard.changeCount - 1
+
+        store.finishCapturingText(
+            processedText,
+            originalContent: "stale large text",
+            id: UUID(),
+            kind: .text,
+            containsSensitiveData: false,
+            source: (nil, nil),
+            richTextRTFBase64: nil,
+            richTextHTML: nil,
+            pasteboardChangeCount: staleChangeCount
+        )
+
+        #expect(store.items.isEmpty)
+        #expect(store.textStore.content(fileName: fileName) == nil)
     }
 
     @Test
@@ -871,14 +972,18 @@ struct StorageTests {
     }
 
     @MainActor
-    private func waitForCapturedItem(in store: ClipboardStore) async throws -> ClipboardItem {
+    private func waitForCapturedItem(
+        in store: ClipboardStore,
+        matching predicate: (ClipboardItem) -> Bool = { _ in true }
+    ) async throws -> ClipboardItem {
         for _ in 0..<100 {
-            if let item = store.items.first {
+            if let item = store.items.first(where: predicate) {
                 return item
             }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        return try #require(store.items.first)
+        let matchingItem = store.items.first(where: predicate)
+        return try #require(matchingItem)
     }
 
     private func makeTestImage(width: Int, height: Int) throws -> CGImage {

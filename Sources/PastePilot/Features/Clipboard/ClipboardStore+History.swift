@@ -52,14 +52,19 @@ extension ClipboardStore {
             }
 
             let fileName = "\(item.id.uuidString).txt"
-            do {
-                try textStore.save(item.content, fileName: fileName)
+            let processedContent = ClipboardTextWriteQueue.process(
+                item.content,
+                id: item.id,
+                textStore: textStore
+            )
+            if processedContent.fileName != nil {
                 didExternalize = true
-                return item.externalizedContent(fileName: fileName)
-            } catch {
-                NSLog("PastePilot failed to externalize loaded text content: \(error)")
-                return item
+                return item.externalizedContent(
+                    fileName: fileName,
+                    digest: processedContent.digest
+                )
             }
+            return item
         }
         return didExternalize
     }

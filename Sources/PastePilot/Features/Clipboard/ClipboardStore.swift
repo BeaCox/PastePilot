@@ -12,6 +12,7 @@ final class ClipboardStore: ObservableObject {
     let imageStore: ClipboardImageStore
     let textStore: ClipboardTextStore
     let imageProcessingQueue: ClipboardImageProcessingQueue
+    let textWriteQueue: ClipboardTextWriteQueue
     let pasteboardCaptureQueue: any ClipboardCapturing
     let ocrService: any OCRService
     var timer: Timer?
@@ -34,6 +35,7 @@ final class ClipboardStore: ObservableObject {
         settings: AppSettings = .shared,
         dataDirectoryURL: URL? = nil,
         pasteboardCaptureQueue: any ClipboardCapturing = ClipboardCaptureQueue(),
+        textWriteQueue: ClipboardTextWriteQueue = ClipboardTextWriteQueue(),
         ocrService: any OCRService = VisionOCRService()
     ) {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
@@ -49,6 +51,7 @@ final class ClipboardStore: ObservableObject {
             directoryURL: dataDirectoryURL.appendingPathComponent("text", isDirectory: true)
         )
         self.imageProcessingQueue = ClipboardImageProcessingQueue()
+        self.textWriteQueue = textWriteQueue
         self.pasteboardCaptureQueue = pasteboardCaptureQueue
         self.ocrService = ocrService
         self.lastChangeCount = pasteboard.changeCount

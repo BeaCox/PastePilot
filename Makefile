@@ -16,13 +16,14 @@ TEST_SCRATCH_FLAG := $(if $(TEST_SCRATCH_PATH),--scratch-path "$(TEST_SCRATCH_PA
 SWIFT_BUILD_SANDBOX_FLAGS ?= --disable-sandbox
 SWIFT_TEST_SANDBOX_FLAGS ?= --disable-sandbox
 SWIFT_TEST_PARALLEL_FLAGS ?= --no-parallel
+SWIFT_CONCURRENCY_FLAGS ?= -Xswiftc -warn-concurrency -Xswiftc -strict-concurrency=targeted
 TEST_FLAGS := --enable-swift-testing \
 	-Xswiftc -F -Xswiftc "$(TESTING_FRAMEWORK_DIR)" \
 	-Xlinker -F -Xlinker "$(TESTING_FRAMEWORK_DIR)" \
 	-Xlinker -rpath -Xlinker "$(TESTING_FRAMEWORK_DIR)" \
 	-Xlinker -rpath -Xlinker "$(TESTING_LIBRARY_DIR)"
 
-.PHONY: app dmg build run test check-env
+.PHONY: app dmg build run test concurrency-check check-env
 
 app:
 	sh Scripts/build-app.sh
@@ -49,3 +50,6 @@ check-env:
 
 test: check-env
 	CLANG_MODULE_CACHE_PATH="$(CLANG_MODULE_CACHE_PATH)" swift test $(TEST_SCRATCH_FLAG) $(SWIFT_TEST_SANDBOX_FLAGS) $(SWIFT_TEST_PARALLEL_FLAGS) $(TEST_FLAGS)
+
+concurrency-check:
+	CLANG_MODULE_CACHE_PATH="$(CLANG_MODULE_CACHE_PATH)" swift build $(SWIFT_BUILD_SANDBOX_FLAGS) $(SWIFT_CONCURRENCY_FLAGS)

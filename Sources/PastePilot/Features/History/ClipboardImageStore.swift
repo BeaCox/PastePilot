@@ -1,5 +1,4 @@
 import AppKit
-import CryptoKit
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
@@ -113,9 +112,7 @@ final class ClipboardImageProcessingQueue {
                 }
 
                 try imageStore.save(pngData, fileName: fileName)
-                let digest = SHA256.hash(data: pngData)
-                    .map { String(format: "%02x", $0) }
-                    .joined()
+                let digest = ContentDigest.sha256Hex(for: pngData)
                 completion(
                     .success(
                         ProcessedClipboardImage(

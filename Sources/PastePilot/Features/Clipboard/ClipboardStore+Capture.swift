@@ -54,10 +54,15 @@ extension ClipboardStore {
                 rtfData: rtfData,
                 html: html,
                 plainText: plainText,
-                source: source
+                source: source,
+                pasteboardChangeCount: snapshot.changeCount
             )
         case .text(let content):
-            captureText(content, source: source)
+            captureText(
+                content,
+                source: source,
+                pasteboardChangeCount: snapshot.changeCount
+            )
         case .none:
             return
         }
@@ -65,7 +70,8 @@ extension ClipboardStore {
 
     func captureText(
         _ content: String,
-        source: (name: String?, bundleIdentifier: String?)
+        source: (name: String?, bundleIdentifier: String?),
+        pasteboardChangeCount: Int? = nil
     ) {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedContent.isEmpty else {
@@ -80,20 +86,90 @@ extension ClipboardStore {
         let analysis = ContentAnalyzer.analyze(trimmedContent)
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
         let id = UUID()
-        let storedContent = storedTextContent(for: content, id: id)
-        insertCaptured(duplicate: { self.content($0, matches: content) }) { wasPinned in
+        if content.utf8.count <= ClipboardTextStore.externalizationByteLimit {
+            let processedContent = ClipboardTextWriteQueue.process(
+                content,
+                id: id,
+                textStore: textStore
+            )
+            finishCapturingText(
+                processedContent,
+                originalContent: content,
+                id: id,
+                kind: analysis.kind,
+                containsSensitiveData: analysis.containsSensitiveData,
+                source: source,
+                richTextRTFBase64: nil,
+                richTextHTML: nil,
+                pasteboardChangeCount: pasteboardChangeCount
+            )
+            return
+        }
+
+        textWriteQueue.processAndSave(
+            content,
+            id: id,
+            textStore: textStore
+        ) { [weak self] processedContent in
+            Task { @MainActor in
+                guard let self else { return }
+                self.finishCapturingText(
+                    processedContent,
+                    originalContent: content,
+                    id: id,
+                    kind: analysis.kind,
+                    containsSensitiveData: analysis.containsSensitiveData,
+                    source: source,
+                    richTextRTFBase64: nil,
+                    richTextHTML: nil,
+                    pasteboardChangeCount: pasteboardChangeCount
+                )
+            }
+        }
+    }
+
+    func finishCapturingText(
+        _ processedContent: ProcessedClipboardText,
+        originalContent: String,
+        id: UUID,
+        kind: ContentKind,
+        containsSensitiveData: Bool,
+        source: (name: String?, bundleIdentifier: String?),
+        richTextRTFBase64: String?,
+        richTextHTML: String?,
+        pasteboardChangeCount: Int?
+    ) {
+        guard pasteboardChangeCount.map({ pasteboard.changeCount == $0 }) ?? true else {
+            if let fileName = processedContent.fileName {
+                textStore.delete(fileName: fileName)
+            }
+            return
+        }
+        insertCaptured(
+            duplicate: {
+                self.content(
+                    $0,
+                    matches: originalContent,
+                    digest: processedContent.digest
+                )
+                    && (kind != .richText || $0.kind == .richText)
+            }
+        ) { wasPinned in
             ClipboardItem(
                 id: id,
-                content: storedContent.content,
-                kind: analysis.kind,
+                content: processedContent.content,
+                kind: kind,
                 isPinned: wasPinned,
-                containsSensitiveData: analysis.containsSensitiveData,
+                containsSensitiveData: containsSensitiveData,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier,
-                contentFileName: storedContent.fileName,
-                contentCharacterCount: storedContent.characterCount,
-                contentLineCount: storedContent.lineCount,
-                contentByteCount: storedContent.byteCount
+                richTextRTFBase64: richTextRTFBase64,
+                richTextHTML: richTextHTML,
+                contentFileName: processedContent.fileName,
+                contentDigest: processedContent.digest,
+                contentCharacterCount: processedContent.characterCount,
+                contentLineCount: processedContent.lineCount,
+                contentByteCount: processedContent.byteCount
             )
         }
     }
@@ -141,7 +217,8 @@ extension ClipboardStore {
         rtfData: Data?,
         html: String?,
         plainText: String,
-        source: (name: String?, bundleIdentifier: String?)
+        source: (name: String?, bundleIdentifier: String?),
+        pasteboardChangeCount: Int? = nil
     ) -> Bool {
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
         let rtfBase64 = rtfData?.base64EncodedString()
@@ -152,24 +229,46 @@ extension ClipboardStore {
         }
 
         let id = UUID()
-        let storedContent = storedTextContent(for: plainText, id: id)
-        insertCaptured(
-            duplicate: { self.content($0, matches: plainText) && $0.kind == .richText }
-        ) { wasPinned in
-            ClipboardItem(
+        if plainText.utf8.count <= ClipboardTextStore.externalizationByteLimit {
+            let processedContent = ClipboardTextWriteQueue.process(
+                plainText,
                 id: id,
-                content: storedContent.content,
+                textStore: textStore
+            )
+            finishCapturingText(
+                processedContent,
+                originalContent: plainText,
+                id: id,
                 kind: .richText,
-                isPinned: wasPinned,
-                sourceAppName: source.name,
-                sourceBundleIdentifier: source.bundleIdentifier,
+                containsSensitiveData: ContentAnalyzer.containsSensitiveData(plainText),
+                source: source,
                 richTextRTFBase64: rtfBase64,
                 richTextHTML: html,
-                contentFileName: storedContent.fileName,
-                contentCharacterCount: storedContent.characterCount,
-                contentLineCount: storedContent.lineCount,
-                contentByteCount: storedContent.byteCount
+                pasteboardChangeCount: pasteboardChangeCount
             )
+            return true
+        }
+
+        textWriteQueue.processAndSave(
+            plainText,
+            id: id,
+            textStore: textStore
+        ) { [weak self] processedContent in
+            Task { @MainActor in
+                guard let self else { return }
+                self.finishCapturingText(
+                    processedContent,
+                    originalContent: plainText,
+                    id: id,
+                    kind: .richText,
+                    containsSensitiveData: ContentAnalyzer
+                        .containsSensitiveData(plainText),
+                    source: source,
+                    richTextRTFBase64: rtfBase64,
+                    richTextHTML: html,
+                    pasteboardChangeCount: pasteboardChangeCount
+                )
+            }
         }
         return true
     }
@@ -228,62 +327,17 @@ extension ClipboardStore {
         return wasPinned
     }
 
-    private func content(_ item: ClipboardItem, matches content: String) -> Bool {
+    private func content(
+        _ item: ClipboardItem,
+        matches content: String,
+        digest: String
+    ) -> Bool {
+        if item.contentDigest == digest {
+            return true
+        }
         if let fileName = item.contentFileName {
             return textStore.content(fileName: fileName) == content
         }
         return item.content == content
     }
-
-    private func storedTextContent(
-        for content: String,
-        id: UUID
-    ) -> StoredTextContent {
-        let characterCount = content.count
-        let lineCount = content.reduce(1) { count, character in
-            character.isNewline ? count + 1 : count
-        }
-        let byteCount = content.utf8.count
-        guard byteCount > ClipboardTextStore.externalizationByteLimit else {
-            return StoredTextContent(
-                content: content,
-                fileName: nil,
-                characterCount: characterCount,
-                lineCount: lineCount,
-                byteCount: byteCount
-            )
-        }
-
-        let fileName = "\(id.uuidString).txt"
-        do {
-            try textStore.save(content, fileName: fileName)
-            return StoredTextContent(
-                content: TextPreview.clippedText(
-                    from: content,
-                    maxCharacters: TextPreview.initialDetailCharacterLimit
-                ).text,
-                fileName: fileName,
-                characterCount: characterCount,
-                lineCount: lineCount,
-                byteCount: byteCount
-            )
-        } catch {
-            NSLog("PastePilot failed to externalize text content: \(error)")
-            return StoredTextContent(
-                content: content,
-                fileName: nil,
-                characterCount: characterCount,
-                lineCount: lineCount,
-                byteCount: byteCount
-            )
-        }
-    }
-}
-
-private struct StoredTextContent {
-    let content: String
-    let fileName: String?
-    let characterCount: Int
-    let lineCount: Int
-    let byteCount: Int
 }
