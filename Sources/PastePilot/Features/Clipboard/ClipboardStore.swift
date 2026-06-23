@@ -231,7 +231,7 @@ final class ClipboardStore: ObservableObject {
         let expired = items.filter { !$0.isPinned && $0.createdAt < cutoff }
         guard !expired.isEmpty else { return }
         cancelOCR(for: expired)
-        expired.forEach(deleteImageFile)
+        expired.forEach(deleteStoredResources)
         items.removeAll { !$0.isPinned && $0.createdAt < cutoff }
         save()
     }

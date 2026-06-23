@@ -549,6 +549,46 @@ struct StorageTests {
 
     @Test
     @MainActor
+    func expiringHistoryDeletesExternalizedTextFiles() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotExpiryTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.historyTimeoutSeconds = 3_600
+
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text", isDirectory: true)
+        )
+        let fileName = "expired.txt"
+        try textStore.save("expired external text", fileName: fileName)
+        let expired = ClipboardItem(
+            content: "expired external text",
+            kind: .text,
+            createdAt: Date(timeIntervalSinceNow: -7_200),
+            contentFileName: fileName
+        )
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        try repository.save([expired])
+
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        #expect(store.items.isEmpty)
+        #expect(textStore.content(fileName: fileName) == nil)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func imageSaveResultIsDiscardedWhenClipboardHasChanged() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
