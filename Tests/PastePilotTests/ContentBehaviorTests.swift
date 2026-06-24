@@ -51,6 +51,31 @@ struct ContentBehaviorTests {
         #expect(ContentAnalyzer.containsSensitiveData(githubToken))
         #expect(ContentAnalyzer.redacted(githubToken) == "••••••••")
 
+        let githubRefreshToken = "ghr_1234567890abcdefghijklmnop"
+        #expect(ContentAnalyzer.containsSensitiveData(githubRefreshToken))
+        #expect(ContentAnalyzer.redacted(githubRefreshToken) == "••••••••")
+
+        let fineGrainedGitHubToken = "github_pat_1234567890_abcdefghijklmnopQRST"
+        #expect(ContentAnalyzer.containsSensitiveData(fineGrainedGitHubToken))
+        #expect(ContentAnalyzer.redacted(fineGrainedGitHubToken) == "••••••••")
+
+        let slackToken = [
+            "xoxb",
+            "123456789012",
+            "123456789012",
+            "abcdefghijklmnop"
+        ].joined(separator: "-")
+        #expect(ContentAnalyzer.containsSensitiveData(slackToken))
+        #expect(ContentAnalyzer.redacted(slackToken) == "••••••••")
+
+        let awsAccessKey = "AKIA1234567890ABCDEF"
+        #expect(ContentAnalyzer.containsSensitiveData(awsAccessKey))
+        #expect(ContentAnalyzer.redacted(awsAccessKey) == "••••••••")
+
+        let awsSecret = "aws_secret_access_key=abcdefghijklmnopqrstuvwxyz1234567890ABCD"
+        #expect(ContentAnalyzer.containsSensitiveData(awsSecret))
+        #expect(ContentAnalyzer.redacted(awsSecret) == "aws_secret_access_key=••••••••")
+
         let jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.signature"
         #expect(ContentAnalyzer.containsSensitiveData(jwt))
         #expect(ContentAnalyzer.redacted(jwt) == "••••••••")

@@ -12,10 +12,16 @@ enum ContentAnalyzer {
     }
 
     private static let redactionToken = "••••••••"
+    private static let sensitiveAssignmentPattern =
+        #"(?i)\b("#
+            + #"api[_-]?key|access[_-]?token|auth[_-]?token|"#
+            + #"client[_-]?secret|password|passwd|"#
+            + #"aws[_-]?secret[_-]?access[_-]?key|secret[_-]?access[_-]?key"#
+            + #")\b(\s*[:=]\s*["']?)[^\s"',;}]+(["']?)"#
 
     private static let sensitivePatterns: [SensitivePattern] = [
         makeSensitivePattern(
-            #"(?i)\b(api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd)\b(\s*[:=]\s*["']?)[^\s"',;}]+(["']?)"#,
+            sensitiveAssignmentPattern,
             replacementTemplate: "$1$2\(redactionToken)$3"
         ),
         makeSensitivePattern(
@@ -27,7 +33,19 @@ enum ContentAnalyzer {
             replacementTemplate: redactionToken
         ),
         makeSensitivePattern(
-            #"\bgh[opsu]_[A-Za-z0-9]{20,}\b"#,
+            #"\bgh[opsur]_[A-Za-z0-9]{20,}\b"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"\bgithub_pat_[A-Za-z0-9_]{20,}\b"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"\bxox[abprs]-[A-Za-z0-9-]{20,}\b"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"\b(?:A3T[A-Z0-9]|AKIA|ASIA)[A-Z0-9]{16}\b"#,
             replacementTemplate: redactionToken
         ),
         makeSensitivePattern(
