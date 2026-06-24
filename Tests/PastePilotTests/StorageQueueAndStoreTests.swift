@@ -64,6 +64,24 @@ struct StorageQueueAndStoreTests {
     }
 
     @Test
+    func textStoreSearchFindsMatchesAcrossReadChunks() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text")
+        )
+        let fileName = "large.txt"
+        let content = String(repeating: "a", count: 65_530)
+            + "NeedleAcrossBoundary"
+            + String(repeating: "z", count: 2_000)
+
+        try textStore.save(content, fileName: fileName)
+
+        #expect(textStore.content(fileName: fileName, contains: "needleacrossboundary"))
+        #expect(!textStore.content(fileName: fileName, contains: "missing value"))
+    }
+
+    @Test
     func historyWriteQueuePersistsAfterFlush() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

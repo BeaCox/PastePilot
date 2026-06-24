@@ -2,6 +2,7 @@ import Foundation
 
 struct ClipboardTextStore {
     static let externalizationByteLimit = 64 * 1_024
+    private static let searchChunkByteLimit = 64 * 1_024
 
     let directoryURL: URL
 
@@ -15,10 +16,34 @@ struct ClipboardTextStore {
 
     func content(fileName: String, contains query: String) -> Bool {
         guard !query.isEmpty,
-              let content = content(fileName: fileName) else {
+              let handle = try? FileHandle(forReadingFrom: url(fileName: fileName)) else {
             return false
         }
-        return content.localizedCaseInsensitiveContains(query)
+        defer { try? handle.close() }
+
+        let overlapByteLimit = max(query.utf8.count * 4, 16)
+        var overlap = Data()
+
+        while true {
+            let chunk = handle.readData(ofLength: Self.searchChunkByteLimit)
+            guard !chunk.isEmpty else { return false }
+
+            var searchableData = Data()
+            searchableData.reserveCapacity(overlap.count + chunk.count)
+            searchableData.append(overlap)
+            searchableData.append(chunk)
+
+            let searchableText = String(decoding: searchableData, as: UTF8.self)
+            if searchableText.localizedCaseInsensitiveContains(query) {
+                return true
+            }
+
+            if searchableData.count > overlapByteLimit {
+                overlap = searchableData.suffix(overlapByteLimit)
+            } else {
+                overlap = searchableData
+            }
+        }
     }
 
     func prefix(fileName: String, maxCharacters: Int) -> String? {
