@@ -8,9 +8,13 @@ CONTENTS="$APP/Contents"
 FRAMEWORKS="$CONTENTS/Frameworks"
 BUILD_ROOT="$ROOT/.build/$ARCH"
 RELEASE="$BUILD_ROOT/$ARCH-apple-macosx/release"
-VERSION="${VERSION:-0.5.1}"
+VERSION="${VERSION:-}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+
+if [ -z "$VERSION" ]; then
+  VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
+fi
 
 case "$ARCH" in
   arm64|x86_64) ;;

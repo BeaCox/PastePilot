@@ -7,6 +7,12 @@ All notable changes to PastePilot are documented in this file.
 ### Changed
 
 - CI now runs the Swift concurrency check alongside the regular test suite.
+- Local app builds now read their default version from the repository `VERSION`
+  file instead of a hard-coded shell script value.
+- Detail previews now cache source application icons and parsed rich text to
+  avoid repeated AppKit lookups while hovering through history.
+- Storage tests are split into narrower suites by persistence, capture, and OCR
+  behavior.
 - URL detection now only treats supported URL schemes as links, avoiding
   accidental matches for colon-prefixed text.
 - Sensitive-content redaction now preserves field names and authentication

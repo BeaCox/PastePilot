@@ -198,13 +198,12 @@ struct ClipboardDetailPreview: View {
     }
 
     private var applicationIcon: NSImage? {
-        guard let bundleIdentifier = item.sourceBundleIdentifier,
-              let applicationURL = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: bundleIdentifier
-              ) else {
+        guard let bundleIdentifier = item.sourceBundleIdentifier else {
             return nil
         }
-        return NSWorkspace.shared.icon(forFile: applicationURL.path)
+        return PreviewRenderCache.shared.applicationIcon(
+            forBundleIdentifier: bundleIdentifier
+        )
     }
 
     private var imageDimensions: String {
@@ -480,7 +479,9 @@ private struct RichTextPreview: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
-        textView.textStorage?.setAttributedString(attributedString)
+        textView.textStorage?.setAttributedString(
+            PreviewRenderCache.shared.richTextPreview(for: item)
+        )
     }
 
     static func dismantleNSView(_ scrollView: NSScrollView, coordinator: ()) {
@@ -490,7 +491,7 @@ private struct RichTextPreview: NSViewRepresentable {
         scrollView.documentView = nil
     }
 
-    private var attributedString: NSAttributedString {
+    static func attributedString(for item: ClipboardItem) -> NSAttributedString {
         if let base64 = item.richTextRTFBase64,
            let data = Data(base64Encoded: base64),
            let value = try? NSAttributedString(
@@ -510,6 +511,43 @@ private struct RichTextPreview: NSViewRepresentable {
             return value
         }
         return NSAttributedString(string: item.content)
+    }
+}
+
+private final class PreviewRenderCache: @unchecked Sendable {
+    static let shared = PreviewRenderCache()
+
+    private let applicationIcons = NSCache<NSString, NSImage>()
+    private let richTextPreviews = NSCache<NSString, NSAttributedString>()
+
+    private init() {
+        applicationIcons.countLimit = 64
+        richTextPreviews.countLimit = 128
+    }
+
+    func applicationIcon(forBundleIdentifier bundleIdentifier: String) -> NSImage? {
+        let key = bundleIdentifier as NSString
+        if let icon = applicationIcons.object(forKey: key) {
+            return icon
+        }
+        guard let applicationURL = NSWorkspace.shared.urlForApplication(
+            withBundleIdentifier: bundleIdentifier
+        ) else {
+            return nil
+        }
+        let icon = NSWorkspace.shared.icon(forFile: applicationURL.path)
+        applicationIcons.setObject(icon, forKey: key)
+        return icon
+    }
+
+    func richTextPreview(for item: ClipboardItem) -> NSAttributedString {
+        let key = item.id.uuidString as NSString
+        if let preview = richTextPreviews.object(forKey: key) {
+            return preview
+        }
+        let preview = RichTextPreview.attributedString(for: item)
+        richTextPreviews.setObject(preview, forKey: key)
+        return preview
     }
 }
 

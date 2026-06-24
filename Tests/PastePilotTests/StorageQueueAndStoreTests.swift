@@ -1,0 +1,107 @@
+import AppKit
+import Foundation
+import Testing
+import UniformTypeIdentifiers
+@testable import PastePilot
+
+@Suite(.serialized)
+struct StorageQueueAndStoreTests {
+    @Test
+    func imageStoreRemovesOnlyOrphanedFiles() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        try imageStore.save(Data("keep".utf8), fileName: "keep.png")
+        try imageStore.save(Data("remove".utf8), fileName: "remove.png")
+
+        imageStore.removeOrphans(retaining: ["keep.png"])
+
+        #expect(
+            FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "keep.png")
+            )
+        )
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "remove.png")
+            )
+        )
+    }
+
+    @Test
+    func imageProcessingQueueEncodesAndSavesPNG() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        let writer = ClipboardImageProcessingQueue()
+        let image = try makeTestImage(width: 3, height: 2)
+
+        let processedImage = try await withCheckedThrowingContinuation { continuation in
+            writer.encodeAndSave(
+                image,
+                fileName: "queued.png",
+                imageStore: imageStore,
+                sizeLimitBytes: 1_000_000
+            ) { result in
+                continuation.resume(with: result)
+            }
+        }
+
+        #expect(processedImage.fileName == "queued.png")
+        #expect(processedImage.width == 3)
+        #expect(processedImage.height == 2)
+        #expect(processedImage.byteCount > 0)
+        #expect(!processedImage.digest.isEmpty)
+        #expect(
+            FileManager.default.fileExists(
+                atPath: imageStore.path(fileName: "queued.png")
+            )
+        )
+    }
+
+    @Test
+    func historyWriteQueuePersistsAfterFlush() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let writer = HistoryWriteQueue(repository: repository)
+        let item = ClipboardItem(content: "queued", kind: .text)
+
+        writer.save([item])
+        writer.flush()
+
+        let loadedItem = try #require(repository.load().items.first)
+        #expect(loadedItem.id == item.id)
+        #expect(loadedItem.content == item.content)
+    }
+
+    @Test
+    func historyWriteQueueFlushWritesOnlyLatestPendingSnapshot() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let writer = HistoryWriteQueue(
+            repository: repository,
+            debounceInterval: .seconds(60)
+        )
+        let first = ClipboardItem(content: "first", kind: .text)
+        let second = ClipboardItem(content: "second", kind: .text)
+
+        writer.save([first])
+        writer.save([second])
+        writer.flush()
+
+        let loadedItem = try #require(repository.load().items.first)
+        #expect(loadedItem.id == second.id)
+        #expect(loadedItem.content == second.content)
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent("history.backup.json").path
+            )
+        )
+    }
+}
