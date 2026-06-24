@@ -51,6 +51,9 @@ jobs:
       - name: Run core checks
         run: make test
 
+      - name: Run Swift concurrency checks
+        run: make concurrency-check
+
       - name: Build app bundle
         run: make app
 

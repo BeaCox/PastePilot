@@ -4,6 +4,15 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- CI now runs the Swift concurrency check alongside the regular test suite.
+- URL detection now only treats supported URL schemes as links, avoiding
+  accidental matches for colon-prefixed text.
+- Sensitive-content redaction now preserves field names and authentication
+  prefixes while masking secret values, with broader coverage for bearer
+  tokens, JWTs, and private keys.
+
 ## [0.5.1] - 2026-06-22
 
 ### Changed

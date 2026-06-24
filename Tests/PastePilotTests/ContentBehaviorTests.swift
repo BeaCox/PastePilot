@@ -8,6 +8,10 @@ struct ContentBehaviorTests {
     @Test
     func contentAnalysis() {
         #expect(ContentAnalyzer.analyze(#"{"name":"PastePilot"}"#).kind == .json)
+        #expect(ContentAnalyzer.analyze("https://example.com/path?q=1").kind == .url)
+        #expect(ContentAnalyzer.analyze("mailto:support@example.com").kind == .url)
+        #expect(ContentAnalyzer.analyze("error: missing value").kind == .error)
+        #expect(ContentAnalyzer.analyze("custom-scheme:value").kind == .text)
         #expect(ContentAnalyzer.analyze("git status --short").kind == .command)
         #expect(ContentAnalyzer.analyze("$ npm install").kind == .command)
         #expect(ContentAnalyzer.analyze("npx create-react-app my-app").kind == .command)
@@ -29,7 +33,36 @@ struct ContentBehaviorTests {
     func sensitiveContentDetectionAndRedaction() {
         let secret = "API_KEY=super-secret-value"
         #expect(ContentAnalyzer.analyze(secret).containsSensitiveData)
-        #expect(!ContentAnalyzer.redacted(secret).contains("super-secret-value"))
+        #expect(ContentAnalyzer.redacted(secret) == "API_KEY=••••••••")
+
+        let authorizationHeader = "Authorization: Bearer abcdefghijklmnopqrstuvwxyz012345"
+        #expect(ContentAnalyzer.containsSensitiveData(authorizationHeader))
+        #expect(ContentAnalyzer.redacted(authorizationHeader) == "Authorization: Bearer ••••••••")
+
+        let lowercaseBearer = "authorization: bearer abcdefghijklmnopqrstuvwxyz012345"
+        #expect(ContentAnalyzer.containsSensitiveData(lowercaseBearer))
+        #expect(ContentAnalyzer.redacted(lowercaseBearer) == "authorization: bearer ••••••••")
+
+        let openAIKey = "sk-1234567890abcdefghijklmnop"
+        #expect(ContentAnalyzer.containsSensitiveData(openAIKey))
+        #expect(ContentAnalyzer.redacted(openAIKey) == "••••••••")
+
+        let githubToken = "ghp_1234567890abcdefghijklmnop"
+        #expect(ContentAnalyzer.containsSensitiveData(githubToken))
+        #expect(ContentAnalyzer.redacted(githubToken) == "••••••••")
+
+        let jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.signature"
+        #expect(ContentAnalyzer.containsSensitiveData(jwt))
+        #expect(ContentAnalyzer.redacted(jwt) == "••••••••")
+
+        let privateKey = """
+        -----BEGIN PRIVATE KEY-----
+        abcdefg
+        -----END PRIVATE KEY-----
+        """
+        #expect(ContentAnalyzer.containsSensitiveData(privateKey))
+        #expect(ContentAnalyzer.redacted(privateKey) == "••••••••")
+        #expect(ContentAnalyzer.containsSensitiveData("-----BEGIN OPENSSH PRIVATE KEY-----"))
     }
 
     @Test

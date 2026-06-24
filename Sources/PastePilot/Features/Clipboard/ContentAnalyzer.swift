@@ -6,16 +6,47 @@ struct AnalysisResult {
 }
 
 enum ContentAnalyzer {
-    private static let sensitivePatterns = [
-        #"(?i)\b(api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd)\b\s*[:=]\s*["']?[^\s"',;}]+"#,
-        #"\bsk-[A-Za-z0-9_-]{16,}\b"#,
-        #"\bgh[opsu]_[A-Za-z0-9]{20,}\b"#,
-        #"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"#
-    ]
-
-    private static let sensitiveRegexes: [NSRegularExpression] = sensitivePatterns.compactMap {
-        try? NSRegularExpression(pattern: $0)
+    private struct SensitivePattern {
+        let regex: NSRegularExpression
+        let replacementTemplate: String
     }
+
+    private static let redactionToken = "••••••••"
+
+    private static let sensitivePatterns: [SensitivePattern] = [
+        makeSensitivePattern(
+            #"(?i)\b(api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd)\b(\s*[:=]\s*["']?)[^\s"',;}]+(["']?)"#,
+            replacementTemplate: "$1$2\(redactionToken)$3"
+        ),
+        makeSensitivePattern(
+            #"(?i)\b(Bearer\s+)[A-Za-z0-9._~+/-]+=*\b"#,
+            replacementTemplate: "$1\(redactionToken)"
+        ),
+        makeSensitivePattern(
+            #"\bsk-[A-Za-z0-9_-]{16,}\b"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"\bgh[opsu]_[A-Za-z0-9]{20,}\b"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"#,
+            replacementTemplate: redactionToken
+        ),
+        makeSensitivePattern(
+            #"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"#,
+            replacementTemplate: redactionToken
+        )
+    ].compactMap(\.self)
+
+    private static let supportedURLSchemes: Set<String> = [
+        "http", "https", "file", "mailto"
+    ]
 
     static func analyze(_ rawText: String) -> AnalysisResult {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -27,9 +58,7 @@ enum ContentAnalyzer {
 
     private static func detectKind(_ text: String) -> ContentKind {
         if isJSON(text) { return .json }
-        if URL(string: text).flatMap({ $0.scheme }) != nil, !text.contains(where: \.isWhitespace) {
-            return .url
-        }
+        if isSupportedURL(text) { return .url }
         if text.range(of: #"^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\([^)]+\)|hsla?\([^)]+\))$"#, options: .regularExpression) != nil {
             return .color
         }
@@ -42,20 +71,48 @@ enum ContentAnalyzer {
 
     static func containsSensitiveData(_ text: String) -> Bool {
         let range = NSRange(text.startIndex..., in: text)
-        return sensitiveRegexes.contains { $0.firstMatch(in: text, range: range) != nil }
+        return sensitivePatterns.contains {
+            $0.regex.firstMatch(in: text, range: range) != nil
+        }
     }
 
     static func redacted(_ text: String) -> String {
-        sensitiveRegexes.reduce(text) { result, regex in
+        sensitivePatterns.reduce(text) { result, pattern in
             let range = NSRange(result.startIndex..., in: result)
-            return regex.stringByReplacingMatches(in: result, range: range, withTemplate: "••••••••")
+            return pattern.regex.stringByReplacingMatches(
+                in: result,
+                range: range,
+                withTemplate: pattern.replacementTemplate
+            )
         }
+    }
+
+    private static func makeSensitivePattern(
+        _ pattern: String,
+        replacementTemplate: String
+    ) -> SensitivePattern? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+        return SensitivePattern(
+            regex: regex,
+            replacementTemplate: replacementTemplate
+        )
     }
 
     private static func isJSON(_ text: String) -> Bool {
         guard let data = text.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               object is [String: Any] || object is [Any] else {
+            return false
+        }
+        return true
+    }
+
+    private static func isSupportedURL(_ text: String) -> Bool {
+        guard !text.contains(where: \.isWhitespace),
+              let scheme = URL(string: text)?.scheme?.lowercased(),
+              supportedURLSchemes.contains(scheme) else {
             return false
         }
         return true
