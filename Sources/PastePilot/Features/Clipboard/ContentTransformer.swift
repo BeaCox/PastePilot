@@ -1,6 +1,39 @@
 import Foundation
 
 enum ContentTransformer {
+    private static let shellCommandExecutables: Set<String> = [
+        "git", "gh", "npm", "npx", "pnpm", "yarn", "bun", "node", "deno",
+        "swift", "swiftc", "xcodebuild", "xcrun", "xcode-select",
+        "cargo", "rustc", "rustup", "go", "python", "python3",
+        "pip", "pip3", "pipx", "uv", "poetry", "ruff", "black", "mypy",
+        "ruby", "gem", "bundle", "rails",
+        "php", "composer",
+        "java", "javac", "mvn", "gradle", "dotnet",
+        "docker", "docker-compose", "podman",
+        "kubectl", "helm", "terraform", "pulumi", "ansible", "vagrant",
+        "aws", "gcloud", "az", "fly", "vercel", "netlify", "wrangler",
+        "curl", "wget", "httpie",
+        "brew", "apt", "apt-get", "dnf", "yum", "apk", "pacman", "snap",
+        "make", "cmake", "ninja",
+        "sudo", "env", "which", "whereis", "command",
+        "cd", "ls", "mkdir", "rm", "cp", "mv", "touch", "ln",
+        "ssh", "scp", "rsync",
+        "cat", "sed", "awk", "grep", "rg", "find", "fd",
+        "head", "tail", "less", "more", "wc", "sort", "uniq",
+        "jq", "yq", "psql", "mysql", "sqlite3", "redis-cli", "mongosh",
+        "diff", "xargs", "tee",
+        "chmod", "chown", "chgrp",
+        "tar", "zip", "unzip", "gzip", "gunzip",
+        "export", "source", "eval", "set", "unset",
+        "echo", "printf",
+        "kill", "killall", "pkill",
+        "open", "xdg-open", "pbcopy", "pbpaste",
+        "man", "nvm", "rbenv", "pyenv", "volta", "corepack", "asdf", "mise",
+        "ng", "vue", "vite", "next", "nuxt", "remix",
+        "jest", "vitest", "pytest", "mocha",
+        "eslint", "prettier", "tsc",
+    ]
+
     static func formatJSON(_ text: String) -> String? {
         transformJSON(text, options: [.prettyPrinted, .sortedKeys])
     }
@@ -192,40 +225,11 @@ enum ContentTransformer {
 
     static func isBareShellCommand(_ line: String) -> Bool {
         guard !line.isEmpty, line.count < 2_000 else { return false }
-        let commands = [
-            "git", "npm", "npx", "pnpm", "yarn", "bun", "node", "deno",
-            "swift", "swiftc", "xcodebuild", "xcrun", "xcode-select",
-            "cargo", "rustc", "rustup", "go", "python", "python3",
-            "pip", "pip3", "uv", "ruby", "gem", "bundle",
-            "java", "javac", "mvn", "gradle", "dotnet",
-            "docker", "docker-compose", "podman",
-            "kubectl", "helm", "terraform", "ansible", "vagrant",
-            "aws", "gcloud", "az",
-            "curl", "wget", "httpie",
-            "brew", "apt", "apt-get", "dnf", "yum", "apk", "pacman", "snap",
-            "make", "cmake", "ninja",
-            "sudo", "env", "which", "whereis", "command",
-            "cd", "ls", "mkdir", "rm", "cp", "mv", "touch", "ln",
-            "ssh", "scp", "rsync",
-            "cat", "sed", "awk", "grep", "rg", "find", "fd",
-            "head", "tail", "less", "more", "wc", "sort", "uniq",
-            "diff", "xargs", "tee",
-            "chmod", "chown", "chgrp",
-            "tar", "zip", "unzip", "gzip", "gunzip",
-            "export", "source", "eval", "set", "unset",
-            "echo", "printf",
-            "kill", "killall", "pkill",
-            "open", "xdg-open", "pbcopy", "pbpaste",
-            "man", "nvm", "rbenv", "pyenv", "volta", "corepack",
-            "ng", "vue", "vite", "next", "nuxt", "remix",
-            "jest", "vitest", "pytest", "mocha",
-            "eslint", "prettier", "tsc",
-        ]
         guard let first = line.split(whereSeparator: \.isWhitespace).first else {
             return false
         }
         let executable = first.split(separator: "/").last.map(String.init) ?? String(first)
-        return commands.contains(executable)
+        return shellCommandExecutables.contains(executable)
     }
 
     private static func typeScriptDeclaration(name: String, value: Any, depth: Int) -> String {

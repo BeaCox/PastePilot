@@ -18,6 +18,10 @@ struct ContentBehaviorTests {
         #expect(ContentAnalyzer.analyze("sudo apt install nginx").kind == .command)
         #expect(ContentAnalyzer.analyze("terraform init").kind == .command)
         #expect(ContentAnalyzer.analyze("aws s3 ls").kind == .command)
+        #expect(ContentAnalyzer.analyze("gh pr checkout 42").kind == .command)
+        #expect(ContentAnalyzer.analyze("jq '.items[]' response.json").kind == .command)
+        #expect(ContentAnalyzer.analyze("poetry install").kind == .command)
+        #expect(ContentAnalyzer.analyze("psql postgres://localhost/app").kind == .command)
         #expect(
             ContentAnalyzer.analyze("TypeError: undefined\n at index.js:10").kind
                 == .error
