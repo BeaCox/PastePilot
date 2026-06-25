@@ -227,6 +227,30 @@ struct ContentBehaviorTests {
             ) == "git clone https://github.com/user/repo.git\ncd repo\nnpm install"
         )
         #expect(ContentTransformer.extractShellCommands("$ npm install") == "npm install")
+
+        let consoleFence = """
+        ```console
+        $ npm install
+        added 1 package
+        $ npm test
+        Tests passed
+        ```
+        """
+        #expect(
+            ContentTransformer.extractShellCommands(consoleFence)
+                == "npm install\nnpm test"
+        )
+
+        let bashFenceWithTitle = """
+        ```bash title="setup"
+        gh pr checkout 42
+        jq '.items[]' response.json
+        ```
+        """
+        #expect(
+            ContentTransformer.extractShellCommands(bashFenceWithTitle)
+                == "gh pr checkout 42\njq '.items[]' response.json"
+        )
     }
 
     @Test

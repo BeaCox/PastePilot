@@ -1,6 +1,11 @@
 import Foundation
 
 enum ContentTransformer {
+    private enum ShellFenceKind {
+        case shell
+        case console
+    }
+
     private static let shellCommandExecutables: Set<String> = [
         "git", "gh", "npm", "npx", "pnpm", "yarn", "bun", "node", "deno",
         "swift", "swiftc", "xcodebuild", "xcrun", "xcode-select",
@@ -32,6 +37,19 @@ enum ContentTransformer {
         "ng", "vue", "vite", "next", "nuxt", "remix",
         "jest", "vitest", "pytest", "mocha",
         "eslint", "prettier", "tsc",
+    ]
+
+    private static let shellFenceLanguages: [String: ShellFenceKind] = [
+        "sh": .shell,
+        "shell": .shell,
+        "bash": .shell,
+        "zsh": .shell,
+        "console": .console,
+        "terminal": .console,
+        "shell-session": .console,
+        "shellsession": .console,
+        "bash-session": .console,
+        "zsh-session": .console,
     ]
 
     static func formatJSON(_ text: String) -> String? {
@@ -98,7 +116,8 @@ enum ContentTransformer {
         let lines = text.components(separatedBy: .newlines)
         var commands: [String] = []
         var currentCommand: String?
-        var shellFenceLanguage: String?
+        var isInsideFence = false
+        var shellFenceKind: ShellFenceKind?
 
         func appendCurrentCommand() {
             guard let command = currentCommand?
@@ -117,26 +136,49 @@ enum ContentTransformer {
 
             if line.hasPrefix("```") {
                 appendCurrentCommand()
-                if shellFenceLanguage == nil {
-                    let language = String(line.dropFirst(3)).lowercased()
-                    shellFenceLanguage = ["sh", "shell", "bash", "zsh", "console"]
-                        .contains(language) ? language : ""
+                if isInsideFence {
+                    isInsideFence = false
+                    shellFenceKind = nil
                 } else {
-                    shellFenceLanguage = nil
+                    isInsideFence = true
+                    shellFenceKind = parsedShellFenceKind(from: line)
                 }
                 continue
             }
 
-            if let language = shellFenceLanguage {
-                guard !language.isEmpty, !line.isEmpty, !line.hasPrefix("#") else { continue }
-                let command = stripShellPrompt(from: line)
-                if currentCommand != nil {
-                    currentCommand? += "\n\(stripContinuationPrompt(from: command))"
-                } else {
-                    currentCommand = command
+            if isInsideFence {
+                guard let shellFenceKind, !line.isEmpty, !line.hasPrefix("#") else {
+                    continue
                 }
-                if !line.hasSuffix("\\") {
-                    appendCurrentCommand()
+
+                if shellFenceKind == .shell {
+                    let command = stripShellPrompt(from: line)
+                    if currentCommand != nil {
+                        currentCommand? += "\n\(stripContinuationPrompt(from: command))"
+                    } else {
+                        currentCommand = command
+                    }
+                    if !line.hasSuffix("\\") {
+                        appendCurrentCommand()
+                    }
+                    continue
+                }
+
+                if currentCommand != nil {
+                    currentCommand? += "\n\(stripContinuationPrompt(from: line))"
+                    if !line.hasSuffix("\\") {
+                        appendCurrentCommand()
+                    }
+                } else if let prompted = promptedCommand(from: line) {
+                    currentCommand = prompted
+                    if !line.hasSuffix("\\") {
+                        appendCurrentCommand()
+                    }
+                } else if isBareShellCommand(line) {
+                    currentCommand = line
+                    if !line.hasSuffix("\\") {
+                        appendCurrentCommand()
+                    }
                 }
                 continue
             }
@@ -221,6 +263,16 @@ enum ContentTransformer {
             with: "",
             options: .regularExpression
         )
+    }
+
+    private static func parsedShellFenceKind(from fenceLine: String) -> ShellFenceKind? {
+        let infoString = String(fenceLine.dropFirst(3))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard let language = infoString.split(whereSeparator: \.isWhitespace).first else {
+            return nil
+        }
+        return shellFenceLanguages[String(language)]
     }
 
     static func isBareShellCommand(_ line: String) -> Bool {
