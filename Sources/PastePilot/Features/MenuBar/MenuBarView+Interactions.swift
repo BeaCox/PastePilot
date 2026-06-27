@@ -59,14 +59,19 @@ extension MenuBarView {
         fullTextSearchTask = Task {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else { return }
-            let ids = await Task.detached(priority: .userInitiated) {
-                let textStore = ClipboardTextStore(directoryURL: textDirectoryURL)
-                return Set(targets.compactMap { target in
-                    textStore.content(fileName: target.fileName, contains: query)
-                        ? target.id
-                        : nil
-                })
-            }.value
+            let searchTask = Task.detached(priority: .userInitiated) {
+                ClipboardFullTextSearch.matchingIDs(
+                    query: query,
+                    targets: targets,
+                    textDirectoryURL: textDirectoryURL,
+                    isCancelled: { Task.isCancelled }
+                )
+            }
+            let ids = await withTaskCancellationHandler {
+                await searchTask.value
+            } onCancel: {
+                searchTask.cancel()
+            }
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 fullTextSearchQuery = query

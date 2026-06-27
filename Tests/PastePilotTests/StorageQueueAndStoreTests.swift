@@ -82,6 +82,56 @@ struct StorageQueueAndStoreTests {
     }
 
     @Test
+    func textStoreSearchStopsWhenCancelled() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text")
+        )
+        let fileName = "large.txt"
+        let content = String(repeating: "a", count: 150_000) + "Needle"
+        var cancellationChecks = 0
+
+        try textStore.save(content, fileName: fileName)
+        let found = textStore.content(fileName: fileName, contains: "needle") {
+            cancellationChecks += 1
+            return cancellationChecks >= 2
+        }
+
+        #expect(!found)
+        #expect(cancellationChecks >= 2)
+    }
+
+    @Test
+    func fullTextSearchStopsBeforeScanningMoreTargetsWhenCancelled() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text")
+        )
+        let firstID = UUID()
+        let secondID = UUID()
+        try textStore.save("first file without match", fileName: "first.txt")
+        try textStore.save("needle appears here", fileName: "second.txt")
+        var cancellationChecks = 0
+
+        let ids = ClipboardFullTextSearch.matchingIDs(
+            query: "needle",
+            targets: [
+                (firstID, "first.txt"),
+                (secondID, "second.txt")
+            ],
+            textDirectoryURL: textStore.directoryURL
+        ) {
+            cancellationChecks += 1
+            return cancellationChecks >= 3
+        }
+
+        #expect(ids.isEmpty)
+        #expect(cancellationChecks >= 3)
+    }
+
+    @Test
     func historyWriteQueuePersistsAfterFlush() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

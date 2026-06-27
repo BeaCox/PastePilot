@@ -14,8 +14,13 @@ struct ClipboardTextStore {
         try? String(contentsOf: url(fileName: fileName), encoding: .utf8)
     }
 
-    func content(fileName: String, contains query: String) -> Bool {
+    func content(
+        fileName: String,
+        contains query: String,
+        isCancelled: () -> Bool = { false }
+    ) -> Bool {
         guard !query.isEmpty,
+              !isCancelled(),
               let handle = try? FileHandle(forReadingFrom: url(fileName: fileName)) else {
             return false
         }
@@ -25,6 +30,7 @@ struct ClipboardTextStore {
         var overlap = Data()
 
         while true {
+            guard !isCancelled() else { return false }
             let chunk = handle.readData(ofLength: Self.searchChunkByteLimit)
             guard !chunk.isEmpty else { return false }
 
@@ -91,6 +97,32 @@ struct ClipboardTextStore {
 
     private func url(fileName: String) -> URL {
         directoryURL.appendingPathComponent(fileName)
+    }
+}
+
+enum ClipboardFullTextSearch {
+    static func matchingIDs(
+        query: String,
+        targets: [(id: UUID, fileName: String)],
+        textDirectoryURL: URL,
+        isCancelled: () -> Bool = { false }
+    ) -> Set<UUID> {
+        guard !query.isEmpty, !targets.isEmpty else { return [] }
+        let textStore = ClipboardTextStore(directoryURL: textDirectoryURL)
+        var ids = Set<UUID>()
+
+        for target in targets {
+            guard !isCancelled() else { return ids }
+            if textStore.content(
+                fileName: target.fileName,
+                contains: query,
+                isCancelled: isCancelled
+            ) {
+                ids.insert(target.id)
+            }
+        }
+
+        return ids
     }
 }
 
