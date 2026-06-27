@@ -445,6 +445,7 @@ extension ClipboardStore {
         items.removeAll(where: duplicate)
         items.insert(make(wasPinned), at: 0)
         trimHistory(limit: settings.historyLimit)
+        enforceStorageLimit()
         save()
         return wasPinned
     }

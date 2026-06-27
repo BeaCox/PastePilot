@@ -16,6 +16,58 @@ extension ClipboardStore {
         sortItems()
     }
 
+    func localStorageByteCount() -> Int64 {
+        historyRepository.dataDirectoryByteCount()
+    }
+
+    func estimatedRetainedStorageByteCount() -> Int64 {
+        estimatedStorageByteCount(for: items)
+    }
+
+    func estimatedStorageByteCount(for items: [ClipboardItem]) -> Int64 {
+        var total = historyRepository.estimatedHistoryByteCount(for: items)
+        let imageFileNames = Set(items.compactMap(\.imageFileName))
+        let textFileNames = Set(items.compactMap(\.contentFileName))
+        total += imageFileNames.reduce(Int64(0)) {
+            $0 + imageStore.byteCount(fileName: $1)
+        }
+        total += textFileNames.reduce(Int64(0)) {
+            $0 + textStore.byteCount(fileName: $1)
+        }
+        return total
+    }
+
+    @discardableResult
+    func enforceStorageLimit() -> Bool {
+        let limit = Int64(settings.storageLimitMB) * 1_024 * 1_024
+        guard limit > 0 else { return false }
+
+        removeOrphanedImages()
+        removeOrphanedText()
+
+        var removedItems: [ClipboardItem] = []
+        while estimatedRetainedStorageByteCount() > limit {
+            guard let oldestUnpinned = items
+                .filter({ !$0.isPinned })
+                .min(by: { $0.createdAt < $1.createdAt }) else {
+                break
+            }
+            removedItems.append(oldestUnpinned)
+            cancelOCR(for: oldestUnpinned.id)
+            deleteStoredResources(for: oldestUnpinned)
+            items.removeAll { $0.id == oldestUnpinned.id }
+        }
+
+        guard !removedItems.isEmpty else { return false }
+        sortItems()
+        return true
+    }
+
+    func applyStorageLimit() {
+        guard enforceStorageLimit() else { return }
+        save()
+    }
+
     func load() {
         let result = historyRepository.load()
         items = result.items
@@ -39,6 +91,7 @@ extension ClipboardStore {
         }
         sortItems()
         purgeExpired()
+        applyStorageLimit()
     }
 
     func externalizeLoadedLargeTextContent() -> Bool {

@@ -390,6 +390,56 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func storageLimitDeletesOldestUnpinnedExternalizedTextFiles() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotStorageLimitTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.storageLimitMB = 1
+
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text", isDirectory: true)
+        )
+        let oldFileName = "old-large.txt"
+        let newFileName = "new-large.txt"
+        try textStore.save(String(repeating: "o", count: 700_000), fileName: oldFileName)
+        try textStore.save(String(repeating: "n", count: 700_000), fileName: newFileName)
+        let oldItem = ClipboardItem(
+            content: "old",
+            kind: .text,
+            createdAt: Date(timeIntervalSinceNow: -10),
+            contentFileName: oldFileName
+        )
+        let newItem = ClipboardItem(
+            content: "new",
+            kind: .text,
+            createdAt: Date(timeIntervalSinceNow: -5),
+            contentFileName: newFileName
+        )
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        try repository.save([oldItem, newItem])
+
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        #expect(store.items.map(\.content) == ["new"])
+        #expect(textStore.content(fileName: oldFileName) == nil)
+        #expect(textStore.content(fileName: newFileName) != nil)
+        #expect(store.estimatedRetainedStorageByteCount() <= 1_024 * 1_024)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func textSaveResultIsDiscardedWhenClipboardHasChanged() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

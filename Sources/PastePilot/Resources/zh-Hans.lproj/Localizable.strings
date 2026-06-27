@@ -169,6 +169,9 @@
 "2. Close old DMGs, then add and enable /Applications/PastePilot.app again." = "2. 关闭旧 DMG，再重新添加并启用 /Applications/PastePilot.app。";
 "Keep up to" = "最多保留";
 "Auto-delete After" = "自动删除超过";
+"Storage Limit" = "存储空间上限";
+"Current Usage" = "当前占用";
+"No Limit" = "无上限";
 "Never" = "永不";
 "1 hour" = "1 小时";
 "24 hours" = "24 小时";

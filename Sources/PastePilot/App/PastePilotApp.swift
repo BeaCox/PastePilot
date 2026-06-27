@@ -8,6 +8,7 @@ struct PastePilotApp: App {
         Settings {
             SettingsView(
                 settings: appDelegate.settings,
+                store: appDelegate.store,
                 openDataFolder: appDelegate.openDataFolder,
                 clearUnpinnedHistory: appDelegate.clearUnpinnedHistory,
                 updateController: appDelegate.updateController

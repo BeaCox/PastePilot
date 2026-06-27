@@ -71,6 +71,21 @@ struct HistoryRepository {
         try encoder.encode(document).write(to: historyURL, options: .atomic)
     }
 
+    func estimatedHistoryByteCount(for items: [ClipboardItem]) -> Int64 {
+        let document = HistoryDocument(
+            schemaVersion: HistoryDocument.currentSchemaVersion,
+            items: items
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return Int64((try? encoder.encode(document).count) ?? 0)
+    }
+
+    func dataDirectoryByteCount() -> Int64 {
+        Self.byteCount(of: dataDirectoryURL)
+    }
+
     private func decodeFile(at url: URL) -> [ClipboardItem]? {
         guard let data = try? Data(contentsOf: url) else { return nil }
 
@@ -81,6 +96,36 @@ struct HistoryRepository {
             return document.items
         }
         return try? decoder.decode([ClipboardItem].self, from: data)
+    }
+
+    private static func byteCount(of url: URL) -> Int64 {
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
+            return 0
+        }
+        if !isDirectory.boolValue {
+            let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+            return (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+        }
+
+        guard let enumerator = fileManager.enumerator(
+            at: url,
+            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]
+        ) else {
+            return 0
+        }
+
+        var total: Int64 = 0
+        for case let fileURL as URL in enumerator {
+            let values = try? fileURL.resourceValues(
+                forKeys: [.fileSizeKey, .isRegularFileKey]
+            )
+            if values?.isRegularFile == true {
+                total += Int64(values?.fileSize ?? 0)
+            }
+        }
+        return total
     }
 }
 

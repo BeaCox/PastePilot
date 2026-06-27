@@ -91,6 +91,7 @@ struct GeneralSettingsPage: View {
 
 struct StorageSettingsPage: View {
     @ObservedObject var settings: AppSettings
+    let storageByteCount: Int64
 
     var body: some View {
         SettingsPane(id: SettingsTab.storage) {
@@ -112,6 +113,19 @@ struct StorageSettingsPage: View {
                     }
                     .labelsHidden()
                     .frame(width: 130)
+                }
+                SettingsRow(title: "Storage Limit".localized) {
+                    Picker("", selection: $settings.storageLimitMB) {
+                        ForEach(AppSettings.supportedStorageLimitsMB, id: \.self) { limit in
+                            Text(storageLimitLabel(limit)).tag(limit)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 130)
+                }
+                SettingsRow(title: "Current Usage".localized) {
+                    Text(byteCountLabel(storageByteCount))
+                        .foregroundStyle(.secondary)
                 }
                 SettingsNote("Pinned items are excluded from this limit and never auto-deleted.".localized)
             }
@@ -191,6 +205,21 @@ struct StorageSettingsPage: View {
 
     private func imageSizeLimitLabel(_ limit: Int) -> String {
         "\(limit) MB"
+    }
+
+    private func storageLimitLabel(_ limit: Int) -> String {
+        guard limit > 0 else { return "No Limit".localized }
+        if limit >= 1_024 {
+            return "1 GB"
+        }
+        return "\(limit) MB"
+    }
+
+    private func byteCountLabel(_ byteCount: Int64) -> String {
+        ByteCountFormatter.string(
+            fromByteCount: byteCount,
+            countStyle: .file
+        )
     }
 }
 

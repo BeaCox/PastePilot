@@ -45,6 +45,13 @@ struct ClipboardImageStore {
         url(fileName: fileName).path
     }
 
+    func byteCount(fileName: String) -> Int64 {
+        let attributes = try? FileManager.default.attributesOfItem(
+            atPath: url(fileName: fileName).path
+        )
+        return (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+    }
+
     func save(_ data: Data, fileName: String) throws {
         try FileManager.default.createDirectory(
             at: directoryURL,

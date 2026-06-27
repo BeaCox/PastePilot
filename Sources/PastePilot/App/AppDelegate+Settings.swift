@@ -23,6 +23,13 @@ extension AppDelegate {
             }
             .store(in: &cancellables)
 
+        settings.$storageLimitMB
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.store.applyStorageLimit()
+            }
+            .store(in: &cancellables)
+
         settings.$launchAtLogin
             .dropFirst()
             .sink { [weak self] enabled in

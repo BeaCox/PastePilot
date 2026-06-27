@@ -15,6 +15,7 @@ struct AppSettingsTests {
         #expect(settings.monitoringEnabled)
         #expect(settings.historyLimit == 100)
         #expect(settings.imageSizeLimitMB == 25)
+        #expect(settings.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(settings.hotKeyCode == 49)
         #expect(settings.hotKeyModifiers == 2_048)
         #expect(settings.plainTextHotKeyCode == AppSettings.defaultPlainTextHotKeyCode)
@@ -31,6 +32,7 @@ struct AppSettingsTests {
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
+        settings.storageLimitMB = 250
         settings.hotKeyCode = 8
         settings.hotKeyModifiers = 256
         settings.plainTextHotKeyCode = 9
@@ -48,6 +50,7 @@ struct AppSettingsTests {
         let restored = AppSettings(defaults: defaults)
         #expect(restored.historyLimit == 200)
         #expect(restored.imageSizeLimitMB == 50)
+        #expect(restored.storageLimitMB == 250)
         #expect(restored.hotKeyCode == 8)
         #expect(restored.hotKeyModifiers == 256)
         #expect(restored.plainTextHotKeyCode == 9)
@@ -65,6 +68,7 @@ struct AppSettingsTests {
 
         restored.reset()
         #expect(restored.historyLimit == 100)
+        #expect(restored.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(restored.ignoredBundleIdentifiers.isEmpty)
         #expect(restored.hotKeyCode == 49)
         #expect(restored.hotKeyModifiers == 2_048)
@@ -93,6 +97,7 @@ struct AppSettingsTests {
 
         defaults.set(999, forKey: "historyLimit")
         defaults.set(1_024, forKey: "imageSizeLimitMB")
+        defaults.set(42, forKey: "storageLimitMB")
         defaults.set(42, forKey: "historyTimeoutSeconds")
         defaults.set("missing-icon", forKey: "menuBarIconStyle")
         defaults.set("close-everything", forKey: "pasteCloseBehavior")
@@ -108,6 +113,7 @@ struct AppSettingsTests {
 
         #expect(settings.historyLimit == AppSettings.defaultHistoryLimit)
         #expect(settings.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
+        #expect(settings.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(
             settings.historyTimeoutSeconds
                 == AppSettings.defaultHistoryTimeoutSeconds
@@ -134,6 +140,10 @@ struct AppSettingsTests {
         #expect(
             defaults.integer(forKey: "imageSizeLimitMB")
                 == AppSettings.defaultImageSizeLimitMB
+        )
+        #expect(
+            defaults.integer(forKey: "storageLimitMB")
+                == AppSettings.defaultStorageLimitMB
         )
         #expect(
             defaults.integer(forKey: "historyTimeoutSeconds")
@@ -187,6 +197,7 @@ struct AppSettingsTests {
         let settings = AppSettings(defaults: defaults)
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
+        settings.storageLimitMB = 500
         settings.historyTimeoutSeconds = 3_600
         settings.menuBarIconStyle = MenuBarIconStyle.clipboard.rawValue
         settings.pasteCloseBehavior = PasteCloseBehavior.keepOpen.rawValue
@@ -201,6 +212,7 @@ struct AppSettingsTests {
 
         settings.historyLimit = 999
         settings.imageSizeLimitMB = 1_024
+        settings.storageLimitMB = 42
         settings.historyTimeoutSeconds = 42
         settings.menuBarIconStyle = "missing-icon"
         settings.pasteCloseBehavior = "close-everything"
@@ -214,6 +226,7 @@ struct AppSettingsTests {
 
         #expect(settings.historyLimit == AppSettings.defaultHistoryLimit)
         #expect(settings.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
+        #expect(settings.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(
             settings.historyTimeoutSeconds
                 == AppSettings.defaultHistoryTimeoutSeconds
@@ -240,6 +253,10 @@ struct AppSettingsTests {
         #expect(
             defaults.integer(forKey: "imageSizeLimitMB")
                 == AppSettings.defaultImageSizeLimitMB
+        )
+        #expect(
+            defaults.integer(forKey: "storageLimitMB")
+                == AppSettings.defaultStorageLimitMB
         )
         #expect(
             defaults.integer(forKey: "historyTimeoutSeconds")
@@ -284,6 +301,7 @@ struct AppSettingsTests {
         let restored = AppSettings(defaults: defaults)
         #expect(restored.historyLimit == AppSettings.defaultHistoryLimit)
         #expect(restored.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
+        #expect(restored.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(
             restored.historyTimeoutSeconds
                 == AppSettings.defaultHistoryTimeoutSeconds

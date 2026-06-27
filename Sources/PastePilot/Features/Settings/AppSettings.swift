@@ -87,6 +87,8 @@ final class AppSettings: ObservableObject {
     static let supportedHistoryLimits = [50, 100, 200, 500]
     static let defaultImageSizeLimitMB = 25
     static let supportedImageSizeLimitsMB = [5, 10, 25, 50]
+    static let defaultStorageLimitMB = 0
+    static let supportedStorageLimitsMB = [0, 1, 100, 250, 500, 1_024]
     static let defaultHistoryTimeoutSeconds = 0
     static let supportedHistoryTimeoutsSeconds = [
         0,
@@ -106,6 +108,7 @@ final class AppSettings: ObservableObject {
         static let historyLimit = "historyLimit"
         static let launchAtLogin = "launchAtLogin"
         static let imageSizeLimitMB = "imageSizeLimitMB"
+        static let storageLimitMB = "storageLimitMB"
         static let ignoredBundleIdentifiers = "ignoredBundleIdentifiers"
         static let hotKeyCode = "hotKeyCode"
         static let hotKeyModifiers = "hotKeyModifiers"
@@ -160,6 +163,21 @@ final class AppSettings: ObservableObject {
                 ),
                 assign: { imageSizeLimitMB = $0 },
                 persist: { persist($0, forKey: Key.imageSizeLimitMB) }
+            )
+        }
+    }
+
+    @Published var storageLimitMB: Int {
+        didSet {
+            persistSupportedValue(
+                storageLimitMB,
+                supportedValue: Self.supportedValue(
+                    storageLimitMB,
+                    in: Self.supportedStorageLimitsMB,
+                    default: Self.defaultStorageLimitMB
+                ),
+                assign: { storageLimitMB = $0 },
+                persist: { persist($0, forKey: Key.storageLimitMB) }
             )
         }
     }
@@ -313,6 +331,7 @@ final class AppSettings: ObservableObject {
             Key.historyLimit: Self.defaultHistoryLimit,
             Key.launchAtLogin: false,
             Key.imageSizeLimitMB: Self.defaultImageSizeLimitMB,
+            Key.storageLimitMB: Self.defaultStorageLimitMB,
             Key.ignoredBundleIdentifiers: "",
             Key.hotKeyCode: Self.defaultOpenHotKeyCode,
             Key.hotKeyModifiers: Self.defaultOpenHotKeyModifiers,
@@ -339,6 +358,11 @@ final class AppSettings: ObservableObject {
             defaults.integer(forKey: Key.imageSizeLimitMB),
             in: Self.supportedImageSizeLimitsMB,
             default: Self.defaultImageSizeLimitMB
+        )
+        storageLimitMB = Self.supportedValue(
+            defaults.integer(forKey: Key.storageLimitMB),
+            in: Self.supportedStorageLimitsMB,
+            default: Self.defaultStorageLimitMB
         )
         ignoredBundleIdentifiers = defaults.string(
             forKey: Key.ignoredBundleIdentifiers
@@ -404,6 +428,7 @@ final class AppSettings: ObservableObject {
         historyLimit = Self.defaultHistoryLimit
         launchAtLogin = false
         imageSizeLimitMB = Self.defaultImageSizeLimitMB
+        storageLimitMB = Self.defaultStorageLimitMB
         ignoredBundleIdentifiers = ""
         hotKeyCode = Self.defaultOpenHotKeyCode
         hotKeyModifiers = Self.defaultOpenHotKeyModifiers
@@ -501,6 +526,7 @@ final class AppSettings: ObservableObject {
         persist(historyLimit, forKey: Key.historyLimit)
         persist(launchAtLogin, forKey: Key.launchAtLogin)
         persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
+        persist(storageLimitMB, forKey: Key.storageLimitMB)
         persist(ignoredBundleIdentifiers, forKey: Key.ignoredBundleIdentifiers)
         persist(hotKeyCode, forKey: Key.hotKeyCode)
         persist(hotKeyModifiers, forKey: Key.hotKeyModifiers)

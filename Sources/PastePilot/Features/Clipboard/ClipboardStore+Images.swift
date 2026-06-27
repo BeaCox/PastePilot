@@ -137,6 +137,7 @@ extension ClipboardStore {
             items.removeAll { $0.imageDigest == processedImage.digest }
             items.insert(item, at: 0)
             trimHistory(limit: settings.historyLimit)
+            enforceStorageLimit()
             save()
             performOCR(on: ocrImage, itemID: id)
         case .failure(let error):

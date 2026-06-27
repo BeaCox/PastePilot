@@ -33,6 +33,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var store: ClipboardStore
     let openDataFolder: () -> Void
     let clearUnpinnedHistory: () -> Void
     let updateController: UpdateController
@@ -63,7 +64,10 @@ struct SettingsView: View {
                 }
                 .tag(SettingsTab.general)
 
-            StorageSettingsPage(settings: settings)
+            StorageSettingsPage(
+                settings: settings,
+                storageByteCount: store.localStorageByteCount()
+            )
                 .tabItem {
                     Label(SettingsTab.storage.title, systemImage: SettingsTab.storage.symbol)
                 }
