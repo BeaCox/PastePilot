@@ -1,6 +1,55 @@
 import AppKit
 import Foundation
 
+struct RetainedRichTextPayload {
+    let rtfBase64: String?
+    let html: String?
+    let didDiscardRepresentation: Bool
+
+    var hasFormatting: Bool {
+        rtfBase64 != nil || html != nil
+    }
+}
+
+enum RichTextPayloadPolicy {
+    static let historyByteLimit = 256 * 1_024
+
+    static func retainedPayload(
+        rtfBase64: String?,
+        html: String?
+    ) -> RetainedRichTextPayload {
+        var remainingBytes = historyByteLimit
+        var retainedRTFBase64: String?
+        var retainedHTML: String?
+        var didDiscardRepresentation = false
+
+        if let rtfBase64 {
+            let byteCount = rtfBase64.utf8.count
+            if byteCount <= remainingBytes {
+                retainedRTFBase64 = rtfBase64
+                remainingBytes -= byteCount
+            } else {
+                didDiscardRepresentation = true
+            }
+        }
+
+        if let html {
+            let byteCount = html.utf8.count
+            if byteCount <= remainingBytes {
+                retainedHTML = html
+            } else {
+                didDiscardRepresentation = true
+            }
+        }
+
+        return RetainedRichTextPayload(
+            rtfBase64: retainedRTFBase64,
+            html: retainedHTML,
+            didDiscardRepresentation: didDiscardRepresentation
+        )
+    }
+}
+
 extension ClipboardStore {
     func captureIfNeeded() {
         if Date().timeIntervalSince(lastPurgeCheck) > 60 {
@@ -231,10 +280,26 @@ extension ClipboardStore {
     ) -> Bool {
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
         let rtfBase64 = rtfData?.base64EncodedString()
+        let payload = RichTextPayloadPolicy.retainedPayload(
+            rtfBase64: rtfBase64,
+            html: html
+        )
+        let trimmedPlainText = plainText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let kind = payload.hasFormatting
+            ? ContentKind.richText
+            : ContentAnalyzer.analyze(trimmedPlainText).kind
         guard items.first?.content != plainText
-                || items.first?.richTextRTFBase64 != rtfBase64
-                || items.first?.richTextHTML != html else {
+                || items.first?.richTextRTFBase64 != payload.rtfBase64
+                || items.first?.richTextHTML != payload.html else {
             return true
+        }
+        if payload.didDiscardRepresentation {
+            noticePoster.post(
+                PastePilotNotice(
+                    "Rich text formatting was too large to preserve".localized,
+                    style: .warning
+                )
+            )
         }
 
         let id = UUID()
@@ -248,11 +313,11 @@ extension ClipboardStore {
                 processedContent,
                 originalContent: plainText,
                 id: id,
-                kind: .richText,
+                kind: kind,
                 containsSensitiveData: ContentAnalyzer.containsSensitiveData(plainText),
                 source: source,
-                richTextRTFBase64: rtfBase64,
-                richTextHTML: html,
+                richTextRTFBase64: payload.rtfBase64,
+                richTextHTML: payload.html,
                 pasteboardChangeCount: pasteboardChangeCount
             )
             return true
@@ -269,12 +334,12 @@ extension ClipboardStore {
                     processedContent,
                     originalContent: plainText,
                     id: id,
-                    kind: .richText,
+                    kind: kind,
                     containsSensitiveData: ContentAnalyzer
                         .containsSensitiveData(plainText),
                     source: source,
-                    richTextRTFBase64: rtfBase64,
-                    richTextHTML: html,
+                    richTextRTFBase64: payload.rtfBase64,
+                    richTextHTML: payload.html,
                     pasteboardChangeCount: pasteboardChangeCount
                 )
             }

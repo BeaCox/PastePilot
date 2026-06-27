@@ -133,6 +133,83 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func smallRichTextCapturePreservesFormattingPayload() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let rtfData = Data("{\\rtf1 Small rich text}".utf8)
+        let html = "<strong>Small rich text</strong>"
+
+        #expect(
+            store.captureRichText(
+                rtfData: rtfData,
+                html: html,
+                plainText: "Small rich text",
+                source: (nil, nil)
+            )
+        )
+
+        let item = try #require(store.items.first)
+        #expect(item.kind == .richText)
+        #expect(item.richTextRTFBase64 == rtfData.base64EncodedString())
+        #expect(item.richTextHTML == html)
+        #expect(ClipboardActionFactory.copyAction(for: item).id == "copy-rich-text")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func oversizedRichTextCaptureKeepsPlainTextAndDropsFormattingPayload() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let noticePoster = CapturingNoticePoster()
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService(),
+            noticePoster: noticePoster
+        )
+        let html = "<p>" + String(
+            repeating: "rich text payload ",
+            count: RichTextPayloadPolicy.historyByteLimit / 4
+        ) + "</p>"
+
+        #expect(
+            store.captureRichText(
+                rtfData: nil,
+                html: html,
+                plainText: "Large formatted text",
+                source: (nil, nil)
+            )
+        )
+
+        let item = try #require(store.items.first)
+        #expect(item.content == "Large formatted text")
+        #expect(item.kind == .text)
+        #expect(item.richTextRTFBase64 == nil)
+        #expect(item.richTextHTML == nil)
+        #expect(ClipboardActionFactory.copyAction(for: item).id == "copy")
+        #expect(
+            noticePoster.notices.contains(
+                PastePilotNotice(
+                    "Rich text formatting was too large to preserve".localized,
+                    style: .warning
+                )
+            )
+        )
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func expiringHistoryDeletesExternalizedTextFiles() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
