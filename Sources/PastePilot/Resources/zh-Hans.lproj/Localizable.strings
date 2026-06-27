@@ -176,6 +176,12 @@
 "30 days" = "30 天";
 "Pinned items are excluded from this limit and never auto-deleted." = "固定项目不受此限制，永远不会被自动删除。";
 "Image Size Limit" = "单张图片上限";
+"Sensitive Content" = "敏感内容";
+"When Detected" = "识别到时";
+"Save Original" = "保存原文";
+"Save Redacted" = "保存脱敏内容";
+"Do Not Save" = "不保存";
+"Redacted or skipped sensitive clipboard content is not recoverable from history." = "脱敏或跳过的敏感剪贴板内容无法从历史记录中恢复。";
 "Image Text Recognition" = "图片文字识别";
 "OCR Mode" = "OCR 模式";
 "OCR Languages" = "OCR 语言";

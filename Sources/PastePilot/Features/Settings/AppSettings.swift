@@ -7,6 +7,23 @@ enum PasteCloseBehavior: String, CaseIterable {
     case closePanel
 }
 
+enum SensitiveContentStoragePolicy: String, CaseIterable {
+    case storeOriginal
+    case storeRedacted
+    case skip
+
+    var title: String {
+        switch self {
+        case .storeOriginal:
+            "Save Original".localized
+        case .storeRedacted:
+            "Save Redacted".localized
+        case .skip:
+            "Do Not Save".localized
+        }
+    }
+}
+
 enum OCRRecognitionMode: String, CaseIterable {
     case off
     case fast
@@ -80,6 +97,8 @@ final class AppSettings: ObservableObject {
     ]
     static let defaultOCRRecognitionMode = OCRRecognitionMode.accurate.rawValue
     static let defaultOCRLanguageMode = OCRLanguageMode.multilingual.rawValue
+    static let defaultSensitiveContentStoragePolicy =
+        SensitiveContentStoragePolicy.storeOriginal.rawValue
 
     private enum Key {
         static let monitoringEnabled = "monitoringEnabled"
@@ -98,6 +117,7 @@ final class AppSettings: ObservableObject {
         static let previewAnimationEnabled = "previewAnimationEnabled"
         static let ocrRecognitionMode = "ocrRecognitionMode"
         static let ocrLanguageMode = "ocrLanguageMode"
+        static let sensitiveContentStoragePolicy = "sensitiveContentStoragePolicy"
     }
 
     private let defaults: UserDefaults
@@ -270,6 +290,19 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var sensitiveContentStoragePolicy: String {
+        didSet {
+            persistSupportedValue(
+                sensitiveContentStoragePolicy,
+                supportedValue: Self.supportedSensitiveContentStoragePolicy(
+                    sensitiveContentStoragePolicy
+                ),
+                assign: { sensitiveContentStoragePolicy = $0 },
+                persist: { persist($0, forKey: Key.sensitiveContentStoragePolicy) }
+            )
+        }
+    }
+
     @Published var hotKeyRegistrationWarning: String?
 
     init(defaults: UserDefaults = .standard) {
@@ -290,7 +323,9 @@ final class AppSettings: ObservableObject {
             Key.pasteCloseBehavior: PasteCloseBehavior.closePreview.rawValue,
             Key.previewAnimationEnabled: true,
             Key.ocrRecognitionMode: Self.defaultOCRRecognitionMode,
-            Key.ocrLanguageMode: Self.defaultOCRLanguageMode
+            Key.ocrLanguageMode: Self.defaultOCRLanguageMode,
+            Key.sensitiveContentStoragePolicy:
+                Self.defaultSensitiveContentStoragePolicy
         ])
         monitoringEnabled = defaults.bool(forKey: Key.monitoringEnabled)
         hoverPreviewEnabled = defaults.bool(forKey: Key.hoverPreviewEnabled)
@@ -345,6 +380,12 @@ final class AppSettings: ObservableObject {
         ocrLanguageMode = storedOCRLanguageMode
             .flatMap(OCRLanguageMode.init(rawValue:))?
             .rawValue ?? Self.defaultOCRLanguageMode
+        let storedSensitiveContentStoragePolicy = defaults.string(
+            forKey: Key.sensitiveContentStoragePolicy
+        )
+        sensitiveContentStoragePolicy = storedSensitiveContentStoragePolicy
+            .flatMap(SensitiveContentStoragePolicy.init(rawValue:))?
+            .rawValue ?? Self.defaultSensitiveContentStoragePolicy
         persistCurrentValues()
     }
 
@@ -374,6 +415,7 @@ final class AppSettings: ObservableObject {
         previewAnimationEnabled = true
         ocrRecognitionMode = Self.defaultOCRRecognitionMode
         ocrLanguageMode = Self.defaultOCRLanguageMode
+        sensitiveContentStoragePolicy = Self.defaultSensitiveContentStoragePolicy
     }
 
     private static func supportedValue(
@@ -434,6 +476,11 @@ final class AppSettings: ObservableObject {
             ?? defaultOCRLanguageMode
     }
 
+    private static func supportedSensitiveContentStoragePolicy(_ value: String) -> String {
+        SensitiveContentStoragePolicy(rawValue: value)?.rawValue
+            ?? defaultSensitiveContentStoragePolicy
+    }
+
     private func persistSupportedValue<Value: Equatable>(
         _ value: Value,
         supportedValue: Value,
@@ -465,6 +512,10 @@ final class AppSettings: ObservableObject {
         persist(previewAnimationEnabled, forKey: Key.previewAnimationEnabled)
         persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
         persist(ocrLanguageMode, forKey: Key.ocrLanguageMode)
+        persist(
+            sensitiveContentStoragePolicy,
+            forKey: Key.sensitiveContentStoragePolicy
+        )
     }
 
     private func persist(_ value: Bool, forKey key: String) {

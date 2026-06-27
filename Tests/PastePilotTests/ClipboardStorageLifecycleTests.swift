@@ -212,6 +212,105 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func sensitiveTextCanBeRedactedBeforeHistoryStorage() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotSensitiveStorageTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.storeRedacted.rawValue
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        store.captureText("API_KEY=super-secret-value", source: (nil, nil))
+
+        let item = try #require(store.items.first)
+        #expect(item.content == "API_KEY=••••••••")
+        #expect(!item.containsSensitiveData)
+        #expect(store.content(for: item) == "API_KEY=••••••••")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func sensitiveContentCanBeSkippedBeforeHistoryStorage() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotSensitiveSkipTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.skip.rawValue
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        store.captureText("Authorization: Bearer abcdefghijklmnopqrstuvwxyz012345", source: (nil, nil))
+        store.captureText("ordinary note", source: (nil, nil))
+
+        #expect(store.items.map(\.content) == ["ordinary note"])
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func redactedSensitiveRichTextDropsOriginalFormattingPayload() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotSensitiveRichTextTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.storeRedacted.rawValue
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let rtfData = Data("{\\rtf1 API_KEY=super-secret-value}".utf8)
+        let html = "<strong>API_KEY=super-secret-value</strong>"
+
+        #expect(
+            store.captureRichText(
+                rtfData: rtfData,
+                html: html,
+                plainText: "API_KEY=super-secret-value",
+                source: (nil, nil)
+            )
+        )
+
+        let item = try #require(store.items.first)
+        #expect(item.content == "API_KEY=••••••••")
+        #expect(item.kind == .text)
+        #expect(!item.containsSensitiveData)
+        #expect(item.richTextRTFBase64 == nil)
+        #expect(item.richTextHTML == nil)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func copyRichTextReportsSuccessOnlyWhenFormattingIsWritten() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

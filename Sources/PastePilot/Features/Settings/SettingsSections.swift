@@ -128,6 +128,22 @@ struct StorageSettingsPage: View {
                 }
             }
 
+            SettingsGroup(title: "Sensitive Content".localized) {
+                SettingsRow(title: "When Detected".localized) {
+                    Picker("", selection: $settings.sensitiveContentStoragePolicy) {
+                        ForEach(
+                            SensitiveContentStoragePolicy.allCases,
+                            id: \.rawValue
+                        ) { policy in
+                            Text(policy.title).tag(policy.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 150)
+                }
+                SettingsNote("Redacted or skipped sensitive clipboard content is not recoverable from history.".localized)
+            }
+
             SettingsGroup(title: "Image Text Recognition".localized) {
                 SettingsRow(title: "OCR Mode".localized) {
                     Picker("", selection: $settings.ocrRecognitionMode) {

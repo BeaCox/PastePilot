@@ -24,6 +24,10 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(
+            settings.sensitiveContentStoragePolicy
+                == AppSettings.defaultSensitiveContentStoragePolicy
+        )
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
@@ -33,6 +37,8 @@ struct AppSettingsTests {
         settings.plainTextHotKeyModifiers = 4_096
         settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
         settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.storeRedacted.rawValue
         settings.ignoredBundleIdentifiers = """
         com.apple.keychainaccess
 
@@ -48,6 +54,10 @@ struct AppSettingsTests {
         #expect(restored.plainTextHotKeyModifiers == 4_096)
         #expect(restored.ocrRecognitionMode == OCRRecognitionMode.fast.rawValue)
         #expect(restored.ocrLanguageMode == OCRLanguageMode.english.rawValue)
+        #expect(
+            restored.sensitiveContentStoragePolicy
+                == SensitiveContentStoragePolicy.storeRedacted.rawValue
+        )
         #expect(
             restored.ignoredBundleIdentifierSet
                 == ["com.apple.keychainaccess", "com.example.private"]
@@ -68,6 +78,10 @@ struct AppSettingsTests {
         )
         #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(
+            restored.sensitiveContentStoragePolicy
+                == AppSettings.defaultSensitiveContentStoragePolicy
+        )
     }
 
     @Test
@@ -88,6 +102,7 @@ struct AppSettingsTests {
         defaults.set(Int(UInt32.max), forKey: "plainTextHotKeyModifiers")
         defaults.set("slow", forKey: "ocrRecognitionMode")
         defaults.set("everywhere", forKey: "ocrLanguageMode")
+        defaults.set("encrypt", forKey: "sensitiveContentStoragePolicy")
 
         let settings = AppSettings(defaults: defaults)
 
@@ -111,6 +126,10 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(
+            settings.sensitiveContentStoragePolicy
+                == AppSettings.defaultSensitiveContentStoragePolicy
+        )
         #expect(defaults.integer(forKey: "historyLimit") == AppSettings.defaultHistoryLimit)
         #expect(
             defaults.integer(forKey: "imageSizeLimitMB")
@@ -151,6 +170,10 @@ struct AppSettingsTests {
         #expect(
             defaults.string(forKey: "ocrLanguageMode")
                 == AppSettings.defaultOCRLanguageMode
+        )
+        #expect(
+            defaults.string(forKey: "sensitiveContentStoragePolicy")
+                == AppSettings.defaultSensitiveContentStoragePolicy
         )
     }
 
@@ -173,6 +196,8 @@ struct AppSettingsTests {
         settings.plainTextHotKeyModifiers = 4_096
         settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
         settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.skip.rawValue
 
         settings.historyLimit = 999
         settings.imageSizeLimitMB = 1_024
@@ -185,6 +210,7 @@ struct AppSettingsTests {
         settings.plainTextHotKeyModifiers = UInt32.max
         settings.ocrRecognitionMode = "slow"
         settings.ocrLanguageMode = "everywhere"
+        settings.sensitiveContentStoragePolicy = "encrypt"
 
         #expect(settings.historyLimit == AppSettings.defaultHistoryLimit)
         #expect(settings.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
@@ -206,6 +232,10 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(
+            settings.sensitiveContentStoragePolicy
+                == AppSettings.defaultSensitiveContentStoragePolicy
+        )
         #expect(defaults.integer(forKey: "historyLimit") == AppSettings.defaultHistoryLimit)
         #expect(
             defaults.integer(forKey: "imageSizeLimitMB")
@@ -247,6 +277,10 @@ struct AppSettingsTests {
             defaults.string(forKey: "ocrLanguageMode")
                 == AppSettings.defaultOCRLanguageMode
         )
+        #expect(
+            defaults.string(forKey: "sensitiveContentStoragePolicy")
+                == AppSettings.defaultSensitiveContentStoragePolicy
+        )
         let restored = AppSettings(defaults: defaults)
         #expect(restored.historyLimit == AppSettings.defaultHistoryLimit)
         #expect(restored.imageSizeLimitMB == AppSettings.defaultImageSizeLimitMB)
@@ -268,5 +302,9 @@ struct AppSettingsTests {
         )
         #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(
+            restored.sensitiveContentStoragePolicy
+                == AppSettings.defaultSensitiveContentStoragePolicy
+        )
     }
 }

@@ -11,6 +11,14 @@ struct RetainedRichTextPayload {
     }
 }
 
+struct SensitiveContentStorageResult {
+    let content: String
+    let kind: ContentKind
+    let containsSensitiveData: Bool
+    let richTextRTFBase64: String?
+    let richTextHTML: String?
+}
+
 enum RichTextPayloadPolicy {
     static let historyByteLimit = 256 * 1_024
 
@@ -135,30 +143,39 @@ extension ClipboardStore {
 
         let analysis = ContentAnalyzer.analyze(trimmedContent)
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
+        guard let storageResult = sensitiveContentStorageResult(
+            content: content,
+            kind: analysis.kind,
+            containsSensitiveData: analysis.containsSensitiveData,
+            richTextRTFBase64: nil,
+            richTextHTML: nil
+        ) else {
+            return
+        }
         let id = UUID()
-        if content.utf8.count <= ClipboardTextStore.externalizationByteLimit {
+        if storageResult.content.utf8.count <= ClipboardTextStore.externalizationByteLimit {
             let processedContent = ClipboardTextWriteQueue.process(
-                content,
+                storageResult.content,
                 id: id,
                 textStore: textStore,
                 logger: logger
             )
             finishCapturingText(
                 processedContent,
-                originalContent: content,
+                originalContent: storageResult.content,
                 id: id,
-                kind: analysis.kind,
-                containsSensitiveData: analysis.containsSensitiveData,
+                kind: storageResult.kind,
+                containsSensitiveData: storageResult.containsSensitiveData,
                 source: source,
-                richTextRTFBase64: nil,
-                richTextHTML: nil,
+                richTextRTFBase64: storageResult.richTextRTFBase64,
+                richTextHTML: storageResult.richTextHTML,
                 pasteboardChangeCount: pasteboardChangeCount
             )
             return
         }
 
         textWriteQueue.processAndSave(
-            content,
+            storageResult.content,
             id: id,
             textStore: textStore,
             logger: logger
@@ -167,13 +184,13 @@ extension ClipboardStore {
                 guard let self else { return }
                 self.finishCapturingText(
                     processedContent,
-                    originalContent: content,
+                    originalContent: storageResult.content,
                     id: id,
-                    kind: analysis.kind,
-                    containsSensitiveData: analysis.containsSensitiveData,
+                    kind: storageResult.kind,
+                    containsSensitiveData: storageResult.containsSensitiveData,
                     source: source,
-                    richTextRTFBase64: nil,
-                    richTextHTML: nil,
+                    richTextRTFBase64: storageResult.richTextRTFBase64,
+                    richTextHTML: storageResult.richTextHTML,
                     pasteboardChangeCount: pasteboardChangeCount
                 )
             }
@@ -290,9 +307,19 @@ extension ClipboardStore {
         let kind = payload.hasFormatting
             ? ContentKind.richText
             : ContentAnalyzer.analyze(trimmedPlainText).kind
+        let containsSensitiveData = ContentAnalyzer.containsSensitiveData(plainText)
         guard items.first?.content != plainText
                 || items.first?.richTextRTFBase64 != payload.rtfBase64
                 || items.first?.richTextHTML != payload.html else {
+            return true
+        }
+        guard let storageResult = sensitiveContentStorageResult(
+            content: plainText,
+            kind: kind,
+            containsSensitiveData: containsSensitiveData,
+            richTextRTFBase64: payload.rtfBase64,
+            richTextHTML: payload.html
+        ) else {
             return true
         }
         if payload.didDiscardRepresentation {
@@ -305,29 +332,29 @@ extension ClipboardStore {
         }
 
         let id = UUID()
-        if plainText.utf8.count <= ClipboardTextStore.externalizationByteLimit {
+        if storageResult.content.utf8.count <= ClipboardTextStore.externalizationByteLimit {
             let processedContent = ClipboardTextWriteQueue.process(
-                plainText,
+                storageResult.content,
                 id: id,
                 textStore: textStore,
                 logger: logger
             )
             finishCapturingText(
                 processedContent,
-                originalContent: plainText,
+                originalContent: storageResult.content,
                 id: id,
-                kind: kind,
-                containsSensitiveData: ContentAnalyzer.containsSensitiveData(plainText),
+                kind: storageResult.kind,
+                containsSensitiveData: storageResult.containsSensitiveData,
                 source: source,
-                richTextRTFBase64: payload.rtfBase64,
-                richTextHTML: payload.html,
+                richTextRTFBase64: storageResult.richTextRTFBase64,
+                richTextHTML: storageResult.richTextHTML,
                 pasteboardChangeCount: pasteboardChangeCount
             )
             return true
         }
 
         textWriteQueue.processAndSave(
-            plainText,
+            storageResult.content,
             id: id,
             textStore: textStore,
             logger: logger
@@ -336,14 +363,13 @@ extension ClipboardStore {
                 guard let self else { return }
                 self.finishCapturingText(
                     processedContent,
-                    originalContent: plainText,
+                    originalContent: storageResult.content,
                     id: id,
-                    kind: kind,
-                    containsSensitiveData: ContentAnalyzer
-                        .containsSensitiveData(plainText),
+                    kind: storageResult.kind,
+                    containsSensitiveData: storageResult.containsSensitiveData,
                     source: source,
-                    richTextRTFBase64: payload.rtfBase64,
-                    richTextHTML: payload.html,
+                    richTextRTFBase64: storageResult.richTextRTFBase64,
+                    richTextHTML: storageResult.richTextHTML,
                     pasteboardChangeCount: pasteboardChangeCount
                 )
             }
@@ -354,6 +380,55 @@ extension ClipboardStore {
     func isIgnored(bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
         return settings.ignoredBundleIdentifierSet.contains(bundleIdentifier)
+    }
+
+    func sensitiveContentStorageResult(
+        content: String,
+        kind: ContentKind,
+        containsSensitiveData: Bool,
+        richTextRTFBase64: String?,
+        richTextHTML: String?
+    ) -> SensitiveContentStorageResult? {
+        guard containsSensitiveData else {
+            return SensitiveContentStorageResult(
+                content: content,
+                kind: kind,
+                containsSensitiveData: false,
+                richTextRTFBase64: richTextRTFBase64,
+                richTextHTML: richTextHTML
+            )
+        }
+
+        let policy = SensitiveContentStoragePolicy(
+            rawValue: settings.sensitiveContentStoragePolicy
+        ) ?? .storeOriginal
+
+        switch policy {
+        case .storeOriginal:
+            return SensitiveContentStorageResult(
+                content: content,
+                kind: kind,
+                containsSensitiveData: true,
+                richTextRTFBase64: richTextRTFBase64,
+                richTextHTML: richTextHTML
+            )
+        case .storeRedacted:
+            let redactedContent = ContentAnalyzer.redacted(content)
+            let redactedKind = kind == .richText
+                ? ContentAnalyzer.analyze(
+                    redactedContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                ).kind
+                : kind
+            return SensitiveContentStorageResult(
+                content: redactedContent,
+                kind: redactedKind,
+                containsSensitiveData: false,
+                richTextRTFBase64: nil,
+                richTextHTML: nil
+            )
+        case .skip:
+            return nil
+        }
     }
 
     /// Removes any existing items matching `duplicate`, inserts `make` at the
