@@ -140,14 +140,10 @@ extension MenuBarView {
         let items = filteredItems
         if items.isEmpty {
             ContentUnavailableView(
-                store.items.isEmpty
-                    ? "Waiting for content".localized
-                    : "No search results".localized,
-                systemImage: store.items.isEmpty ? "clipboard" : "magnifyingglass",
+                emptyStateTitle,
+                systemImage: emptyStateSystemImage,
                 description: Text(
-                    store.items.isEmpty
-                        ? "Copied content will appear here automatically.".localized
-                        : "Try searching for other content or types.".localized
+                    emptyStateDescription
                 )
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -253,5 +249,29 @@ extension MenuBarView {
                 }
             )
         }
+    }
+
+    private var emptyStateTitle: String {
+        if store.items.isEmpty {
+            return "Waiting for content".localized
+        }
+        if isFullTextSearching {
+            return "Searching…".localized
+        }
+        return "No search results".localized
+    }
+
+    private var emptyStateSystemImage: String {
+        store.items.isEmpty ? "clipboard" : "magnifyingglass"
+    }
+
+    private var emptyStateDescription: String {
+        if store.items.isEmpty {
+            return "Copied content will appear here automatically.".localized
+        }
+        if isFullTextSearching {
+            return "Scanning large clipboard items.".localized
+        }
+        return "Try searching for other content or types.".localized
     }
 }

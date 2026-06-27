@@ -92,6 +92,7 @@ struct GeneralSettingsPage: View {
 struct StorageSettingsPage: View {
     @ObservedObject var settings: AppSettings
     let storageByteCount: Int64
+    let rerunOCR: () -> Void
 
     var body: some View {
         SettingsPane(id: SettingsTab.storage) {
@@ -176,6 +177,13 @@ struct StorageSettingsPage: View {
                     }
                     .labelsHidden()
                     .frame(width: 150)
+                }
+                SettingsRow(title: "Existing Images".localized) {
+                    Button("Re-run OCR".localized, action: rerunOCR)
+                        .disabled(
+                            OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
+                                == .off
+                        )
                 }
                 SettingsNote("OCR runs locally on copied images and makes visible text searchable.".localized)
             }

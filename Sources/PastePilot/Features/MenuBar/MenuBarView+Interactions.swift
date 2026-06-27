@@ -21,6 +21,7 @@ extension MenuBarView {
         closePreviewTask = nil
         noticeTask = nil
         fullTextSearchTask = nil
+        isFullTextSearching = false
         previewedID = nil
         notice = nil
         historyItemFrames.removeAll(keepingCapacity: false)
@@ -50,15 +51,24 @@ extension MenuBarView {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let targets = store.externalContentSearchTargets()
         guard !query.isEmpty, !targets.isEmpty else {
+            isFullTextSearching = false
             fullTextSearchQuery = query
             fullTextSearchIDs = []
             return
         }
         let textDirectoryURL = store.textStore.directoryURL
+        isFullTextSearching = true
 
         fullTextSearchTask = Task {
             try? await Task.sleep(for: .milliseconds(180))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                await MainActor.run {
+                    if searchText.trimmingCharacters(in: .whitespacesAndNewlines) == query {
+                        isFullTextSearching = false
+                    }
+                }
+                return
+            }
             let searchTask = Task.detached(priority: .userInitiated) {
                 ClipboardFullTextSearch.matchingIDs(
                     query: query,
@@ -72,8 +82,16 @@ extension MenuBarView {
             } onCancel: {
                 searchTask.cancel()
             }
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                await MainActor.run {
+                    if searchText.trimmingCharacters(in: .whitespacesAndNewlines) == query {
+                        isFullTextSearching = false
+                    }
+                }
+                return
+            }
             await MainActor.run {
+                isFullTextSearching = false
                 fullTextSearchQuery = query
                 fullTextSearchIDs = ids
                 selectFirstItem()
@@ -109,6 +127,7 @@ extension MenuBarView {
             searchText = ""
             fullTextSearchIDs = []
             fullTextSearchQuery = ""
+            isFullTextSearching = false
         } else {
             closePopover()
         }
@@ -150,6 +169,7 @@ extension MenuBarView {
             searchText = ""
             fullTextSearchIDs = []
             fullTextSearchQuery = ""
+            isFullTextSearching = false
             searchFocused = true
         case .clearUnpinned:
             showsClearConfirmation = true

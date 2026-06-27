@@ -98,6 +98,8 @@
 "Link opened" = "已打开链接";
 
 "Search clipboard history" = "搜索剪贴板历史";
+"Searching…" = "正在搜索…";
+"Scanning large clipboard items." = "正在扫描大段剪贴板内容。";
 "No search results" = "没有搜索结果";
 "Pinned" = "已固定";
 "Recent" = "最近项目";
@@ -188,6 +190,8 @@
 "Image Text Recognition" = "图片文字识别";
 "OCR Mode" = "OCR 模式";
 "OCR Languages" = "OCR 语言";
+"Existing Images" = "已有图片";
+"Re-run OCR" = "重新识别 OCR";
 "OCR runs locally on copied images and makes visible text searchable." = "OCR 会在本机处理复制的图片，让图片中的可见文字可被搜索。";
 "Off" = "关闭";
 "Fast" = "快速";

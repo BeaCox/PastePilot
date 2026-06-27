@@ -224,4 +224,29 @@ extension ClipboardStore {
             self.save()
         }
     }
+
+    func rerunOCRForImages() {
+        let recognitionMode = OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
+            ?? .accurate
+        guard recognitionMode != .off else { return }
+        cancelAllOCRTasks()
+        var didClearExistingText = false
+        for index in items.indices where items[index].isImage {
+            if items[index].ocrText != nil {
+                items[index].ocrText = nil
+                didClearExistingText = true
+            }
+            guard let image = image(for: items[index])?.cgImage(
+                forProposedRect: nil,
+                context: nil,
+                hints: nil
+            ) else {
+                continue
+            }
+            performOCR(on: image, itemID: items[index].id)
+        }
+        if didClearExistingText {
+            save()
+        }
+    }
 }

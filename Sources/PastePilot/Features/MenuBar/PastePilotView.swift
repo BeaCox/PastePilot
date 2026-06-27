@@ -34,6 +34,7 @@ struct MenuBarView: View {
     @State var closePreviewTask: Task<Void, Never>?
     @State var noticeTask: Task<Void, Never>?
     @State var fullTextSearchTask: Task<Void, Never>?
+    @State var isFullTextSearching = false
     @State var fullTextSearchQuery = ""
     @State var fullTextSearchIDs: Set<UUID> = []
     @State var historyItemFrames: [UUID: CGRect] = [:]
