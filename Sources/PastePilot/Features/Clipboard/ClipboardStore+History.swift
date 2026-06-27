@@ -28,12 +28,12 @@ extension ClipboardStore {
             removeOrphanedImages()
             removeOrphanedText()
         case .backup:
-            NSLog("PastePilot recovered clipboard history from backup")
+            logger.log("PastePilot recovered clipboard history from backup")
             save()
             removeOrphanedImages()
             removeOrphanedText()
         case .unrecoverable:
-            NSLog("PastePilot could not decode clipboard history or its backup")
+            logger.log("PastePilot could not decode clipboard history or its backup")
         case .empty:
             break
         }
@@ -55,7 +55,8 @@ extension ClipboardStore {
             let processedContent = ClipboardTextWriteQueue.process(
                 item.content,
                 id: item.id,
-                textStore: textStore
+                textStore: textStore,
+                logger: logger
             )
             if processedContent.fileName != nil {
                 didExternalize = true
@@ -83,9 +84,10 @@ extension ClipboardStore {
 
     func save() {
         let noticePoster = noticePoster
+        let logger = logger
         historyWriteQueue.save(items) { error in
             if let error {
-                NSLog("PastePilot failed to save history: \(error)")
+                logger.log("PastePilot failed to save history: \(error)")
                 noticePoster.post(
                     PastePilotNotice(
                         "History could not be saved".localized,

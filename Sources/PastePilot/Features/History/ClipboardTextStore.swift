@@ -146,17 +146,24 @@ final class ClipboardTextWriteQueue {
         _ content: String,
         id: UUID,
         textStore: ClipboardTextStore,
+        logger: any PastePilotLogging = NSLogPastePilotLogger(),
         completion: @escaping (ProcessedClipboardText) -> Void
     ) {
         queue.async {
-            completion(Self.process(content, id: id, textStore: textStore))
+            completion(Self.process(
+                content,
+                id: id,
+                textStore: textStore,
+                logger: logger
+            ))
         }
     }
 
     static func process(
         _ content: String,
         id: UUID,
-        textStore: ClipboardTextStore
+        textStore: ClipboardTextStore,
+        logger: any PastePilotLogging = NSLogPastePilotLogger()
     ) -> ProcessedClipboardText {
         let characterCount = content.count
         let lineCount = content.reduce(1) { count, character in
@@ -192,7 +199,7 @@ final class ClipboardTextWriteQueue {
                 externalizationFailed: false
             )
         } catch {
-            NSLog("PastePilot failed to externalize text content: \(error)")
+            logger.log("PastePilot failed to externalize text content: \(error)")
             return ProcessedClipboardText(
                 content: content,
                 fileName: nil,

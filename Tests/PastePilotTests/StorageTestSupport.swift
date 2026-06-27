@@ -77,6 +77,10 @@ struct DelayedStubOCRService: OCRService {
     }
 }
 
+struct SilentPastePilotLogger: PastePilotLogging {
+    func log(_ message: String) {}
+}
+
 final class CapturingNoticePoster: PastePilotNoticePosting {
     private let lock = NSLock()
     private var recordedNotices: [PastePilotNotice] = []

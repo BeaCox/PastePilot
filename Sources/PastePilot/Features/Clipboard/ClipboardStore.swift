@@ -16,6 +16,7 @@ final class ClipboardStore: ObservableObject {
     let pasteboardCaptureQueue: any ClipboardCapturing
     let ocrService: any OCRService
     let noticePoster: any PastePilotNoticePosting
+    let logger: any PastePilotLogging
     var timer: Timer?
     var lastChangeCount: Int
     var pendingCaptureChangeCount: Int?
@@ -35,7 +36,8 @@ final class ClipboardStore: ObservableObject {
         pasteboardCaptureQueue: any ClipboardCapturing = ClipboardCaptureQueue(),
         textWriteQueue: ClipboardTextWriteQueue = ClipboardTextWriteQueue(),
         ocrService: any OCRService = VisionOCRService(),
-        noticePoster: any PastePilotNoticePosting = NotificationCenterPastePilotNoticePoster()
+        noticePoster: any PastePilotNoticePosting = NotificationCenterPastePilotNoticePoster(),
+        logger: any PastePilotLogging = NSLogPastePilotLogger()
     ) {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
         let historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
@@ -54,6 +56,7 @@ final class ClipboardStore: ObservableObject {
         self.pasteboardCaptureQueue = pasteboardCaptureQueue
         self.ocrService = ocrService
         self.noticePoster = noticePoster
+        self.logger = logger
         self.lastChangeCount = pasteboard.changeCount
         load()
     }

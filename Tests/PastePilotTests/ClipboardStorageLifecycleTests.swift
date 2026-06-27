@@ -20,7 +20,8 @@ struct ClipboardStorageLifecycleTests {
             ),
             dataDirectoryURL: blockedDataDirectory,
             ocrService: StubOCRService(),
-            noticePoster: noticePoster
+            noticePoster: noticePoster,
+            logger: SilentPastePilotLogger()
         )
         store.items = [ClipboardItem(content: "unsaved", kind: .text)]
 
@@ -108,7 +109,8 @@ struct ClipboardStorageLifecycleTests {
             ),
             dataDirectoryURL: directory,
             ocrService: StubOCRService(),
-            noticePoster: noticePoster
+            noticePoster: noticePoster,
+            logger: SilentPastePilotLogger()
         )
         let content = String(
             repeating: "large clipboard text\n",

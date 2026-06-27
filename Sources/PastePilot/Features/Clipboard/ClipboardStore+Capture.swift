@@ -140,7 +140,8 @@ extension ClipboardStore {
             let processedContent = ClipboardTextWriteQueue.process(
                 content,
                 id: id,
-                textStore: textStore
+                textStore: textStore,
+                logger: logger
             )
             finishCapturingText(
                 processedContent,
@@ -159,7 +160,8 @@ extension ClipboardStore {
         textWriteQueue.processAndSave(
             content,
             id: id,
-            textStore: textStore
+            textStore: textStore,
+            logger: logger
         ) { [weak self] processedContent in
             Task { @MainActor in
                 guard let self else { return }
@@ -307,7 +309,8 @@ extension ClipboardStore {
             let processedContent = ClipboardTextWriteQueue.process(
                 plainText,
                 id: id,
-                textStore: textStore
+                textStore: textStore,
+                logger: logger
             )
             finishCapturingText(
                 processedContent,
@@ -326,7 +329,8 @@ extension ClipboardStore {
         textWriteQueue.processAndSave(
             plainText,
             id: id,
-            textStore: textStore
+            textStore: textStore,
+            logger: logger
         ) { [weak self] processedContent in
             Task { @MainActor in
                 guard let self else { return }
