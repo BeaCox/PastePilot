@@ -77,6 +77,23 @@ struct DelayedStubOCRService: OCRService {
     }
 }
 
+final class CapturingNoticePoster: PastePilotNoticePosting {
+    private let lock = NSLock()
+    private var recordedNotices: [PastePilotNotice] = []
+
+    var notices: [PastePilotNotice] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recordedNotices
+    }
+
+    func post(_ notice: PastePilotNotice) {
+        lock.lock()
+        recordedNotices.append(notice)
+        lock.unlock()
+    }
+}
+
 enum StubCaptureResult {
     case timeout
     case payload(ClipboardCaptureSnapshot.Payload?)
@@ -106,6 +123,7 @@ final class StubClipboardCaptureQueue: ClipboardCapturing {
         case .payload(let payload):
             completion(ClipboardCaptureSnapshot(
                 changeCount: changeCount,
+                sourceAppName: nil,
                 sourceBundleIdentifier: nil,
                 payload: payload
             ))

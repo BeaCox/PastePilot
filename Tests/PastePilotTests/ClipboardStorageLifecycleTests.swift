@@ -8,6 +8,37 @@ import UniformTypeIdentifiers
 struct ClipboardStorageLifecycleTests {
     @Test
     @MainActor
+    func historySaveFailurePostsNoticeThroughInjectedPoster() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let blockedDataDirectory = directory.appendingPathComponent("blocked")
+        try Data("not a directory".utf8).write(to: blockedDataDirectory)
+        let noticePoster = CapturingNoticePoster()
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: blockedDataDirectory,
+            ocrService: StubOCRService(),
+            noticePoster: noticePoster
+        )
+        store.items = [ClipboardItem(content: "unsaved", kind: .text)]
+
+        store.save()
+        store.flushHistoryWrites()
+
+        #expect(
+            noticePoster.notices.contains(
+                PastePilotNotice(
+                    "History could not be saved".localized,
+                    style: .error
+                )
+            )
+        )
+    }
+
+    @Test
+    @MainActor
     func clipboardStoreAppliesExpiryAndHistoryLimitWithInjectedStorage() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -60,6 +91,44 @@ struct ClipboardStorageLifecycleTests {
         reloadedStore.applyHistoryLimit(1)
         #expect(Set(reloadedStore.items.map(\.content)) == ["another", "pinned"])
         reloadedStore.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func textExternalizationFailurePostsNoticeAndKeepsInlineContent() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data("not a directory".utf8).write(
+            to: directory.appendingPathComponent("text")
+        )
+        let noticePoster = CapturingNoticePoster()
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService(),
+            noticePoster: noticePoster
+        )
+        let content = String(
+            repeating: "large clipboard text\n",
+            count: ClipboardTextStore.externalizationByteLimit / 8
+        )
+
+        store.captureText(content, source: (nil, nil))
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.content == content)
+        #expect(item.contentFileName == nil)
+        #expect(
+            noticePoster.notices.contains(
+                PastePilotNotice(
+                    "Large text could not be saved separately".localized,
+                    style: .warning
+                )
+            )
+        )
+        store.flushHistoryWrites()
     }
 
     @Test
@@ -123,7 +192,8 @@ struct ClipboardStorageLifecycleTests {
             characterCount: 16,
             lineCount: 1,
             byteCount: 16,
-            digest: ContentDigest.sha256Hex(for: "stale large text")
+            digest: ContentDigest.sha256Hex(for: "stale large text"),
+            externalizationFailed: false
         )
         let staleChangeCount = pasteboard.changeCount - 1
 
@@ -141,6 +211,41 @@ struct ClipboardStorageLifecycleTests {
 
         #expect(store.items.isEmpty)
         #expect(store.textStore.content(fileName: fileName) == nil)
+    }
+
+    @Test
+    @MainActor
+    func imageSaveFailurePostsNoticeThroughInjectedPoster() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let noticePoster = CapturingNoticePoster()
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService(),
+            noticePoster: noticePoster
+        )
+
+        store.finishSavingImage(
+            .failure(ClipboardImageProcessingError.exceedsSizeLimit),
+            id: UUID(),
+            source: (nil, nil),
+            remoteURL: nil,
+            originalPath: nil,
+            pasteboardChangeCount: nil,
+            ocrImage: try makeTestImage(width: 3, height: 2)
+        )
+
+        #expect(
+            noticePoster.notices.contains(
+                PastePilotNotice(
+                    "Image exceeds the size limit".localized,
+                    style: .warning
+                )
+            )
+        )
     }
 
     @Test

@@ -212,6 +212,35 @@ struct ClipboardCaptureStorageTests {
 
     @Test
     @MainActor
+    func captureSnapshotPreservesCapturedSourceApplication() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setString("source app text", forType: .string)
+        store.applyCaptureSnapshot(ClipboardCaptureSnapshot(
+            changeCount: pasteboard.changeCount,
+            sourceAppName: "Captured App",
+            sourceBundleIdentifier: "com.example.CapturedApp",
+            payload: .text("source app text")
+        ))
+
+        let item = try #require(store.items.first)
+        #expect(item.sourceAppName == "Captured App")
+        #expect(item.sourceBundleIdentifier == "com.example.CapturedApp")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func imageCaptureReadsPasteboardImageData() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

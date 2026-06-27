@@ -82,10 +82,11 @@ extension ClipboardStore {
     }
 
     func save() {
+        let noticePoster = noticePoster
         historyWriteQueue.save(items) { error in
             if let error {
                 NSLog("PastePilot failed to save history: \(error)")
-                NotificationCenter.default.postPastePilotNotice(
+                noticePoster.post(
                     PastePilotNotice(
                         "History could not be saved".localized,
                         style: .error

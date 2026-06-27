@@ -143,14 +143,14 @@ extension ClipboardStore {
             if let processingError = error as? ClipboardImageProcessingError {
                 switch processingError {
                 case .encodingFailed:
-                    NotificationCenter.default.postPastePilotNotice(
+                    noticePoster.post(
                         PastePilotNotice(
                             "Image could not be saved".localized,
                             style: .error
                         )
                     )
                 case .exceedsSizeLimit:
-                    NotificationCenter.default.postPastePilotNotice(
+                    noticePoster.post(
                         PastePilotNotice(
                             "Image exceeds the size limit".localized,
                             style: .warning
@@ -159,7 +159,7 @@ extension ClipboardStore {
                 }
             } else {
                 NSLog("PastePilot failed to save image: \(error)")
-                NotificationCenter.default.postPastePilotNotice(
+                noticePoster.post(
                     PastePilotNotice(
                         "Image could not be saved".localized,
                         style: .error

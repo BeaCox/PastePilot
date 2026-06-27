@@ -15,6 +15,7 @@ final class ClipboardStore: ObservableObject {
     let textWriteQueue: ClipboardTextWriteQueue
     let pasteboardCaptureQueue: any ClipboardCapturing
     let ocrService: any OCRService
+    let noticePoster: any PastePilotNoticePosting
     var timer: Timer?
     var lastChangeCount: Int
     var pendingCaptureChangeCount: Int?
@@ -26,9 +27,6 @@ final class ClipboardStore: ObservableObject {
     var discardAllImageSavesBeforeGeneration = 0
     var deletedImageDigestGenerations: [String: Int] = [:]
     let thumbnailCache = NSCache<NSString, NSImage>()
-    static let sourcePasteboardType = NSPasteboard.PasteboardType(
-        rawValue: "org.nspasteboard.source"
-    )
 
     init(
         pasteboard: NSPasteboard = .general,
@@ -36,7 +34,8 @@ final class ClipboardStore: ObservableObject {
         dataDirectoryURL: URL? = nil,
         pasteboardCaptureQueue: any ClipboardCapturing = ClipboardCaptureQueue(),
         textWriteQueue: ClipboardTextWriteQueue = ClipboardTextWriteQueue(),
-        ocrService: any OCRService = VisionOCRService()
+        ocrService: any OCRService = VisionOCRService(),
+        noticePoster: any PastePilotNoticePosting = NotificationCenterPastePilotNoticePoster()
     ) {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
         let historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
@@ -54,6 +53,7 @@ final class ClipboardStore: ObservableObject {
         self.textWriteQueue = textWriteQueue
         self.pasteboardCaptureQueue = pasteboardCaptureQueue
         self.ocrService = ocrService
+        self.noticePoster = noticePoster
         self.lastChangeCount = pasteboard.changeCount
         load()
     }

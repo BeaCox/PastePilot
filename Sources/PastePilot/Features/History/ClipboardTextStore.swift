@@ -101,6 +101,7 @@ struct ProcessedClipboardText {
     let lineCount: Int
     let byteCount: Int
     let digest: String
+    let externalizationFailed: Bool
 }
 
 final class ClipboardTextWriteQueue {
@@ -138,7 +139,8 @@ final class ClipboardTextWriteQueue {
                 characterCount: characterCount,
                 lineCount: lineCount,
                 byteCount: byteCount,
-                digest: digest
+                digest: digest,
+                externalizationFailed: false
             )
         }
 
@@ -154,7 +156,8 @@ final class ClipboardTextWriteQueue {
                 characterCount: characterCount,
                 lineCount: lineCount,
                 byteCount: byteCount,
-                digest: digest
+                digest: digest,
+                externalizationFailed: false
             )
         } catch {
             NSLog("PastePilot failed to externalize text content: \(error)")
@@ -164,7 +167,8 @@ final class ClipboardTextWriteQueue {
                 characterCount: characterCount,
                 lineCount: lineCount,
                 byteCount: byteCount,
-                digest: digest
+                digest: digest,
+                externalizationFailed: true
             )
         }
     }

@@ -169,6 +169,13 @@ struct ContentBehaviorTests {
             ContentTransformer.jsonToTypeScript(#"[1,"two",null]"#)
                 == "type Root = (number | string | null)[];"
         )
+
+        let escapedKeyTypeScript = ContentTransformer.jsonToTypeScript(
+            #"{"line\nbreak":1,"path\\name":true,"quote\"key":"x"}"#
+        )
+        #expect(escapedKeyTypeScript?.contains(#""line\nbreak": number;"#) == true)
+        #expect(escapedKeyTypeScript?.contains(#""path\\name": boolean;"#) == true)
+        #expect(escapedKeyTypeScript?.contains(#""quote\"key": string;"#) == true)
     }
 
     @Test

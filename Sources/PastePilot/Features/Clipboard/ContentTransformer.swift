@@ -380,9 +380,14 @@ enum ContentTransformer {
     }
 
     private static func safeTypeScriptKey(_ key: String) -> String {
-        key.range(of: #"^[A-Za-z_$][A-Za-z0-9_$]*$"#, options: .regularExpression) != nil
-            ? key
-            : "\"\(key.replacingOccurrences(of: "\"", with: "\\\""))\""
+        if key.range(of: #"^[A-Za-z_$][A-Za-z0-9_$]*$"#, options: .regularExpression) != nil {
+            return key
+        }
+        guard let data = try? JSONEncoder().encode(key),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return #""""#
+        }
+        return encoded
     }
 }
 

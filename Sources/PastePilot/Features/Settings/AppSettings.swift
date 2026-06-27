@@ -112,17 +112,16 @@ final class AppSettings: ObservableObject {
 
     @Published var historyLimit: Int {
         didSet {
-            let supportedValue = Self.supportedValue(
+            persistSupportedValue(
                 historyLimit,
-                in: Self.supportedHistoryLimits,
-                default: Self.defaultHistoryLimit
+                supportedValue: Self.supportedValue(
+                    historyLimit,
+                    in: Self.supportedHistoryLimits,
+                    default: Self.defaultHistoryLimit
+                ),
+                assign: { historyLimit = $0 },
+                persist: { persist($0, forKey: Key.historyLimit) }
             )
-            guard historyLimit == supportedValue else {
-                historyLimit = supportedValue
-                persist(supportedValue, forKey: Key.historyLimit)
-                return
-            }
-            persist(historyLimit, forKey: Key.historyLimit)
         }
     }
 
@@ -132,17 +131,16 @@ final class AppSettings: ObservableObject {
 
     @Published var imageSizeLimitMB: Int {
         didSet {
-            let supportedValue = Self.supportedValue(
+            persistSupportedValue(
                 imageSizeLimitMB,
-                in: Self.supportedImageSizeLimitsMB,
-                default: Self.defaultImageSizeLimitMB
+                supportedValue: Self.supportedValue(
+                    imageSizeLimitMB,
+                    in: Self.supportedImageSizeLimitsMB,
+                    default: Self.defaultImageSizeLimitMB
+                ),
+                assign: { imageSizeLimitMB = $0 },
+                persist: { persist($0, forKey: Key.imageSizeLimitMB) }
             )
-            guard imageSizeLimitMB == supportedValue else {
-                imageSizeLimitMB = supportedValue
-                persist(supportedValue, forKey: Key.imageSizeLimitMB)
-                return
-            }
-            persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
         }
     }
 
@@ -157,100 +155,90 @@ final class AppSettings: ObservableObject {
 
     @Published var hotKeyCode: Int {
         didSet {
-            let supportedValue = Self.supportedHotKeyCode(hotKeyCode)
-            guard hotKeyCode == supportedValue else {
-                hotKeyCode = supportedValue
-                persist(supportedValue, forKey: Key.hotKeyCode)
-                return
-            }
-            persist(hotKeyCode, forKey: Key.hotKeyCode)
+            persistSupportedValue(
+                hotKeyCode,
+                supportedValue: Self.supportedHotKeyCode(hotKeyCode),
+                assign: { hotKeyCode = $0 },
+                persist: { persist($0, forKey: Key.hotKeyCode) }
+            )
         }
     }
 
     @Published var hotKeyModifiers: UInt32 {
         didSet {
-            let supportedValue = Self.supportedHotKeyModifiers(hotKeyModifiers)
-            guard hotKeyModifiers == supportedValue else {
-                hotKeyModifiers = supportedValue
-                persist(supportedValue, forKey: Key.hotKeyModifiers)
-                return
-            }
-            persist(hotKeyModifiers, forKey: Key.hotKeyModifiers)
+            persistSupportedValue(
+                hotKeyModifiers,
+                supportedValue: Self.supportedHotKeyModifiers(hotKeyModifiers),
+                assign: { hotKeyModifiers = $0 },
+                persist: { persist($0, forKey: Key.hotKeyModifiers) }
+            )
         }
     }
 
     @Published var plainTextHotKeyCode: Int {
         didSet {
-            let supportedValue = Self.supportedHotKeyCode(
+            persistSupportedValue(
                 plainTextHotKeyCode,
-                default: Self.defaultPlainTextHotKeyCode
+                supportedValue: Self.supportedHotKeyCode(
+                    plainTextHotKeyCode,
+                    default: Self.defaultPlainTextHotKeyCode
+                ),
+                assign: { plainTextHotKeyCode = $0 },
+                persist: { persist($0, forKey: Key.plainTextHotKeyCode) }
             )
-            guard plainTextHotKeyCode == supportedValue else {
-                plainTextHotKeyCode = supportedValue
-                persist(supportedValue, forKey: Key.plainTextHotKeyCode)
-                return
-            }
-            persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
         }
     }
 
     @Published var plainTextHotKeyModifiers: UInt32 {
         didSet {
-            let supportedValue = Self.supportedHotKeyModifiers(
+            persistSupportedValue(
                 plainTextHotKeyModifiers,
-                default: Self.defaultPlainTextHotKeyModifiers
-            )
-            guard plainTextHotKeyModifiers == supportedValue else {
-                plainTextHotKeyModifiers = supportedValue
-                persist(supportedValue, forKey: Key.plainTextHotKeyModifiers)
-                return
-            }
-            persist(
-                plainTextHotKeyModifiers,
-                forKey: Key.plainTextHotKeyModifiers
+                supportedValue: Self.supportedHotKeyModifiers(
+                    plainTextHotKeyModifiers,
+                    default: Self.defaultPlainTextHotKeyModifiers
+                ),
+                assign: { plainTextHotKeyModifiers = $0 },
+                persist: { persist($0, forKey: Key.plainTextHotKeyModifiers) }
             )
         }
     }
 
     @Published var menuBarIconStyle: String {
         didSet {
-            let supportedValue = Self.supportedMenuBarIconStyle(menuBarIconStyle)
-            guard menuBarIconStyle == supportedValue else {
-                menuBarIconStyle = supportedValue
-                persist(supportedValue, forKey: Key.menuBarIconStyle)
-                return
-            }
-            persist(menuBarIconStyle, forKey: Key.menuBarIconStyle)
+            persistSupportedValue(
+                menuBarIconStyle,
+                supportedValue: Self.supportedMenuBarIconStyle(menuBarIconStyle),
+                assign: { menuBarIconStyle = $0 },
+                persist: { persist($0, forKey: Key.menuBarIconStyle) }
+            )
         }
     }
 
     @Published var historyTimeoutSeconds: Int {
         didSet {
-            let supportedValue = Self.supportedValue(
+            persistSupportedValue(
                 historyTimeoutSeconds,
-                in: Self.supportedHistoryTimeoutsSeconds,
-                default: Self.defaultHistoryTimeoutSeconds
+                supportedValue: Self.supportedValue(
+                    historyTimeoutSeconds,
+                    in: Self.supportedHistoryTimeoutsSeconds,
+                    default: Self.defaultHistoryTimeoutSeconds
+                ),
+                assign: { historyTimeoutSeconds = $0 },
+                persist: { persist($0, forKey: Key.historyTimeoutSeconds) }
             )
-            guard historyTimeoutSeconds == supportedValue else {
-                historyTimeoutSeconds = supportedValue
-                persist(supportedValue, forKey: Key.historyTimeoutSeconds)
-                return
-            }
-            persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
         }
     }
 
     @Published var pasteCloseBehavior: String {
         didSet {
-            let supportedValue = Self.supportedPasteCloseBehavior(
-                pasteCloseBehavior
+            persistSupportedValue(
+                pasteCloseBehavior,
+                supportedValue: Self.supportedPasteCloseBehavior(
+                    pasteCloseBehavior
+                ),
+                assign: { pasteCloseBehavior = $0 },
+                persist: { persist($0, forKey: Key.pasteCloseBehavior) }
             )
-            guard pasteCloseBehavior == supportedValue else {
-                pasteCloseBehavior = supportedValue
-                persist(supportedValue, forKey: Key.pasteCloseBehavior)
-                return
-            }
-            persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
         }
     }
 
@@ -260,27 +248,25 @@ final class AppSettings: ObservableObject {
 
     @Published var ocrRecognitionMode: String {
         didSet {
-            let supportedValue = Self.supportedOCRRecognitionMode(
-                ocrRecognitionMode
+            persistSupportedValue(
+                ocrRecognitionMode,
+                supportedValue: Self.supportedOCRRecognitionMode(
+                    ocrRecognitionMode
+                ),
+                assign: { ocrRecognitionMode = $0 },
+                persist: { persist($0, forKey: Key.ocrRecognitionMode) }
             )
-            guard ocrRecognitionMode == supportedValue else {
-                ocrRecognitionMode = supportedValue
-                persist(supportedValue, forKey: Key.ocrRecognitionMode)
-                return
-            }
-            persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
         }
     }
 
     @Published var ocrLanguageMode: String {
         didSet {
-            let supportedValue = Self.supportedOCRLanguageMode(ocrLanguageMode)
-            guard ocrLanguageMode == supportedValue else {
-                ocrLanguageMode = supportedValue
-                persist(supportedValue, forKey: Key.ocrLanguageMode)
-                return
-            }
-            persist(ocrLanguageMode, forKey: Key.ocrLanguageMode)
+            persistSupportedValue(
+                ocrLanguageMode,
+                supportedValue: Self.supportedOCRLanguageMode(ocrLanguageMode),
+                assign: { ocrLanguageMode = $0 },
+                persist: { persist($0, forKey: Key.ocrLanguageMode) }
+            )
         }
     }
 
@@ -446,6 +432,20 @@ final class AppSettings: ObservableObject {
     private static func supportedOCRLanguageMode(_ value: String) -> String {
         OCRLanguageMode(rawValue: value)?.rawValue
             ?? defaultOCRLanguageMode
+    }
+
+    private func persistSupportedValue<Value: Equatable>(
+        _ value: Value,
+        supportedValue: Value,
+        assign: (Value) -> Void,
+        persist: (Value) -> Void
+    ) {
+        guard value == supportedValue else {
+            assign(supportedValue)
+            persist(supportedValue)
+            return
+        }
+        persist(value)
     }
 
     private func persistCurrentValues() {

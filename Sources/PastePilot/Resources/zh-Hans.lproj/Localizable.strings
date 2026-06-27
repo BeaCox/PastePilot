@@ -27,6 +27,7 @@
 /* ClipboardStore */
 "Image %d × %d" = "图片 %d × %d";
 "History could not be saved" = "历史记录无法保存";
+"Large text could not be saved separately" = "大段文本无法单独保存";
 "Image could not be saved" = "图片无法保存";
 "Image exceeds the size limit" = "图片超过大小上限";
 

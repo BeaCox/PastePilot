@@ -27,6 +27,22 @@ struct PastePilotNotice: Equatable {
     }
 }
 
+protocol PastePilotNoticePosting {
+    func post(_ notice: PastePilotNotice)
+}
+
+struct NotificationCenterPastePilotNoticePoster: PastePilotNoticePosting {
+    private let notificationCenter: NotificationCenter
+
+    init(notificationCenter: NotificationCenter = .default) {
+        self.notificationCenter = notificationCenter
+    }
+
+    func post(_ notice: PastePilotNotice) {
+        notificationCenter.postPastePilotNotice(notice)
+    }
+}
+
 extension Notification.Name {
     static let pastePilotNotice = Notification.Name("PastePilotNotice")
 }

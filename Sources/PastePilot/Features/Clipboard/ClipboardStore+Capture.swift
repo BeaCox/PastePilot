@@ -30,8 +30,9 @@ extension ClipboardStore {
     func applyCaptureSnapshot(_ snapshot: ClipboardCaptureSnapshot) {
         guard pasteboard.changeCount == snapshot.changeCount else { return }
         lastChangeCount = snapshot.changeCount
-        let source = sourceApplication(
-            pasteboardBundleIdentifier: snapshot.sourceBundleIdentifier
+        let source = (
+            name: snapshot.sourceAppName,
+            bundleIdentifier: snapshot.sourceBundleIdentifier
         )
 
         switch snapshot.payload {
@@ -144,6 +145,14 @@ extension ClipboardStore {
                 textStore.delete(fileName: fileName)
             }
             return
+        }
+        if processedContent.externalizationFailed {
+            noticePoster.post(
+                PastePilotNotice(
+                    "Large text could not be saved separately".localized,
+                    style: .warning
+                )
+            )
         }
         insertCaptured(
             duplicate: {
@@ -271,37 +280,6 @@ extension ClipboardStore {
             }
         }
         return true
-    }
-
-    func sourceApplication() -> (name: String?, bundleIdentifier: String?) {
-        sourceApplication(
-            pasteboardBundleIdentifier: pasteboard.string(forType: Self.sourcePasteboardType)
-        )
-    }
-
-    func sourceApplication(
-        pasteboardBundleIdentifier: String?
-    ) -> (name: String?, bundleIdentifier: String?) {
-        let frontmostApplication = NSWorkspace.shared.frontmostApplication
-        let bundleIdentifier = pasteboardBundleIdentifier
-            ?? frontmostApplication?.bundleIdentifier
-
-        if let bundleIdentifier {
-            let runningName = NSRunningApplication
-                .runningApplications(withBundleIdentifier: bundleIdentifier)
-                .first?
-                .localizedName
-            let installedName = NSWorkspace.shared
-                .urlForApplication(withBundleIdentifier: bundleIdentifier)
-                .flatMap { Bundle(url: $0) }?
-                .object(forInfoDictionaryKey: "CFBundleName") as? String
-            return (runningName ?? installedName, bundleIdentifier)
-        }
-
-        return (
-            frontmostApplication?.localizedName,
-            frontmostApplication?.bundleIdentifier
-        )
     }
 
     func isIgnored(bundleIdentifier: String?) -> Bool {

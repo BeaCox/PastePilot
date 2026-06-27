@@ -12,6 +12,7 @@ struct ClipboardCaptureSnapshot {
     }
 
     let changeCount: Int
+    let sourceAppName: String?
     let sourceBundleIdentifier: String?
     let payload: Payload?
 }
@@ -81,9 +82,13 @@ final class ClipboardCaptureQueue {
         let urlStrings = urlTypes.compactMap { pasteboard.string(forType: $0) }
         let rtfData = pasteboard.data(forType: .rtf)
         let html = pasteboard.string(forType: .html)
+        let source = sourceApplication(
+            pasteboardBundleIdentifier: pasteboard.string(forType: sourcePasteboardType)
+        )
 
         return CapturedPasteboardData(
-            sourceBundleIdentifier: pasteboard.string(forType: sourcePasteboardType),
+            sourceAppName: source.name,
+            sourceBundleIdentifier: source.bundleIdentifier,
             fileURLs: urls,
             pasteboardURL: NSURL(from: pasteboard) as URL?,
             imageRepresentations: imageRepresentations,
@@ -106,6 +111,7 @@ final class ClipboardCaptureQueue {
 
         return ClipboardCaptureSnapshot(
             changeCount: changeCount,
+            sourceAppName: pasteboardData.sourceAppName,
             sourceBundleIdentifier: pasteboardData.sourceBundleIdentifier,
             payload: payload
         )
@@ -239,6 +245,31 @@ final class ClipboardCaptureQueue {
         return (nil, localPath)
     }
 
+    private static func sourceApplication(
+        pasteboardBundleIdentifier: String?
+    ) -> (name: String?, bundleIdentifier: String?) {
+        let frontmostApplication = NSWorkspace.shared.frontmostApplication
+        let bundleIdentifier = pasteboardBundleIdentifier
+            ?? frontmostApplication?.bundleIdentifier
+
+        if let bundleIdentifier {
+            let runningName = NSRunningApplication
+                .runningApplications(withBundleIdentifier: bundleIdentifier)
+                .first?
+                .localizedName
+            let installedName = NSWorkspace.shared
+                .urlForApplication(withBundleIdentifier: bundleIdentifier)
+                .flatMap { Bundle(url: $0) }?
+                .object(forInfoDictionaryKey: "CFBundleName") as? String
+            return (runningName ?? installedName, bundleIdentifier)
+        }
+
+        return (
+            frontmostApplication?.localizedName,
+            frontmostApplication?.bundleIdentifier
+        )
+    }
+
     private static func cgImage(
         from representation: ImageRepresentation
     ) -> CGImage? {
@@ -297,6 +328,7 @@ final class ClipboardCaptureQueue {
     ]
 
     private struct CapturedPasteboardData {
+        let sourceAppName: String?
         let sourceBundleIdentifier: String?
         let fileURLs: [URL]
         let pasteboardURL: URL?
