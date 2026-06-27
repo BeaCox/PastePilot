@@ -493,5 +493,9 @@ struct ContentBehaviorTests {
         )
         #expect(image.size == NSSize(width: 18, height: 18))
         #expect(MenuBarIconStyle.pastepilot.previewImage.size == NSSize(width: 15, height: 15))
+        for style in MenuBarIconStyle.allCases {
+            #expect(style.previewImage.size.width > 0)
+            #expect(style.previewImage.size.height > 0)
+        }
     }
 }

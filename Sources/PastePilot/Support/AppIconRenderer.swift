@@ -23,7 +23,11 @@ enum MenuBarIconStyle: String, CaseIterable {
 
     var previewImage: NSImage {
         AppIconRenderer.menuBarPreviewImage(style: self)
-            ?? NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)!
+            ?? NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
+            ?? NSImage(size: NSSize(
+                width: AppIconRenderer.menuBarPointSize,
+                height: AppIconRenderer.menuBarPointSize
+            ))
     }
 }
 
@@ -90,12 +94,15 @@ enum AppIconRenderer {
 
         let pt = menuBarPointSize
         let px = pt * 2
-        let rep = makeBitmapRep(pixels: px)
+        guard let rep = makeBitmapRep(pixels: px),
+              let graphicsContext = NSGraphicsContext(bitmapImageRep: rep) else {
+            return fallbackMenuBarImage()
+        }
         rep.size = NSSize(width: pt, height: pt)
 
         NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-        let ctx = NSGraphicsContext.current!.cgContext
+        NSGraphicsContext.current = graphicsContext
+        let ctx = graphicsContext.cgContext
         let s = CGFloat(px)
 
         ctx.clear(CGRect(x: 0, y: 0, width: s, height: s))
@@ -171,6 +178,17 @@ enum AppIconRenderer {
         )?.withSymbolConfiguration(config)
     }
 
+    private static func fallbackMenuBarImage() -> NSImage {
+        let image = sfSymbol("doc.on.clipboard")
+            ?? NSImage(size: NSSize(
+                width: menuBarPointSize,
+                height: menuBarPointSize
+            ))
+        image.size = NSSize(width: menuBarPointSize, height: menuBarPointSize)
+        image.isTemplate = true
+        return image
+    }
+
     // MARK: - Helpers
 
     private static func resourceImage(named name: String, extensions: [String] = ["png"]) -> NSImage? {
@@ -193,7 +211,7 @@ enum AppIconRenderer {
         return nil
     }
 
-    private static func makeBitmapRep(pixels: Int) -> NSBitmapImageRep {
+    private static func makeBitmapRep(pixels: Int) -> NSBitmapImageRep? {
         NSBitmapImageRep(
             bitmapDataPlanes: nil,
             pixelsWide: pixels, pixelsHigh: pixels,

@@ -114,18 +114,31 @@ final class ClipboardStore: ObservableObject {
     }
 
     func copyRichText(for item: ClipboardItem) -> Bool {
+        let rtfData = item.richTextRTFBase64.flatMap {
+            Data(base64Encoded: $0)
+        }
+        let html = item.richTextHTML
+        guard rtfData != nil || html != nil else { return false }
+
         pasteboard.clearContents()
-        if let base64 = item.richTextRTFBase64,
-           let data = Data(base64Encoded: base64) {
-            pasteboard.setData(data, forType: .rtf)
+        var wroteRichText = false
+        if let rtfData {
+            wroteRichText = pasteboard.setData(rtfData, forType: .rtf)
+                || wroteRichText
         }
-        if let html = item.richTextHTML {
-            pasteboard.setString(html, forType: .html)
+        if let html {
+            wroteRichText = pasteboard.setString(html, forType: .html)
+                || wroteRichText
         }
-        pasteboard.setString(content(for: item) ?? item.content, forType: .string)
-        pendingCaptureChangeCount = nil
-        lastChangeCount = pasteboard.changeCount
-        return item.hasRichText
+        let wrotePlainText = pasteboard.setString(
+            content(for: item) ?? item.content,
+            forType: .string
+        )
+        if wroteRichText || wrotePlainText {
+            pendingCaptureChangeCount = nil
+            lastChangeCount = pasteboard.changeCount
+        }
+        return wroteRichText
     }
 
     func content(for item: ClipboardItem) -> String? {

@@ -210,6 +210,45 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func copyRichTextReportsSuccessOnlyWhenFormattingIsWritten() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let rtfData = Data("{\\rtf1 Formatted text}".utf8)
+        let html = "<strong>Formatted text</strong>"
+        let item = ClipboardItem(
+            content: "Formatted text",
+            kind: .richText,
+            richTextRTFBase64: rtfData.base64EncodedString(),
+            richTextHTML: html
+        )
+
+        #expect(store.copyRichText(for: item))
+        #expect(pasteboard.data(forType: .rtf) == rtfData)
+        #expect(pasteboard.string(forType: .html) == html)
+        #expect(pasteboard.string(forType: .string) == "Formatted text")
+
+        #expect(pasteboard.setString("Existing text", forType: .string))
+        let invalidItem = ClipboardItem(
+            content: "Broken rich text",
+            kind: .richText,
+            richTextRTFBase64: "not-base64"
+        )
+
+        #expect(!store.copyRichText(for: invalidItem))
+        #expect(pasteboard.string(forType: .string) == "Existing text")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func expiringHistoryDeletesExternalizedTextFiles() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
