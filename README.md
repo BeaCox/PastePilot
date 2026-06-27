@@ -96,13 +96,18 @@ after an update, so close old DMGs and keep only the installed copy in
 
 - Detects and masks API keys, tokens, passwords, and private keys
 - Sensitive content hidden by default with optional reveal
+- Sensitive content can be saved as original text, saved redacted, or skipped
+  entirely from history
 - Clipboard data stays local and no telemetry is collected
 - Network access is limited to checking and downloading updates from GitHub Releases
 - History is stored as versioned plain JSON at `~/Library/Application Support/PastePilot/history.json`
 - The last valid history file is retained as `history.backup.json` for recovery
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
 - Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
-- Sensitive-content masking only hides values in the UI; it does not encrypt data at rest
+- The storage limit setting removes the oldest unpinned items when retained
+  history exceeds the chosen local data size
+- Sensitive-content masking only hides values in the UI; use the redacted or
+  skipped storage policy if values should not be written to disk
 - Clear history from PastePilot or delete its Application Support folder to remove stored clipboard data
 
 ### Menu Bar Interface
@@ -135,7 +140,10 @@ after an update, so close old DMGs and keep only the installed copy in
 - Configurable shortcuts for opening PastePilot and pasting as plain text
 - History limit (50 / 100 / 200 / 500 items)
 - Auto-delete timeout (never / 1 hour / 24 hours / 7 days / 30 days)
+- Total local storage limit
 - Image size limit
+- Sensitive-content storage policy
+- OCR mode, language mode, and manual re-run for existing images
 - Menu bar icon style (PastePilot / Clipboard / Paperplane)
 - Hover preview toggle
 - Per-app ignore list with visual app picker
@@ -172,7 +180,7 @@ steps:
 |---------|-------------|
 | `make build` | Compile the debug executable with SwiftPM |
 | `make run` | Build and launch PastePilot |
-| `make app` | Build a release `.app` bundle into `dist/` (ad-hoc signed) |
+| `make app` | Build a release `.app` bundle into `dist/` |
 | `make dmg` | Build a compressed DMG with an `Applications` shortcut |
 | `make test` | Run the standard SwiftPM test suite |
 
@@ -210,16 +218,9 @@ make dmg
 
 ### Code signing and notarization
 
-The default build uses ad-hoc signing and is intended for local development.
-
-> PastePilot is not currently signed or notarized because the maintainer does
-> not yet have an Apple Developer Program account. macOS may therefore warn or
-> block the app when it is downloaded by another user. Donations toward the
-> annual membership fee would make signed and notarized releases possible.
-
-To open an unsigned release, move PastePilot to `Applications`, Control-click
-the app, choose **Open**, then confirm **Open**. If macOS still blocks it, use
-**System Settings → Privacy & Security → Open Anyway**.
+The default local build uses ad-hoc signing and is intended for development.
+Set `SIGN_IDENTITY` to use a Developer ID Application certificate, and set
+`NOTARY_PROFILE` to a stored notarytool profile to notarize and staple the DMG.
 
 To produce a signed release DMG:
 
@@ -240,6 +241,20 @@ NOTARY_PROFILE="PastePilot-notary" \
 BUILD_NUMBER=1 make dmg
 ```
 
+Tagged GitHub releases can sign and notarize automatically when these secrets
+are configured:
+
+| Secret | Description |
+|--------|-------------|
+| `DEVELOPER_ID_CERTIFICATE_BASE64` | Base64-encoded `.p12` Developer ID Application certificate |
+| `DEVELOPER_ID_CERTIFICATE_PASSWORD` | Password for the `.p12` certificate |
+| `DEVELOPER_ID_SIGN_IDENTITY` | Full codesign identity, for example `Developer ID Application: Name (TEAMID)` |
+| `KEYCHAIN_PASSWORD` | Optional temporary CI keychain password |
+| `APPLE_ID` | Apple ID used for notarization |
+| `APPLE_TEAM_ID` | Developer Team ID |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for notarytool |
+| `SPARKLE_PRIVATE_KEY` | Sparkle Ed25519 appcast signing key |
+
 ### Automatic updates
 
 Sparkle checks the architecture-specific appcast attached to the latest GitHub
@@ -251,7 +266,8 @@ the private key is stored in the maintainer's keychain and the
 
 Push a semver tag to trigger CI, which builds both architectures, generates
 signed appcasts, and publishes a GitHub Release with DMGs and SHA-256
-checksums:
+checksums. The release also includes `pastepilot.rb`, a generated Homebrew Cask
+file that can be copied into a tap after the release assets are published.
 
 ```sh
 git tag "v$(cat VERSION)"
@@ -266,8 +282,8 @@ make test
 
 Tests use Swift Testing through a standard SwiftPM test target. The suite covers
 content analysis and transforms, action generation, settings persistence,
-history format compatibility and backup recovery, image cleanup, expiry, and
-history limits.
+history format compatibility and backup recovery, image cleanup, expiry,
+storage limits, OCR refresh, and history limits.
 
 ## Contributing
 

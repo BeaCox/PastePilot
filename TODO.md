@@ -12,8 +12,8 @@
 
 ## Short Term
 
-- [ ] Code signing and notarization (requires an Apple Developer Program account)
-- [ ] Homebrew Cask distribution
+- [x] Code signing and notarization release workflow
+- [x] Homebrew Cask generation for releases
 - [x] Show new version details and release notes when an update is available
 
 ## Future
