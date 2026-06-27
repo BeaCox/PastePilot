@@ -23,6 +23,25 @@ struct ContentBehaviorTests {
         #expect(ContentAnalyzer.analyze("poetry install").kind == .command)
         #expect(ContentAnalyzer.analyze("psql postgres://localhost/app").kind == .command)
         #expect(
+            ContentAnalyzer.analyze("NODE_ENV=production npm run build").kind
+                == .command
+        )
+        #expect(
+            ContentAnalyzer.analyze(#"APP_ENV="local dev" npm test"#).kind
+                == .command
+        )
+        #expect(
+            ContentAnalyzer.analyze(#"sudo -E APP_ENV="local dev" npm test"#).kind
+                == .command
+        )
+        #expect(
+            ContentAnalyzer.analyze(#"env APP_ENV='local dev' ./gradlew test"#).kind
+                == .command
+        )
+        #expect(ContentAnalyzer.analyze("./gradlew test").kind == .command)
+        #expect(ContentAnalyzer.analyze("NODE_ENV=production").kind == .text)
+        #expect(ContentAnalyzer.analyze(#"APP_ENV="local dev""#).kind == .text)
+        #expect(
             ContentAnalyzer.analyze("TypeError: undefined\n at index.js:10").kind
                 == .error
         )
@@ -234,6 +253,25 @@ struct ContentBehaviorTests {
             ) == "git clone https://github.com/user/repo.git\ncd repo\nnpm install"
         )
         #expect(ContentTransformer.extractShellCommands("$ npm install") == "npm install")
+        #expect(
+            ContentTransformer.extractShellCommands(
+                #"""
+                NODE_ENV=production npm run build
+                APP_ENV="local dev" npm test
+                sudo -E CI=1 ./gradlew test
+                env APP_ENV='local dev' npm test
+                """#
+            ) == #"""
+                NODE_ENV=production npm run build
+                APP_ENV="local dev" npm test
+                sudo -E CI=1 ./gradlew test
+                env APP_ENV='local dev' npm test
+                """#
+        )
+        #expect(ContentTransformer.extractShellCommands("NODE_ENV=production") == nil)
+        #expect(
+            ContentTransformer.extractShellCommands(#"APP_ENV="local dev""#) == nil
+        )
 
         let consoleFence = """
         ```console

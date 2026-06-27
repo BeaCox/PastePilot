@@ -6,16 +6,24 @@ enum ContentTransformer {
         case console
     }
 
+    private enum ShellQuote {
+        case single
+        case double
+    }
+
     private static let shellCommandExecutables: Set<String> = [
         "git", "gh", "npm", "npx", "pnpm", "yarn", "bun", "node", "deno",
+        "bunx", "uvx",
         "swift", "swiftc", "xcodebuild", "xcrun", "xcode-select",
         "cargo", "rustc", "rustup", "go", "python", "python3",
         "pip", "pip3", "pipx", "uv", "poetry", "ruff", "black", "mypy",
         "ruby", "gem", "bundle", "rails",
         "php", "composer",
         "java", "javac", "mvn", "gradle", "dotnet",
+        "mvnw", "gradlew",
         "docker", "docker-compose", "podman",
         "kubectl", "helm", "terraform", "pulumi", "ansible", "vagrant",
+        "nix", "nix-shell", "nix-env",
         "aws", "gcloud", "az", "fly", "vercel", "netlify", "wrangler",
         "curl", "wget", "httpie",
         "brew", "apt", "apt-get", "dnf", "yum", "apk", "pacman", "snap",
@@ -51,6 +59,9 @@ enum ContentTransformer {
         "bash-session": .console,
         "zsh-session": .console,
     ]
+
+    private static let shellEnvironmentAssignmentRegex =
+        #"^[A-Za-z_][A-Za-z0-9_]*(?:\+)?=.*$"#
 
     static func formatJSON(_ text: String) -> String? {
         transformJSON(text, options: [.prettyPrinted, .sortedKeys])
@@ -277,11 +288,238 @@ enum ContentTransformer {
 
     static func isBareShellCommand(_ line: String) -> Bool {
         guard !line.isEmpty, line.count < 2_000 else { return false }
-        guard let first = line.split(whereSeparator: \.isWhitespace).first else {
-            return false
+        return shellExecutableCandidates(in: line).contains {
+            shellCommandExecutables.contains($0)
         }
-        let executable = first.split(separator: "/").last.map(String.init) ?? String(first)
-        return shellCommandExecutables.contains(executable)
+    }
+
+    private static func shellExecutableCandidates(in line: String) -> [String] {
+        shellExecutableCandidates(in: shellTokens(in: line), startingAt: 0)
+    }
+
+    private static func shellExecutableCandidates(
+        in tokens: [String],
+        startingAt startIndex: Int
+    ) -> [String] {
+        guard let executableIndex = firstExecutableIndex(
+            in: tokens,
+            startingAt: startIndex
+        ) else {
+            return []
+        }
+
+        let executable = shellExecutableName(from: tokens[executableIndex])
+        guard !executable.isEmpty else { return [] }
+
+        let nestedCandidates: [String]
+        switch executable {
+        case "sudo":
+            nestedCandidates = sudoCommandStartIndex(
+                in: tokens,
+                after: executableIndex
+            ).map {
+                shellExecutableCandidates(in: tokens, startingAt: $0)
+            } ?? []
+        case "env":
+            nestedCandidates = envCommandStartIndex(
+                in: tokens,
+                after: executableIndex
+            ).map {
+                shellExecutableCandidates(in: tokens, startingAt: $0)
+            } ?? []
+        case "command":
+            nestedCandidates = commandBuiltinStartIndex(
+                in: tokens,
+                after: executableIndex
+            ).map {
+                shellExecutableCandidates(in: tokens, startingAt: $0)
+            } ?? []
+        default:
+            nestedCandidates = []
+        }
+
+        return uniqueTypeList(nestedCandidates + [executable])
+    }
+
+    private static func firstExecutableIndex(
+        in tokens: [String],
+        startingAt startIndex: Int
+    ) -> Int? {
+        guard !tokens.isEmpty else { return nil }
+
+        var index = startIndex
+        while index < tokens.endIndex, isShellEnvironmentAssignment(tokens[index]) {
+            index = tokens.index(after: index)
+        }
+        return index < tokens.endIndex ? index : nil
+    }
+
+    private static func sudoCommandStartIndex(
+        in tokens: [String],
+        after sudoIndex: Int
+    ) -> Int? {
+        var index = tokens.index(after: sudoIndex)
+        while index < tokens.endIndex {
+            let token = tokens[index]
+            if token == "--" {
+                return tokens.index(after: index)
+            }
+            if isShellEnvironmentAssignment(token) {
+                index = tokens.index(after: index)
+                continue
+            }
+            if token.hasPrefix("-") {
+                index = tokens.index(after: index)
+                if sudoOptionConsumesNextArgument(token), index < tokens.endIndex {
+                    index = tokens.index(after: index)
+                }
+                continue
+            }
+            return index
+        }
+        return nil
+    }
+
+    private static func envCommandStartIndex(
+        in tokens: [String],
+        after envIndex: Int
+    ) -> Int? {
+        var index = tokens.index(after: envIndex)
+        while index < tokens.endIndex {
+            let token = tokens[index]
+            if token == "--" {
+                return tokens.index(after: index)
+            }
+            if isShellEnvironmentAssignment(token) {
+                index = tokens.index(after: index)
+                continue
+            }
+            if token.hasPrefix("-") {
+                index = tokens.index(after: index)
+                if envOptionConsumesNextArgument(token), index < tokens.endIndex {
+                    index = tokens.index(after: index)
+                }
+                continue
+            }
+            return index
+        }
+        return nil
+    }
+
+    private static func commandBuiltinStartIndex(
+        in tokens: [String],
+        after commandIndex: Int
+    ) -> Int? {
+        var index = tokens.index(after: commandIndex)
+        while index < tokens.endIndex {
+            let token = tokens[index]
+            if token == "--" {
+                return tokens.index(after: index)
+            }
+            if token.hasPrefix("-") {
+                index = tokens.index(after: index)
+                continue
+            }
+            return index
+        }
+        return nil
+    }
+
+    private static func sudoOptionConsumesNextArgument(_ token: String) -> Bool {
+        guard !token.contains("=") else { return false }
+        return [
+            "-C", "--close-from",
+            "-g", "--group",
+            "-h", "--host",
+            "-p", "--prompt",
+            "-r", "--role",
+            "-T", "--command-timeout",
+            "-t", "--type",
+            "-U", "--other-user",
+            "-u", "--user"
+        ].contains(token)
+    }
+
+    private static func envOptionConsumesNextArgument(_ token: String) -> Bool {
+        guard !token.contains("=") else { return false }
+        return ["-u", "--unset", "-C", "--chdir", "-S", "--split-string"]
+            .contains(token)
+    }
+
+    private static func shellExecutableName(from token: String) -> String {
+        token.split(separator: "/").last.map(String.init) ?? token
+    }
+
+    private static func shellTokens(in line: String) -> [String] {
+        var tokens: [String] = []
+        var token = ""
+        var quote: ShellQuote?
+        var isEscaping = false
+        var isBuildingToken = false
+
+        func appendToken() {
+            tokens.append(token)
+            token = ""
+            isBuildingToken = false
+        }
+
+        for character in line {
+            if isEscaping {
+                token.append(character)
+                isEscaping = false
+                continue
+            }
+
+            switch quote {
+            case .single:
+                if character == "'" {
+                    quote = nil
+                } else {
+                    token.append(character)
+                }
+            case .double:
+                if character == "\"" {
+                    quote = nil
+                } else if character == "\\" {
+                    isEscaping = true
+                } else {
+                    token.append(character)
+                }
+            case nil:
+                if character.isWhitespace {
+                    if isBuildingToken {
+                        appendToken()
+                    }
+                } else if character == "'" {
+                    quote = .single
+                    isBuildingToken = true
+                } else if character == "\"" {
+                    quote = .double
+                    isBuildingToken = true
+                } else if character == "\\" {
+                    isEscaping = true
+                    isBuildingToken = true
+                } else {
+                    token.append(character)
+                    isBuildingToken = true
+                }
+            }
+        }
+
+        if isEscaping {
+            token.append("\\")
+        }
+        if isBuildingToken {
+            appendToken()
+        }
+        return tokens
+    }
+
+    private static func isShellEnvironmentAssignment(_ token: String) -> Bool {
+        token.range(
+            of: shellEnvironmentAssignmentRegex,
+            options: .regularExpression
+        ) != nil
     }
 
     private static func typeScriptDeclaration(name: String, value: Any, depth: Int) -> String {
