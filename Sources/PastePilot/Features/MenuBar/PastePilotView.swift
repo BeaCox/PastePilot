@@ -34,16 +34,14 @@ struct MenuBarView: View {
     @State var closePreviewTask: Task<Void, Never>?
     @State var noticeTask: Task<Void, Never>?
     @State var fullTextSearchTask: Task<Void, Never>?
-    @State var isFullTextSearching = false
-    @State var fullTextSearchQuery = ""
-    @State var fullTextSearchIDs: Set<UUID> = []
+    @State var fullTextSearch = FullTextSearchState()
     @State var historyItemFrames: [UUID: CGRect] = [:]
     @State var previewClosesInstantly = false
     @FocusState var searchFocused: Bool
 
     var filteredItems: [ClipboardItem] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fullTextIDs = fullTextSearchQuery == query ? fullTextSearchIDs : []
+        let fullTextIDs = fullTextSearch.matchingIDs(for: query)
         let matches = query.isEmpty ? store.items : store.items.filter {
             shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
         }

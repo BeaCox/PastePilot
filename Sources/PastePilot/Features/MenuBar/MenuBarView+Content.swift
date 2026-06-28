@@ -255,7 +255,7 @@ extension MenuBarView {
         if store.items.isEmpty {
             return "Waiting for content".localized
         }
-        if isFullTextSearching {
+        if fullTextSearch.isSearching {
             return "Searching…".localized
         }
         return "No search results".localized
@@ -269,7 +269,7 @@ extension MenuBarView {
         if store.items.isEmpty {
             return "Copied content will appear here automatically.".localized
         }
-        if isFullTextSearching {
+        if fullTextSearch.isSearching {
             return "Scanning large clipboard items.".localized
         }
         return "Try searching for other content or types.".localized
