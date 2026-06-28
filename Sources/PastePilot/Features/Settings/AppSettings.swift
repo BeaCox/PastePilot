@@ -102,35 +102,112 @@ final class AppSettings: ObservableObject {
     static let defaultSensitiveContentStoragePolicy =
         SensitiveContentStoragePolicy.storeOriginal.rawValue
 
-    private enum Key {
-        static let monitoringEnabled = "monitoringEnabled"
-        static let hoverPreviewEnabled = "hoverPreviewEnabled"
-        static let historyLimit = "historyLimit"
-        static let launchAtLogin = "launchAtLogin"
-        static let imageSizeLimitMB = "imageSizeLimitMB"
-        static let storageLimitMB = "storageLimitMB"
-        static let ignoredBundleIdentifiers = "ignoredBundleIdentifiers"
-        static let hotKeyCode = "hotKeyCode"
-        static let hotKeyModifiers = "hotKeyModifiers"
-        static let plainTextHotKeyCode = "plainTextHotKeyCode"
-        static let plainTextHotKeyModifiers = "plainTextHotKeyModifiers"
-        static let menuBarIconStyle = "menuBarIconStyle"
-        static let historyTimeoutSeconds = "historyTimeoutSeconds"
-        static let pasteCloseBehavior = "pasteCloseBehavior"
-        static let previewAnimationEnabled = "previewAnimationEnabled"
-        static let ocrRecognitionMode = "ocrRecognitionMode"
-        static let ocrLanguageMode = "ocrLanguageMode"
-        static let sensitiveContentStoragePolicy = "sensitiveContentStoragePolicy"
+    private struct AppSetting<Value> {
+        let key: String
+        let defaultValue: Value
+
+        init(_ key: String, default defaultValue: Value) {
+            self.key = key
+            self.defaultValue = defaultValue
+        }
+    }
+
+    private enum Setting {
+        static let monitoringEnabled = AppSetting("monitoringEnabled", default: true)
+        static let hoverPreviewEnabled = AppSetting("hoverPreviewEnabled", default: true)
+        static let historyLimit = AppSetting(
+            "historyLimit",
+            default: AppSettings.defaultHistoryLimit
+        )
+        static let launchAtLogin = AppSetting("launchAtLogin", default: false)
+        static let imageSizeLimitMB = AppSetting(
+            "imageSizeLimitMB",
+            default: AppSettings.defaultImageSizeLimitMB
+        )
+        static let storageLimitMB = AppSetting(
+            "storageLimitMB",
+            default: AppSettings.defaultStorageLimitMB
+        )
+        static let ignoredBundleIdentifiers = AppSetting(
+            "ignoredBundleIdentifiers",
+            default: ""
+        )
+        static let hotKeyCode = AppSetting(
+            "hotKeyCode",
+            default: AppSettings.defaultOpenHotKeyCode
+        )
+        static let hotKeyModifiers = AppSetting(
+            "hotKeyModifiers",
+            default: AppSettings.defaultOpenHotKeyModifiers
+        )
+        static let plainTextHotKeyCode = AppSetting(
+            "plainTextHotKeyCode",
+            default: AppSettings.defaultPlainTextHotKeyCode
+        )
+        static let plainTextHotKeyModifiers = AppSetting(
+            "plainTextHotKeyModifiers",
+            default: AppSettings.defaultPlainTextHotKeyModifiers
+        )
+        static let menuBarIconStyle = AppSetting(
+            "menuBarIconStyle",
+            default: MenuBarIconStyle.pastepilot.rawValue
+        )
+        static let historyTimeoutSeconds = AppSetting(
+            "historyTimeoutSeconds",
+            default: AppSettings.defaultHistoryTimeoutSeconds
+        )
+        static let pasteCloseBehavior = AppSetting(
+            "pasteCloseBehavior",
+            default: PasteCloseBehavior.closePreview.rawValue
+        )
+        static let previewAnimationEnabled = AppSetting(
+            "previewAnimationEnabled",
+            default: true
+        )
+        static let ocrRecognitionMode = AppSetting(
+            "ocrRecognitionMode",
+            default: AppSettings.defaultOCRRecognitionMode
+        )
+        static let ocrLanguageMode = AppSetting(
+            "ocrLanguageMode",
+            default: AppSettings.defaultOCRLanguageMode
+        )
+        static let sensitiveContentStoragePolicy = AppSetting(
+            "sensitiveContentStoragePolicy",
+            default: AppSettings.defaultSensitiveContentStoragePolicy
+        )
+
+        static let registeredDefaults: [String: Any] = [
+            monitoringEnabled.key: monitoringEnabled.defaultValue,
+            hoverPreviewEnabled.key: hoverPreviewEnabled.defaultValue,
+            historyLimit.key: historyLimit.defaultValue,
+            launchAtLogin.key: launchAtLogin.defaultValue,
+            imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
+            storageLimitMB.key: storageLimitMB.defaultValue,
+            ignoredBundleIdentifiers.key: ignoredBundleIdentifiers.defaultValue,
+            hotKeyCode.key: hotKeyCode.defaultValue,
+            hotKeyModifiers.key: hotKeyModifiers.defaultValue,
+            plainTextHotKeyCode.key: plainTextHotKeyCode.defaultValue,
+            plainTextHotKeyModifiers.key: plainTextHotKeyModifiers.defaultValue,
+            menuBarIconStyle.key: menuBarIconStyle.defaultValue,
+            historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
+            pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
+            previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
+            ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
+            ocrLanguageMode.key: ocrLanguageMode.defaultValue,
+            sensitiveContentStoragePolicy.key:
+                sensitiveContentStoragePolicy.defaultValue,
+        ]
     }
 
     private let defaults: UserDefaults
 
     @Published var monitoringEnabled: Bool {
-        didSet { persist(monitoringEnabled, forKey: Key.monitoringEnabled) }
+        didSet { persist(monitoringEnabled, for: Setting.monitoringEnabled) }
     }
 
     @Published var hoverPreviewEnabled: Bool {
-        didSet { persist(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled) }
+        didSet { persist(hoverPreviewEnabled, for: Setting.hoverPreviewEnabled) }
     }
 
     @Published var historyLimit: Int {
@@ -143,13 +220,13 @@ final class AppSettings: ObservableObject {
                     default: Self.defaultHistoryLimit
                 ),
                 assign: { historyLimit = $0 },
-                persist: { persist($0, forKey: Key.historyLimit) }
+                persist: { persist($0, for: Setting.historyLimit) }
             )
         }
     }
 
     @Published var launchAtLogin: Bool {
-        didSet { persist(launchAtLogin, forKey: Key.launchAtLogin) }
+        didSet { persist(launchAtLogin, for: Setting.launchAtLogin) }
     }
 
     @Published var imageSizeLimitMB: Int {
@@ -162,7 +239,7 @@ final class AppSettings: ObservableObject {
                     default: Self.defaultImageSizeLimitMB
                 ),
                 assign: { imageSizeLimitMB = $0 },
-                persist: { persist($0, forKey: Key.imageSizeLimitMB) }
+                persist: { persist($0, for: Setting.imageSizeLimitMB) }
             )
         }
     }
@@ -177,7 +254,7 @@ final class AppSettings: ObservableObject {
                     default: Self.defaultStorageLimitMB
                 ),
                 assign: { storageLimitMB = $0 },
-                persist: { persist($0, forKey: Key.storageLimitMB) }
+                persist: { persist($0, for: Setting.storageLimitMB) }
             )
         }
     }
@@ -186,7 +263,7 @@ final class AppSettings: ObservableObject {
         didSet {
             persist(
                 ignoredBundleIdentifiers,
-                forKey: Key.ignoredBundleIdentifiers
+                for: Setting.ignoredBundleIdentifiers
             )
         }
     }
@@ -197,7 +274,7 @@ final class AppSettings: ObservableObject {
                 hotKeyCode,
                 supportedValue: Self.supportedHotKeyCode(hotKeyCode),
                 assign: { hotKeyCode = $0 },
-                persist: { persist($0, forKey: Key.hotKeyCode) }
+                persist: { persist($0, for: Setting.hotKeyCode) }
             )
         }
     }
@@ -208,7 +285,7 @@ final class AppSettings: ObservableObject {
                 hotKeyModifiers,
                 supportedValue: Self.supportedHotKeyModifiers(hotKeyModifiers),
                 assign: { hotKeyModifiers = $0 },
-                persist: { persist($0, forKey: Key.hotKeyModifiers) }
+                persist: { persist($0, for: Setting.hotKeyModifiers) }
             )
         }
     }
@@ -222,7 +299,7 @@ final class AppSettings: ObservableObject {
                     default: Self.defaultPlainTextHotKeyCode
                 ),
                 assign: { plainTextHotKeyCode = $0 },
-                persist: { persist($0, forKey: Key.plainTextHotKeyCode) }
+                persist: { persist($0, for: Setting.plainTextHotKeyCode) }
             )
         }
     }
@@ -236,7 +313,7 @@ final class AppSettings: ObservableObject {
                     default: Self.defaultPlainTextHotKeyModifiers
                 ),
                 assign: { plainTextHotKeyModifiers = $0 },
-                persist: { persist($0, forKey: Key.plainTextHotKeyModifiers) }
+                persist: { persist($0, for: Setting.plainTextHotKeyModifiers) }
             )
         }
     }
@@ -247,7 +324,7 @@ final class AppSettings: ObservableObject {
                 menuBarIconStyle,
                 supportedValue: Self.supportedMenuBarIconStyle(menuBarIconStyle),
                 assign: { menuBarIconStyle = $0 },
-                persist: { persist($0, forKey: Key.menuBarIconStyle) }
+                persist: { persist($0, for: Setting.menuBarIconStyle) }
             )
         }
     }
@@ -262,7 +339,7 @@ final class AppSettings: ObservableObject {
                     default: Self.defaultHistoryTimeoutSeconds
                 ),
                 assign: { historyTimeoutSeconds = $0 },
-                persist: { persist($0, forKey: Key.historyTimeoutSeconds) }
+                persist: { persist($0, for: Setting.historyTimeoutSeconds) }
             )
         }
     }
@@ -275,13 +352,13 @@ final class AppSettings: ObservableObject {
                     pasteCloseBehavior
                 ),
                 assign: { pasteCloseBehavior = $0 },
-                persist: { persist($0, forKey: Key.pasteCloseBehavior) }
+                persist: { persist($0, for: Setting.pasteCloseBehavior) }
             )
         }
     }
 
     @Published var previewAnimationEnabled: Bool {
-        didSet { persist(previewAnimationEnabled, forKey: Key.previewAnimationEnabled) }
+        didSet { persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled) }
     }
 
     @Published var ocrRecognitionMode: String {
@@ -292,7 +369,7 @@ final class AppSettings: ObservableObject {
                     ocrRecognitionMode
                 ),
                 assign: { ocrRecognitionMode = $0 },
-                persist: { persist($0, forKey: Key.ocrRecognitionMode) }
+                persist: { persist($0, for: Setting.ocrRecognitionMode) }
             )
         }
     }
@@ -303,7 +380,7 @@ final class AppSettings: ObservableObject {
                 ocrLanguageMode,
                 supportedValue: Self.supportedOCRLanguageMode(ocrLanguageMode),
                 assign: { ocrLanguageMode = $0 },
-                persist: { persist($0, forKey: Key.ocrLanguageMode) }
+                persist: { persist($0, for: Setting.ocrLanguageMode) }
             )
         }
     }
@@ -316,7 +393,7 @@ final class AppSettings: ObservableObject {
                     sensitiveContentStoragePolicy
                 ),
                 assign: { sensitiveContentStoragePolicy = $0 },
-                persist: { persist($0, forKey: Key.sensitiveContentStoragePolicy) }
+                persist: { persist($0, for: Setting.sensitiveContentStoragePolicy) }
             )
         }
     }
@@ -325,91 +402,85 @@ final class AppSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        defaults.register(defaults: [
-            Key.monitoringEnabled: true,
-            Key.hoverPreviewEnabled: true,
-            Key.historyLimit: Self.defaultHistoryLimit,
-            Key.launchAtLogin: false,
-            Key.imageSizeLimitMB: Self.defaultImageSizeLimitMB,
-            Key.storageLimitMB: Self.defaultStorageLimitMB,
-            Key.ignoredBundleIdentifiers: "",
-            Key.hotKeyCode: Self.defaultOpenHotKeyCode,
-            Key.hotKeyModifiers: Self.defaultOpenHotKeyModifiers,
-            Key.plainTextHotKeyCode: Self.defaultPlainTextHotKeyCode,
-            Key.plainTextHotKeyModifiers: Self.defaultPlainTextHotKeyModifiers,
-            Key.menuBarIconStyle: MenuBarIconStyle.pastepilot.rawValue,
-            Key.historyTimeoutSeconds: Self.defaultHistoryTimeoutSeconds,
-            Key.pasteCloseBehavior: PasteCloseBehavior.closePreview.rawValue,
-            Key.previewAnimationEnabled: true,
-            Key.ocrRecognitionMode: Self.defaultOCRRecognitionMode,
-            Key.ocrLanguageMode: Self.defaultOCRLanguageMode,
-            Key.sensitiveContentStoragePolicy:
-                Self.defaultSensitiveContentStoragePolicy
-        ])
-        monitoringEnabled = defaults.bool(forKey: Key.monitoringEnabled)
-        hoverPreviewEnabled = defaults.bool(forKey: Key.hoverPreviewEnabled)
+        defaults.register(defaults: Setting.registeredDefaults)
+        monitoringEnabled = Self.bool(for: Setting.monitoringEnabled, in: defaults)
+        hoverPreviewEnabled = Self.bool(for: Setting.hoverPreviewEnabled, in: defaults)
         historyLimit = Self.supportedValue(
-            defaults.integer(forKey: Key.historyLimit),
+            Self.integer(for: Setting.historyLimit, in: defaults),
             in: Self.supportedHistoryLimits,
-            default: Self.defaultHistoryLimit
+            default: Setting.historyLimit.defaultValue
         )
-        launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
+        launchAtLogin = Self.bool(for: Setting.launchAtLogin, in: defaults)
         imageSizeLimitMB = Self.supportedValue(
-            defaults.integer(forKey: Key.imageSizeLimitMB),
+            Self.integer(for: Setting.imageSizeLimitMB, in: defaults),
             in: Self.supportedImageSizeLimitsMB,
-            default: Self.defaultImageSizeLimitMB
+            default: Setting.imageSizeLimitMB.defaultValue
         )
         storageLimitMB = Self.supportedValue(
-            defaults.integer(forKey: Key.storageLimitMB),
+            Self.integer(for: Setting.storageLimitMB, in: defaults),
             in: Self.supportedStorageLimitsMB,
-            default: Self.defaultStorageLimitMB
+            default: Setting.storageLimitMB.defaultValue
         )
-        ignoredBundleIdentifiers = defaults.string(
-            forKey: Key.ignoredBundleIdentifiers
-        ) ?? ""
+        ignoredBundleIdentifiers = Self.string(
+            for: Setting.ignoredBundleIdentifiers,
+            in: defaults
+        )
         let openHotKey = Self.validatedHotKey(
-            keyCode: defaults.integer(forKey: Key.hotKeyCode),
-            modifiers: UInt32(defaults.integer(forKey: Key.hotKeyModifiers)),
-            defaultKeyCode: Self.defaultOpenHotKeyCode,
-            defaultModifiers: Self.defaultOpenHotKeyModifiers
+            keyCode: Self.integer(for: Setting.hotKeyCode, in: defaults),
+            modifiers: Self.uint32(for: Setting.hotKeyModifiers, in: defaults),
+            defaultKeyCode: Setting.hotKeyCode.defaultValue,
+            defaultModifiers: Setting.hotKeyModifiers.defaultValue
         )
         hotKeyCode = openHotKey.keyCode
         hotKeyModifiers = openHotKey.modifiers
         let plainTextHotKey = Self.validatedHotKey(
-            keyCode: defaults.integer(forKey: Key.plainTextHotKeyCode),
-            modifiers: UInt32(defaults.integer(forKey: Key.plainTextHotKeyModifiers)),
-            defaultKeyCode: Self.defaultPlainTextHotKeyCode,
-            defaultModifiers: Self.defaultPlainTextHotKeyModifiers
+            keyCode: Self.integer(for: Setting.plainTextHotKeyCode, in: defaults),
+            modifiers: Self.uint32(
+                for: Setting.plainTextHotKeyModifiers,
+                in: defaults
+            ),
+            defaultKeyCode: Setting.plainTextHotKeyCode.defaultValue,
+            defaultModifiers: Setting.plainTextHotKeyModifiers.defaultValue
         )
         plainTextHotKeyCode = plainTextHotKey.keyCode
         plainTextHotKeyModifiers = plainTextHotKey.modifiers
-        let storedIconStyle = defaults.string(forKey: Key.menuBarIconStyle)
-        menuBarIconStyle = storedIconStyle.flatMap(MenuBarIconStyle.init(rawValue:))?
-            .rawValue ?? MenuBarIconStyle.pastepilot.rawValue
+        let storedIconStyle = Self.string(for: Setting.menuBarIconStyle, in: defaults)
+        menuBarIconStyle = MenuBarIconStyle(rawValue: storedIconStyle)?.rawValue
+            ?? Setting.menuBarIconStyle.defaultValue
         historyTimeoutSeconds = Self.supportedValue(
-            defaults.integer(forKey: Key.historyTimeoutSeconds),
+            Self.integer(for: Setting.historyTimeoutSeconds, in: defaults),
             in: Self.supportedHistoryTimeoutsSeconds,
-            default: Self.defaultHistoryTimeoutSeconds
+            default: Setting.historyTimeoutSeconds.defaultValue
         )
-        let storedPasteCloseBehavior = defaults.string(forKey: Key.pasteCloseBehavior)
-        pasteCloseBehavior = storedPasteCloseBehavior
-            .flatMap(PasteCloseBehavior.init(rawValue:))?
-            .rawValue ?? PasteCloseBehavior.closePreview.rawValue
-        previewAnimationEnabled = defaults.bool(forKey: Key.previewAnimationEnabled)
-        let storedOCRRecognitionMode = defaults.string(forKey: Key.ocrRecognitionMode)
-        ocrRecognitionMode = storedOCRRecognitionMode
-            .flatMap(OCRRecognitionMode.init(rawValue:))?
-            .rawValue ?? Self.defaultOCRRecognitionMode
-        let storedOCRLanguageMode = defaults.string(forKey: Key.ocrLanguageMode)
-        ocrLanguageMode = storedOCRLanguageMode
-            .flatMap(OCRLanguageMode.init(rawValue:))?
-            .rawValue ?? Self.defaultOCRLanguageMode
-        let storedSensitiveContentStoragePolicy = defaults.string(
-            forKey: Key.sensitiveContentStoragePolicy
+        let storedPasteCloseBehavior = Self.string(
+            for: Setting.pasteCloseBehavior,
+            in: defaults
         )
-        sensitiveContentStoragePolicy = storedSensitiveContentStoragePolicy
-            .flatMap(SensitiveContentStoragePolicy.init(rawValue:))?
-            .rawValue ?? Self.defaultSensitiveContentStoragePolicy
+        pasteCloseBehavior = PasteCloseBehavior(rawValue: storedPasteCloseBehavior)?
+            .rawValue ?? Setting.pasteCloseBehavior.defaultValue
+        previewAnimationEnabled = Self.bool(
+            for: Setting.previewAnimationEnabled,
+            in: defaults
+        )
+        let storedOCRRecognitionMode = Self.string(
+            for: Setting.ocrRecognitionMode,
+            in: defaults
+        )
+        ocrRecognitionMode = OCRRecognitionMode(rawValue: storedOCRRecognitionMode)?
+            .rawValue ?? Setting.ocrRecognitionMode.defaultValue
+        let storedOCRLanguageMode = Self.string(
+            for: Setting.ocrLanguageMode,
+            in: defaults
+        )
+        ocrLanguageMode = OCRLanguageMode(rawValue: storedOCRLanguageMode)?
+            .rawValue ?? Setting.ocrLanguageMode.defaultValue
+        let storedSensitiveContentStoragePolicy = Self.string(
+            for: Setting.sensitiveContentStoragePolicy,
+            in: defaults
+        )
+        sensitiveContentStoragePolicy = SensitiveContentStoragePolicy(
+            rawValue: storedSensitiveContentStoragePolicy
+        )?.rawValue ?? Setting.sensitiveContentStoragePolicy.defaultValue
         persistCurrentValues()
     }
 
@@ -423,24 +494,25 @@ final class AppSettings: ObservableObject {
     }
 
     func reset() {
-        monitoringEnabled = true
-        hoverPreviewEnabled = true
-        historyLimit = Self.defaultHistoryLimit
-        launchAtLogin = false
-        imageSizeLimitMB = Self.defaultImageSizeLimitMB
-        storageLimitMB = Self.defaultStorageLimitMB
-        ignoredBundleIdentifiers = ""
-        hotKeyCode = Self.defaultOpenHotKeyCode
-        hotKeyModifiers = Self.defaultOpenHotKeyModifiers
-        plainTextHotKeyCode = Self.defaultPlainTextHotKeyCode
-        plainTextHotKeyModifiers = Self.defaultPlainTextHotKeyModifiers
-        menuBarIconStyle = MenuBarIconStyle.pastepilot.rawValue
-        historyTimeoutSeconds = Self.defaultHistoryTimeoutSeconds
-        pasteCloseBehavior = PasteCloseBehavior.closePreview.rawValue
-        previewAnimationEnabled = true
-        ocrRecognitionMode = Self.defaultOCRRecognitionMode
-        ocrLanguageMode = Self.defaultOCRLanguageMode
-        sensitiveContentStoragePolicy = Self.defaultSensitiveContentStoragePolicy
+        monitoringEnabled = Setting.monitoringEnabled.defaultValue
+        hoverPreviewEnabled = Setting.hoverPreviewEnabled.defaultValue
+        historyLimit = Setting.historyLimit.defaultValue
+        launchAtLogin = Setting.launchAtLogin.defaultValue
+        imageSizeLimitMB = Setting.imageSizeLimitMB.defaultValue
+        storageLimitMB = Setting.storageLimitMB.defaultValue
+        ignoredBundleIdentifiers = Setting.ignoredBundleIdentifiers.defaultValue
+        hotKeyCode = Setting.hotKeyCode.defaultValue
+        hotKeyModifiers = Setting.hotKeyModifiers.defaultValue
+        plainTextHotKeyCode = Setting.plainTextHotKeyCode.defaultValue
+        plainTextHotKeyModifiers = Setting.plainTextHotKeyModifiers.defaultValue
+        menuBarIconStyle = Setting.menuBarIconStyle.defaultValue
+        historyTimeoutSeconds = Setting.historyTimeoutSeconds.defaultValue
+        pasteCloseBehavior = Setting.pasteCloseBehavior.defaultValue
+        previewAnimationEnabled = Setting.previewAnimationEnabled.defaultValue
+        ocrRecognitionMode = Setting.ocrRecognitionMode.defaultValue
+        ocrLanguageMode = Setting.ocrLanguageMode.defaultValue
+        sensitiveContentStoragePolicy =
+            Setting.sensitiveContentStoragePolicy.defaultValue
     }
 
     private static func supportedValue(
@@ -521,42 +593,70 @@ final class AppSettings: ObservableObject {
     }
 
     private func persistCurrentValues() {
-        persist(monitoringEnabled, forKey: Key.monitoringEnabled)
-        persist(hoverPreviewEnabled, forKey: Key.hoverPreviewEnabled)
-        persist(historyLimit, forKey: Key.historyLimit)
-        persist(launchAtLogin, forKey: Key.launchAtLogin)
-        persist(imageSizeLimitMB, forKey: Key.imageSizeLimitMB)
-        persist(storageLimitMB, forKey: Key.storageLimitMB)
-        persist(ignoredBundleIdentifiers, forKey: Key.ignoredBundleIdentifiers)
-        persist(hotKeyCode, forKey: Key.hotKeyCode)
-        persist(hotKeyModifiers, forKey: Key.hotKeyModifiers)
-        persist(plainTextHotKeyCode, forKey: Key.plainTextHotKeyCode)
-        persist(plainTextHotKeyModifiers, forKey: Key.plainTextHotKeyModifiers)
-        persist(menuBarIconStyle, forKey: Key.menuBarIconStyle)
-        persist(historyTimeoutSeconds, forKey: Key.historyTimeoutSeconds)
-        persist(pasteCloseBehavior, forKey: Key.pasteCloseBehavior)
-        persist(previewAnimationEnabled, forKey: Key.previewAnimationEnabled)
-        persist(ocrRecognitionMode, forKey: Key.ocrRecognitionMode)
-        persist(ocrLanguageMode, forKey: Key.ocrLanguageMode)
+        persist(monitoringEnabled, for: Setting.monitoringEnabled)
+        persist(hoverPreviewEnabled, for: Setting.hoverPreviewEnabled)
+        persist(historyLimit, for: Setting.historyLimit)
+        persist(launchAtLogin, for: Setting.launchAtLogin)
+        persist(imageSizeLimitMB, for: Setting.imageSizeLimitMB)
+        persist(storageLimitMB, for: Setting.storageLimitMB)
+        persist(ignoredBundleIdentifiers, for: Setting.ignoredBundleIdentifiers)
+        persist(hotKeyCode, for: Setting.hotKeyCode)
+        persist(hotKeyModifiers, for: Setting.hotKeyModifiers)
+        persist(plainTextHotKeyCode, for: Setting.plainTextHotKeyCode)
+        persist(plainTextHotKeyModifiers, for: Setting.plainTextHotKeyModifiers)
+        persist(menuBarIconStyle, for: Setting.menuBarIconStyle)
+        persist(historyTimeoutSeconds, for: Setting.historyTimeoutSeconds)
+        persist(pasteCloseBehavior, for: Setting.pasteCloseBehavior)
+        persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled)
+        persist(ocrRecognitionMode, for: Setting.ocrRecognitionMode)
+        persist(ocrLanguageMode, for: Setting.ocrLanguageMode)
         persist(
             sensitiveContentStoragePolicy,
-            forKey: Key.sensitiveContentStoragePolicy
+            for: Setting.sensitiveContentStoragePolicy
         )
     }
 
-    private func persist(_ value: Bool, forKey key: String) {
-        defaults.set(value, forKey: key)
+    private static func bool(
+        for setting: AppSetting<Bool>,
+        in defaults: UserDefaults
+    ) -> Bool {
+        defaults.bool(forKey: setting.key)
     }
 
-    private func persist(_ value: Int, forKey key: String) {
-        defaults.set(value, forKey: key)
+    private static func integer(
+        for setting: AppSetting<Int>,
+        in defaults: UserDefaults
+    ) -> Int {
+        defaults.integer(forKey: setting.key)
     }
 
-    private func persist(_ value: UInt32, forKey key: String) {
-        defaults.set(Int(value), forKey: key)
+    private static func uint32(
+        for setting: AppSetting<UInt32>,
+        in defaults: UserDefaults
+    ) -> UInt32 {
+        UInt32(defaults.integer(forKey: setting.key))
     }
 
-    private func persist(_ value: String, forKey key: String) {
-        defaults.set(value, forKey: key)
+    private static func string(
+        for setting: AppSetting<String>,
+        in defaults: UserDefaults
+    ) -> String {
+        defaults.string(forKey: setting.key) ?? setting.defaultValue
+    }
+
+    private func persist(_ value: Bool, for setting: AppSetting<Bool>) {
+        defaults.set(value, forKey: setting.key)
+    }
+
+    private func persist(_ value: Int, for setting: AppSetting<Int>) {
+        defaults.set(value, forKey: setting.key)
+    }
+
+    private func persist(_ value: UInt32, for setting: AppSetting<UInt32>) {
+        defaults.set(Int(value), forKey: setting.key)
+    }
+
+    private func persist(_ value: String, for setting: AppSetting<String>) {
+        defaults.set(value, forKey: setting.key)
     }
 }
