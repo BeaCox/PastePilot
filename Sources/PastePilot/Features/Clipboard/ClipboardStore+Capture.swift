@@ -152,49 +152,11 @@ extension ClipboardStore {
         ) else {
             return
         }
-        let id = UUID()
-        if storageResult.content.utf8.count <= ClipboardTextStore.externalizationByteLimit {
-            let processedContent = ClipboardTextWriteQueue.process(
-                storageResult.content,
-                id: id,
-                textStore: textStore,
-                logger: logger
-            )
-            finishCapturingText(
-                processedContent,
-                originalContent: storageResult.content,
-                id: id,
-                kind: storageResult.kind,
-                containsSensitiveData: storageResult.containsSensitiveData,
-                source: source,
-                richTextRTFBase64: storageResult.richTextRTFBase64,
-                richTextHTML: storageResult.richTextHTML,
-                pasteboardChangeCount: pasteboardChangeCount
-            )
-            return
-        }
-
-        textWriteQueue.processAndSave(
-            storageResult.content,
-            id: id,
-            textStore: textStore,
-            logger: logger
-        ) { [weak self] processedContent in
-            Task { @MainActor in
-                guard let self else { return }
-                self.finishCapturingText(
-                    processedContent,
-                    originalContent: storageResult.content,
-                    id: id,
-                    kind: storageResult.kind,
-                    containsSensitiveData: storageResult.containsSensitiveData,
-                    source: source,
-                    richTextRTFBase64: storageResult.richTextRTFBase64,
-                    richTextHTML: storageResult.richTextHTML,
-                    pasteboardChangeCount: pasteboardChangeCount
-                )
-            }
-        }
+        saveCapturedText(
+            storageResult,
+            source: source,
+            pasteboardChangeCount: pasteboardChangeCount
+        )
     }
 
     func finishCapturingText(
@@ -331,6 +293,19 @@ extension ClipboardStore {
             )
         }
 
+        saveCapturedText(
+            storageResult,
+            source: source,
+            pasteboardChangeCount: pasteboardChangeCount
+        )
+        return true
+    }
+
+    func saveCapturedText(
+        _ storageResult: SensitiveContentStorageResult,
+        source: (name: String?, bundleIdentifier: String?),
+        pasteboardChangeCount: Int?
+    ) {
         let id = UUID()
         if storageResult.content.utf8.count <= ClipboardTextStore.externalizationByteLimit {
             let processedContent = ClipboardTextWriteQueue.process(
@@ -350,7 +325,7 @@ extension ClipboardStore {
                 richTextHTML: storageResult.richTextHTML,
                 pasteboardChangeCount: pasteboardChangeCount
             )
-            return true
+            return
         }
 
         textWriteQueue.processAndSave(
@@ -374,7 +349,6 @@ extension ClipboardStore {
                 )
             }
         }
-        return true
     }
 
     func isIgnored(bundleIdentifier: String?) -> Bool {
