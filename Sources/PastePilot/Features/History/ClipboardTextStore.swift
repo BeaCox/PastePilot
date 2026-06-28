@@ -143,7 +143,7 @@ struct ProcessedClipboardText {
     let externalizationFailed: Bool
 }
 
-final class ClipboardTextWriteQueue {
+final class ClipboardTextWriteQueue: @unchecked Sendable {
     private let queue = DispatchQueue(
         label: "PastePilot.TextWriteQueue",
         qos: .userInitiated
@@ -154,7 +154,7 @@ final class ClipboardTextWriteQueue {
         id: UUID,
         textStore: ClipboardTextStore,
         logger: any PastePilotLogging = NSLogPastePilotLogger(),
-        completion: @escaping (ProcessedClipboardText) -> Void
+        completion: @escaping @Sendable (ProcessedClipboardText) -> Void
     ) {
         queue.async {
             completion(Self.process(

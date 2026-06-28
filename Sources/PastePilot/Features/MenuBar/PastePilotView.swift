@@ -18,12 +18,12 @@ enum PopoverKeyboardCommand {
 struct MenuBarView: View {
     @ObservedObject var store: ClipboardStore
     @ObservedObject var settings: AppSettings
-    let openSettings: () -> Void
-    let openAbout: () -> Void
-    let checkForUpdates: () -> Void
-    let quit: () -> Void
-    let closePopover: () -> Void
-    let resize: (CGSize) -> Void
+    let openSettings: @MainActor () -> Void
+    let openAbout: @MainActor () -> Void
+    let checkForUpdates: @MainActor () -> Void
+    let quit: @MainActor () -> Void
+    let closePopover: @MainActor () -> Void
+    let resize: @MainActor (CGSize) -> Void
     @State var searchText = ""
     @State var selectedID: UUID?
     @State var previewedID: UUID?

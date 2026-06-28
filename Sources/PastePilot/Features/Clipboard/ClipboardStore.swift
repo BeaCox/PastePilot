@@ -17,7 +17,7 @@ final class ClipboardStore: ObservableObject {
     let ocrService: any OCRService
     let noticePoster: any PastePilotNoticePosting
     let logger: any PastePilotLogging
-    var timer: Timer?
+    nonisolated(unsafe) var timer: Timer?
     var lastChangeCount: Int
     var pendingCaptureChangeCount: Int?
     var ocrTasksByItemID: [UUID: Task<Void, Never>] = [:]
@@ -31,7 +31,7 @@ final class ClipboardStore: ObservableObject {
 
     init(
         pasteboard: NSPasteboard = .general,
-        settings: AppSettings = .shared,
+        settings: AppSettings? = nil,
         dataDirectoryURL: URL? = nil,
         pasteboardCaptureQueue: any ClipboardCapturing = ClipboardCaptureQueue(),
         textWriteQueue: ClipboardTextWriteQueue = ClipboardTextWriteQueue(),
@@ -42,7 +42,7 @@ final class ClipboardStore: ObservableObject {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
         let historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
         self.pasteboard = pasteboard
-        self.settings = settings
+        self.settings = settings ?? .shared
         self.historyRepository = historyRepository
         self.historyWriteQueue = HistoryWriteQueue(repository: historyRepository)
         self.imageStore = ClipboardImageStore(

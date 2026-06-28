@@ -129,7 +129,7 @@ struct HistoryRepository {
     }
 }
 
-final class HistoryWriteQueue {
+final class HistoryWriteQueue: @unchecked Sendable {
     private let repository: HistoryRepository
     private let debounceInterval: DispatchTimeInterval
     private let queue = DispatchQueue(
@@ -138,7 +138,7 @@ final class HistoryWriteQueue {
     )
     private let queueKey = DispatchSpecificKey<Void>()
     private var pendingItems: [ClipboardItem]?
-    private var pendingCompletions: [(Error?) -> Void] = []
+    private var pendingCompletions: [@Sendable (Error?) -> Void] = []
     private var scheduledGeneration = 0
 
     init(
@@ -152,7 +152,7 @@ final class HistoryWriteQueue {
 
     func save(
         _ items: [ClipboardItem],
-        completion: ((Error?) -> Void)? = nil
+        completion: (@Sendable (Error?) -> Void)? = nil
     ) {
         queue.async {
             self.pendingItems = items

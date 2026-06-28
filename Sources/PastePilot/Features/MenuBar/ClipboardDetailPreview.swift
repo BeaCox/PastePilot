@@ -366,6 +366,7 @@ final class PreviewRenderCache: @unchecked Sendable {
         return icon
     }
 
+    @MainActor
     func richTextPreview(for item: ClipboardItem) -> NSAttributedString {
         let key = item.id.uuidString as NSString
         if let preview = richTextPreviews.object(forKey: key) {
@@ -384,31 +385,28 @@ private enum JSONSyntaxHighlighter {
     private static let numberRegex = RegexFactory.make(#"-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b"#)
 
     static func highlight(_ source: String) -> AttributedString {
-        var result = AttributedString(source)
-        result.foregroundColor = .primary
+        let result = NSMutableAttributedString(
+            string: source,
+            attributes: [.foregroundColor: NSColor.labelColor]
+        )
         let fullRange = NSRange(source.startIndex..., in: source)
-        apply(stringRegex, color: .green, to: &result, source: source, range: fullRange)
-        apply(keyRegex, color: .blue, to: &result, source: source, range: fullRange)
-        apply(boolNullRegex, color: .purple, to: &result, source: source, range: fullRange)
-        apply(numberRegex, color: .orange, to: &result, source: source, range: fullRange)
-        return result
+        apply(stringRegex, color: .systemGreen, to: result, source: source, range: fullRange)
+        apply(keyRegex, color: .systemBlue, to: result, source: source, range: fullRange)
+        apply(boolNullRegex, color: .systemPurple, to: result, source: source, range: fullRange)
+        apply(numberRegex, color: .systemOrange, to: result, source: source, range: fullRange)
+        return AttributedString(result)
     }
 
     private static func apply(
         _ regex: NSRegularExpression?,
-        color: Color,
-        to result: inout AttributedString,
+        color: NSColor,
+        to result: NSMutableAttributedString,
         source: String,
         range: NSRange
     ) {
         guard let regex else { return }
         for match in regex.matches(in: source, range: range) {
-            guard let sourceRange = Range(match.range, in: source),
-                  let lower = AttributedString.Index(sourceRange.lowerBound, within: result),
-                  let upper = AttributedString.Index(sourceRange.upperBound, within: result) else {
-                continue
-            }
-            result[lower..<upper].foregroundColor = color
+            result.addAttribute(.foregroundColor, value: color, range: match.range)
         }
     }
 }

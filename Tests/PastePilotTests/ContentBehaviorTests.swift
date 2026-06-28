@@ -525,6 +525,7 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    @MainActor
     func pastePilotMenuBarIconUsesStandardCanvas() throws {
         let image = try #require(
             AppIconRenderer.menuBarImage(style: .pastepilot, filled: true)

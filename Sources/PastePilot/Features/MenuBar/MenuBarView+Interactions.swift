@@ -312,8 +312,7 @@ extension MenuBarView {
             // a separate, sequential step.
             previewClosesInstantly = true
             closePreview()
-            let closePopover = closePopover
-            DispatchQueue.main.async(execute: closePopover)
+            Task { @MainActor in closePopover() }
         case .closePreview:
             closePreview()
         case .keepOpen:

@@ -81,7 +81,7 @@ struct SilentPastePilotLogger: PastePilotLogging {
     func log(_ message: String) {}
 }
 
-final class CapturingNoticePoster: PastePilotNoticePosting {
+final class CapturingNoticePoster: PastePilotNoticePosting, @unchecked Sendable {
     private let lock = NSLock()
     private var recordedNotices: [PastePilotNotice] = []
 

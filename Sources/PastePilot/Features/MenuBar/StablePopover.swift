@@ -5,7 +5,7 @@ enum HistoryListCoordinateSpace {
 }
 
 struct HistoryItemFramePreferenceKey: PreferenceKey {
-    static var defaultValue: [UUID: CGRect] = [:]
+    static let defaultValue: [UUID: CGRect] = [:]
 
     static func reduce(
         value: inout [UUID: CGRect],
@@ -110,6 +110,7 @@ struct StablePopover<Content: View>: NSViewRepresentable {
         var popover: NSPopover?
         var hosting: NSHostingController<Content>?
 
+        @MainActor
         func close(animationEnabled: Bool, instantClose: Bool) {
             popover?.animates = animationEnabled && !instantClose
             popover?.close()

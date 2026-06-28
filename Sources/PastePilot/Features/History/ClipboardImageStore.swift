@@ -94,7 +94,7 @@ enum ClipboardImageProcessingError: Error {
     case exceedsSizeLimit
 }
 
-final class ClipboardImageProcessingQueue {
+final class ClipboardImageProcessingQueue: @unchecked Sendable {
     private let queue = DispatchQueue(
         label: "PastePilot.ImageProcessingQueue",
         qos: .userInitiated
@@ -105,7 +105,7 @@ final class ClipboardImageProcessingQueue {
         fileName: String,
         imageStore: ClipboardImageStore,
         sizeLimitBytes: Int,
-        completion: @escaping (Result<ProcessedClipboardImage, Error>) -> Void
+        completion: @escaping @Sendable (Result<ProcessedClipboardImage, Error>) -> Void
     ) {
         queue.async {
             do {

@@ -2,10 +2,11 @@ import AppKit
 @preconcurrency import QuickLookUI
 
 final class QuickLookService: NSObject, QLPreviewPanelDataSource {
-    static let shared = QuickLookService()
+    @MainActor static let shared = QuickLookService()
 
     private var urls: [URL] = []
 
+    @MainActor
     func preview(_ urls: [URL]) -> Bool {
         let existingURLs = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
         guard !existingURLs.isEmpty, let panel = QLPreviewPanel.shared() else {

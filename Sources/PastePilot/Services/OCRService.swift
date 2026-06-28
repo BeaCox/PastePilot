@@ -1,7 +1,7 @@
 import CoreGraphics
 import Vision
 
-protocol OCRService {
+protocol OCRService: Sendable {
     func recognizeText(
         in image: CGImage,
         recognitionMode: OCRRecognitionMode,

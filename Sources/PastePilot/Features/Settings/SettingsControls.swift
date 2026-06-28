@@ -3,21 +3,21 @@ import SwiftUI
 /// Reports the natural content height of each settings page, keyed by page id,
 /// so the window can size itself to exactly fit the selected page.
 struct SettingsHeightKey: PreferenceKey {
-    static var defaultValue: [AnyHashable: CGFloat] = [:]
+    static let defaultValue: [SettingsTab: CGFloat] = [:]
 
     static func reduce(
-        value: inout [AnyHashable: CGFloat],
-        nextValue: () -> [AnyHashable: CGFloat]
+        value: inout [SettingsTab: CGFloat],
+        nextValue: () -> [SettingsTab: CGFloat]
     ) {
         value.merge(nextValue()) { _, latest in latest }
     }
 }
 
 struct SettingsPane<Content: View>: View {
-    let id: AnyHashable
+    let id: SettingsTab
     @ViewBuilder let content: Content
 
-    init(id: AnyHashable, @ViewBuilder content: () -> Content) {
+    init(id: SettingsTab, @ViewBuilder content: () -> Content) {
         self.id = id
         self.content = content()
     }

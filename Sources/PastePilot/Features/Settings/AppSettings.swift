@@ -59,7 +59,7 @@ enum OCRLanguageMode: String, CaseIterable {
 }
 
 final class AppSettings: ObservableObject {
-    static let shared = AppSettings()
+    @MainActor static let shared = AppSettings()
     static let defaultOpenHotKeyCode = kVK_Space
     static let defaultOpenHotKeyModifiers = UInt32(optionKey)
     static let defaultPlainTextHotKeyCode = kVK_ANSI_V

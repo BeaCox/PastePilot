@@ -3,8 +3,8 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-struct ClipboardCaptureSnapshot {
-    enum Payload {
+struct ClipboardCaptureSnapshot: Sendable {
+    enum Payload: Sendable {
         case files([URL])
         case image(CGImage, remoteURL: String?, originalPath: String?)
         case richText(rtfData: Data?, html: String?, plainText: String)
@@ -17,15 +17,16 @@ struct ClipboardCaptureSnapshot {
     let payload: Payload?
 }
 
+@MainActor
 protocol ClipboardCapturing {
     func capture(
         pasteboard: NSPasteboard,
         changeCount: Int,
-        completion: @escaping (ClipboardCaptureSnapshot?) -> Void
+        completion: @escaping @Sendable (ClipboardCaptureSnapshot?) -> Void
     )
 }
 
-final class ClipboardCaptureQueue {
+final class ClipboardCaptureQueue: @unchecked Sendable {
     private static let sourcePasteboardType = NSPasteboard.PasteboardType(
         rawValue: "org.nspasteboard.source"
     )
@@ -43,19 +44,17 @@ final class ClipboardCaptureQueue {
     func capture(
         pasteboard: NSPasteboard,
         changeCount: Int,
-        completion: @escaping (ClipboardCaptureSnapshot?) -> Void
+        completion: @escaping @Sendable (ClipboardCaptureSnapshot?) -> Void
     ) {
         let gate = CompletionGate()
+        let pasteboardData = Self.readPasteboardData(from: pasteboard)
 
-        DispatchQueue.main.async { [queue] in
-            let pasteboardData = Self.readPasteboardData(from: pasteboard)
-            queue.async {
-                let snapshot = Self.makeSnapshot(
-                    pasteboardData: pasteboardData,
-                    changeCount: changeCount
-                )
-                gate.complete { completion(snapshot) }
-            }
+        queue.async {
+            let snapshot = Self.makeSnapshot(
+                pasteboardData: pasteboardData,
+                changeCount: changeCount
+            )
+            gate.complete { completion(snapshot) }
         }
 
         queue.asyncAfter(deadline: .now() + timeout) {
@@ -327,7 +326,7 @@ final class ClipboardCaptureQueue {
         .tiff
     ]
 
-    private struct CapturedPasteboardData {
+    private struct CapturedPasteboardData: Sendable {
         let sourceAppName: String?
         let sourceBundleIdentifier: String?
         let fileURLs: [URL]
@@ -340,7 +339,7 @@ final class ClipboardCaptureQueue {
         let urlStrings: [String]
     }
 
-    private struct ImageRepresentation {
+    private struct ImageRepresentation: Sendable {
         let data: Data
         let typeIdentifier: String
     }
@@ -373,11 +372,11 @@ final class ClipboardCaptureQueue {
 
 extension ClipboardCaptureQueue: ClipboardCapturing {}
 
-private final class CompletionGate {
+private final class CompletionGate: @unchecked Sendable {
     private let lock = NSLock()
     private var didComplete = false
 
-    func complete(_ body: () -> Void) {
+    func complete(_ body: @Sendable () -> Void) {
         lock.lock()
         guard !didComplete else {
             lock.unlock()

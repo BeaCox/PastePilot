@@ -21,7 +21,7 @@ enum MenuBarIconStyle: String, CaseIterable {
         }
     }
 
-    var previewImage: NSImage {
+    @MainActor var previewImage: NSImage {
         AppIconRenderer.menuBarPreviewImage(style: self)
             ?? NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
             ?? NSImage(size: NSSize(
@@ -31,6 +31,7 @@ enum MenuBarIconStyle: String, CaseIterable {
     }
 }
 
+@MainActor
 enum AppIconRenderer {
     static let menuBarPointSize = 18
     private static let pastePilotPickerPreviewPointSize = 15

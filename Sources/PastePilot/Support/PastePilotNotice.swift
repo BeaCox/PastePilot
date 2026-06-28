@@ -1,7 +1,7 @@
 import Foundation
 
-struct PastePilotNotice: Equatable {
-    enum Style {
+struct PastePilotNotice: Equatable, Sendable {
+    enum Style: Sendable {
         case success
         case warning
         case error
@@ -27,7 +27,7 @@ struct PastePilotNotice: Equatable {
     }
 }
 
-protocol PastePilotNoticePosting {
+protocol PastePilotNoticePosting: Sendable {
     func post(_ notice: PastePilotNotice)
 }
 

@@ -42,13 +42,13 @@ struct SettingsView: View {
     @State private var showsClearHistoryConfirmation = false
     @State private var accessibilityGranted = EventPostingPermission.isGranted
     @State private var accessibilityPollTimer: Timer?
-    @State private var pageHeights: [AnyHashable: CGFloat] = [:]
+    @State private var pageHeights: [SettingsTab: CGFloat] = [:]
 
     // Fit the window to the selected page's measured content, clamped so it
     // never gets tiny or taller than a comfortable on-screen size (beyond
     // which the page scrolls).
     private var preferredHeight: CGFloat {
-        let measured = pageHeights[AnyHashable(selectedTab)] ?? 360
+        let measured = pageHeights[selectedTab] ?? 360
         return min(640, max(240, measured))
     }
 
