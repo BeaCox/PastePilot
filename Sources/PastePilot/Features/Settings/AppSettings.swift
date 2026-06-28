@@ -102,7 +102,7 @@ final class AppSettings: ObservableObject {
     static let defaultSensitiveContentStoragePolicy =
         SensitiveContentStoragePolicy.storeOriginal.rawValue
 
-    private struct AppSetting<Value> {
+    private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
         let defaultValue: Value
 
@@ -177,27 +177,29 @@ final class AppSettings: ObservableObject {
             default: AppSettings.defaultSensitiveContentStoragePolicy
         )
 
-        static let registeredDefaults: [String: Any] = [
-            monitoringEnabled.key: monitoringEnabled.defaultValue,
-            hoverPreviewEnabled.key: hoverPreviewEnabled.defaultValue,
-            historyLimit.key: historyLimit.defaultValue,
-            launchAtLogin.key: launchAtLogin.defaultValue,
-            imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
-            storageLimitMB.key: storageLimitMB.defaultValue,
-            ignoredBundleIdentifiers.key: ignoredBundleIdentifiers.defaultValue,
-            hotKeyCode.key: hotKeyCode.defaultValue,
-            hotKeyModifiers.key: hotKeyModifiers.defaultValue,
-            plainTextHotKeyCode.key: plainTextHotKeyCode.defaultValue,
-            plainTextHotKeyModifiers.key: plainTextHotKeyModifiers.defaultValue,
-            menuBarIconStyle.key: menuBarIconStyle.defaultValue,
-            historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
-            pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
-            previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
-            ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
-            ocrLanguageMode.key: ocrLanguageMode.defaultValue,
-            sensitiveContentStoragePolicy.key:
-                sensitiveContentStoragePolicy.defaultValue,
-        ]
+        static var registeredDefaults: [String: Any] {
+            [
+                monitoringEnabled.key: monitoringEnabled.defaultValue,
+                hoverPreviewEnabled.key: hoverPreviewEnabled.defaultValue,
+                historyLimit.key: historyLimit.defaultValue,
+                launchAtLogin.key: launchAtLogin.defaultValue,
+                imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
+                storageLimitMB.key: storageLimitMB.defaultValue,
+                ignoredBundleIdentifiers.key: ignoredBundleIdentifiers.defaultValue,
+                hotKeyCode.key: hotKeyCode.defaultValue,
+                hotKeyModifiers.key: hotKeyModifiers.defaultValue,
+                plainTextHotKeyCode.key: plainTextHotKeyCode.defaultValue,
+                plainTextHotKeyModifiers.key: plainTextHotKeyModifiers.defaultValue,
+                menuBarIconStyle.key: menuBarIconStyle.defaultValue,
+                historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
+                pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
+                previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
+                ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
+                ocrLanguageMode.key: ocrLanguageMode.defaultValue,
+                sensitiveContentStoragePolicy.key:
+                    sensitiveContentStoragePolicy.defaultValue,
+            ]
+        }
     }
 
     private let defaults: UserDefaults
