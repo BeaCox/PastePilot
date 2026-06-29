@@ -55,13 +55,13 @@ extension MenuBarView {
             return
         }
         let textDirectoryURL = store.textStore.directoryURL
-        fullTextSearch.start(query: query)
+        let searchToken = fullTextSearch.start(query: query)
 
         fullTextSearchTask = Task {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else {
                 await MainActor.run {
-                    fullTextSearch.cancel(query: query)
+                    fullTextSearch.cancel(token: searchToken)
                 }
                 return
             }
@@ -80,12 +80,12 @@ extension MenuBarView {
             }
             guard !Task.isCancelled else {
                 await MainActor.run {
-                    fullTextSearch.cancel(query: query)
+                    fullTextSearch.cancel(token: searchToken)
                 }
                 return
             }
             await MainActor.run {
-                fullTextSearch.finish(query: query, ids: ids)
+                fullTextSearch.finish(token: searchToken, ids: ids)
                 selectFirstItem()
                 resize(preferredSize)
             }

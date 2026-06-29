@@ -8,8 +8,8 @@ struct FullTextSearchStateTests {
         let firstID = UUID()
         var state = FullTextSearchState()
 
-        state.start(query: "needle")
-        state.finish(query: "needle", ids: [firstID])
+        let token = state.start(query: "needle")
+        state.finish(token: token, ids: [firstID])
 
         #expect(!state.isSearching)
         #expect(state.matchingIDs(for: "needle") == [firstID])
@@ -22,14 +22,14 @@ struct FullTextSearchStateTests {
         let newID = UUID()
         var state = FullTextSearchState()
 
-        state.start(query: "old")
-        state.start(query: "new")
-        state.finish(query: "old", ids: [oldID])
+        let oldToken = state.start(query: "old")
+        let newToken = state.start(query: "new")
+        state.finish(token: oldToken, ids: [oldID])
 
         #expect(state.isSearching)
         #expect(state.matchingIDs(for: "old").isEmpty)
 
-        state.finish(query: "new", ids: [newID])
+        state.finish(token: newToken, ids: [newID])
 
         #expect(!state.isSearching)
         #expect(state.matchingIDs(for: "new") == [newID])
@@ -39,15 +39,49 @@ struct FullTextSearchStateTests {
     func staleCancellationDoesNotStopNewerSearch() {
         var state = FullTextSearchState()
 
-        state.start(query: "old")
-        state.start(query: "new")
-        state.cancel(query: "old")
+        let oldToken = state.start(query: "old")
+        let newToken = state.start(query: "new")
+        state.cancel(token: oldToken)
 
         #expect(state.isSearching)
 
-        state.cancel(query: "new")
+        state.cancel(token: newToken)
 
         #expect(!state.isSearching)
+    }
+
+    @Test
+    func staleSameQueryCancellationDoesNotStopNewerSearch() {
+        var state = FullTextSearchState()
+
+        let oldToken = state.start(query: "needle")
+        let newToken = state.start(query: "needle")
+        state.cancel(token: oldToken)
+
+        #expect(state.isSearching)
+
+        state.cancel(token: newToken)
+
+        #expect(!state.isSearching)
+    }
+
+    @Test
+    func staleSameQueryCompletionDoesNotReplaceNewerSearch() {
+        let oldID = UUID()
+        let newID = UUID()
+        var state = FullTextSearchState()
+
+        let oldToken = state.start(query: "needle")
+        let newToken = state.start(query: "needle")
+        state.finish(token: oldToken, ids: [oldID])
+
+        #expect(state.isSearching)
+        #expect(state.matchingIDs(for: "needle").isEmpty)
+
+        state.finish(token: newToken, ids: [newID])
+
+        #expect(!state.isSearching)
+        #expect(state.matchingIDs(for: "needle") == [newID])
     }
 
     @Test
@@ -55,9 +89,9 @@ struct FullTextSearchStateTests {
         let id = UUID()
         var state = FullTextSearchState()
 
-        state.start(query: "needle")
-        state.finish(query: "needle", ids: [id])
-        state.start(query: "needle")
+        let firstToken = state.start(query: "needle")
+        state.finish(token: firstToken, ids: [id])
+        _ = state.start(query: "needle")
         state.clear(completedQuery: "needle")
 
         #expect(!state.isSearching)

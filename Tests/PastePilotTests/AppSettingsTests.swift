@@ -16,8 +16,8 @@ struct AppSettingsTests {
         #expect(settings.historyLimit == 100)
         #expect(settings.imageSizeLimitMB == 25)
         #expect(settings.storageLimitMB == AppSettings.defaultStorageLimitMB)
-        #expect(settings.hotKeyCode == 49)
-        #expect(settings.hotKeyModifiers == 2_048)
+        #expect(settings.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
+        #expect(settings.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
         #expect(settings.plainTextHotKeyCode == AppSettings.defaultPlainTextHotKeyCode)
         #expect(
             settings.plainTextHotKeyModifiers
@@ -70,8 +70,8 @@ struct AppSettingsTests {
         #expect(restored.historyLimit == 100)
         #expect(restored.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(restored.ignoredBundleIdentifiers.isEmpty)
-        #expect(restored.hotKeyCode == 49)
-        #expect(restored.hotKeyModifiers == 2_048)
+        #expect(restored.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
+        #expect(restored.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
         #expect(
             restored.plainTextHotKeyCode
                 == AppSettings.defaultPlainTextHotKeyCode

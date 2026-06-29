@@ -1,33 +1,44 @@
 import Foundation
 
 struct FullTextSearchState: Equatable {
-    private var activeQuery: String?
+    struct SearchToken: Equatable, Sendable {
+        fileprivate let id = UUID()
+    }
+
+    private struct ActiveSearch: Equatable, Sendable {
+        let token: SearchToken
+        let query: String
+    }
+
+    private var activeSearch: ActiveSearch?
     private var completedQuery = ""
     private var completedIDs: Set<UUID> = []
 
     var isSearching: Bool {
-        activeQuery != nil
+        activeSearch != nil
     }
 
     mutating func clear(completedQuery: String = "") {
-        activeQuery = nil
+        activeSearch = nil
         self.completedQuery = completedQuery
         completedIDs = []
     }
 
-    mutating func start(query: String) {
-        activeQuery = query
+    mutating func start(query: String) -> SearchToken {
+        let token = SearchToken()
+        activeSearch = ActiveSearch(token: token, query: query)
+        return token
     }
 
-    mutating func cancel(query: String) {
-        guard activeQuery == query else { return }
-        activeQuery = nil
+    mutating func cancel(token: SearchToken) {
+        guard activeSearch?.token == token else { return }
+        activeSearch = nil
     }
 
-    mutating func finish(query: String, ids: Set<UUID>) {
-        guard activeQuery == query else { return }
-        activeQuery = nil
-        completedQuery = query
+    mutating func finish(token: SearchToken, ids: Set<UUID>) {
+        guard let search = activeSearch, search.token == token else { return }
+        activeSearch = nil
+        completedQuery = search.query
         completedIDs = ids
     }
 

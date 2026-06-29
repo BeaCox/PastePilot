@@ -520,7 +520,10 @@ struct ContentBehaviorTests {
     @Test
     func hotKeyFormatting() {
         #expect(
-            HotKeyFormatter.display(keyCode: 49, modifiers: 2_048) == "⌥Space"
+            HotKeyFormatter.display(
+                keyCode: AppSettings.defaultOpenHotKeyCode,
+                modifiers: AppSettings.defaultOpenHotKeyModifiers
+            ) == "⌥Space"
         )
     }
 
