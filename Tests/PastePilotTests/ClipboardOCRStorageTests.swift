@@ -118,4 +118,36 @@ struct ClipboardOCRStorageTests {
         #expect(store.items.first?.ocrText == "new visible text")
         store.flushHistoryWrites()
     }
+
+    @Test
+    @MainActor
+    func copyOCRTextActionWritesRecognizedTextToPasteboard() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let item = ClipboardItem(
+            content: "image",
+            kind: .image,
+            imageFileName: "stored.png",
+            ocrText: "\nrecognized text\n"
+        )
+        store.items = [item]
+        let action = try #require(
+            ClipboardActionFactory.actions(for: item)
+                .first { $0.id == "copy-ocr-text" }
+        )
+
+        let message = ClipboardActionFactory.perform(action, using: store)
+
+        #expect(message == "OCR text copied".localized)
+        #expect(pasteboard.string(forType: .string) == "recognized text")
+        store.flushHistoryWrites()
+    }
 }

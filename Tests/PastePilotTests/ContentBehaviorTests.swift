@@ -417,6 +417,21 @@ struct ContentBehaviorTests {
                 == ["copy-image", "copy-image-file", "copy-image-markdown", "quick-look", "reveal-files"]
         )
 
+        let imageWithOCRText = ClipboardItem(
+            content: "Image 640 × 480",
+            kind: .image,
+            imageFileName: "ocr.png",
+            ocrText: "recognized text"
+        )
+        #expect(
+            ClipboardActionFactory.actions(for: imageWithOCRText).map(\.id)
+                == ["copy-image", "copy-ocr-text", "copy-image-file", "copy-image-markdown", "quick-look", "reveal-files"]
+        )
+        #expect(
+            ClipboardActionFactory.compactActions(for: imageWithOCRText).map(\.id)
+                == ["copy-ocr-text", "copy-image-file", "copy-image-markdown"]
+        )
+
         let file = ClipboardItem(
             content: "one.txt\ntwo.pdf",
             kind: .file,

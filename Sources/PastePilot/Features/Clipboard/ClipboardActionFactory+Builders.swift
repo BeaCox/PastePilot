@@ -196,6 +196,32 @@ extension ClipboardActionFactory {
         return actions
     }
 
+    static func insertingOCRTextAction(
+        for item: ClipboardItem,
+        into actions: [ClipboardAction]
+    ) -> [ClipboardAction] {
+        guard let action = ocrTextAction(for: item) else { return actions }
+        var updatedActions = actions
+        let insertionIndex = min(1, updatedActions.count)
+        updatedActions.insert(action, at: insertionIndex)
+        return updatedActions
+    }
+
+    static func ocrTextAction(for item: ClipboardItem) -> ClipboardAction? {
+        guard let ocrText = item.ocrText?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !ocrText.isEmpty else {
+            return nil
+        }
+        return ClipboardAction(
+            id: "copy-ocr-text",
+            title: "Copy OCR Text".localized,
+            detail: "Copy recognized text from this image".localized,
+            symbol: "text.viewfinder",
+            effect: .copyOCRText(item.id)
+        )
+    }
+
     static func deduplicated(_ actions: [ClipboardAction]) -> [ClipboardAction] {
         var seenEffects: Set<String> = []
         return actions.filter { action in
@@ -209,6 +235,8 @@ extension ClipboardActionFactory {
                 key = "image:\(fileName)"
             case let .copyImageMarkdown(fileName, sourceURL, originalPath):
                 key = "markdown:\(sourceURL ?? originalPath ?? fileName)"
+            case let .copyOCRText(id):
+                key = "ocr-text:\(id.uuidString)"
             case let .copyCachedImageFile(fileName):
                 key = "cache-file:\(fileName)"
             case let .copyFiles(urls):

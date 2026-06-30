@@ -8,7 +8,6 @@ struct ClipboardDetailPreview: View {
     let hoverChanged: (Bool) -> Void
     let previewSnippet: (ClipboardItem, Int, Bool) -> TextPreview.Snippet
     @State private var revealsSensitiveContent = false
-    @State private var keyboardActions: [ClipboardAction] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -50,22 +49,17 @@ struct ClipboardDetailPreview: View {
             .padding(.bottom, 12)
 
             ClipboardPreviewActionList(
-                actions: Array(keyboardActions.prefix(9)),
+                actions: Array(
+                    ClipboardActionFactory.keyboardActions(for: item).prefix(9)
+                ),
                 performAction: performAction
             )
         }
         .padding(16)
         .frame(width: 340, alignment: .topLeading)
         .onHover(perform: hoverChanged)
-        .onAppear {
-            keyboardActions = ClipboardActionFactory.keyboardActions(for: item)
-        }
         .onChange(of: item.id) {
             revealsSensitiveContent = false
-            keyboardActions = ClipboardActionFactory.keyboardActions(for: item)
-        }
-        .onDisappear {
-            keyboardActions.removeAll(keepingCapacity: false)
         }
     }
 

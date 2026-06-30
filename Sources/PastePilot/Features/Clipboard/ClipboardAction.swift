@@ -11,6 +11,7 @@ struct ClipboardAction: Identifiable {
             sourceURL: String?,
             originalPath: String?
         )
+        case copyOCRText(UUID)
         case copyCachedImageFile(String)
         case copyFiles([URL])
         case copyRichText(UUID)
@@ -41,6 +42,7 @@ struct ClipboardAction: Identifiable {
              .copyItem,
              .copyImage,
              .copyImageMarkdown,
+             .copyOCRText,
              .copyCachedImageFile,
              .copyFiles,
              .copyRichText,
@@ -55,26 +57,25 @@ struct ClipboardAction: Identifiable {
 enum ClipboardActionFactory {
     static func actions(for item: ClipboardItem) -> [ClipboardAction] {
         if item.kind == .image, let fileName = item.imageFileName {
+            let actions: [ClipboardAction]
             if let originalPath = item.imageOriginalPath {
-                return deduplicated(
-                    imageActions(
-                        fileName: fileName,
-                        sourceURL: item.imageSourceURL,
-                        originalPath: originalPath,
-                        fileURL: URL(fileURLWithPath: originalPath),
-                        usesCachedFile: false
-                    )
+                actions = imageActions(
+                    fileName: fileName,
+                    sourceURL: item.imageSourceURL,
+                    originalPath: originalPath,
+                    fileURL: URL(fileURLWithPath: originalPath),
+                    usesCachedFile: false
                 )
-            }
-            return deduplicated(
-                imageActions(
+            } else {
+                actions = imageActions(
                     fileName: fileName,
                     sourceURL: item.imageSourceURL,
                     originalPath: nil,
                     fileURL: nil,
                     usesCachedFile: true
                 )
-            )
+            }
+            return deduplicated(insertingOCRTextAction(for: item, into: actions))
         }
 
         var actions = [
@@ -298,6 +299,15 @@ enum ClipboardActionFactory {
                 )
             )
             return "Image Markdown copied".localized
+        case let .copyOCRText(id):
+            guard let item = store.items.first(where: { $0.id == id }),
+                  let ocrText = item.ocrText?
+                      .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !ocrText.isEmpty else {
+                return "OCR text is no longer available".localized
+            }
+            store.copy(ocrText)
+            return "OCR text copied".localized
         case let .copyCachedImageFile(fileName):
             return store.copyFiles([URL(fileURLWithPath: store.imagePath(fileName: fileName))])
                 ? "Files copied".localized

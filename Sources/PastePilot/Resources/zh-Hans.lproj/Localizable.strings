@@ -40,6 +40,7 @@
 "Copy with Formatting" = "保留格式复制";
 "Copy HTML Source" = "复制 HTML 源码";
 "Copy Image" = "复制图片";
+"Copy OCR Text" = "复制 OCR 文字";
 "Copy Markdown" = "复制 Markdown";
 "Copy Image URL" = "复制图片 URL";
 "Copy Original" = "复制原文";
@@ -64,6 +65,7 @@
 "Preserve fonts, styles, colors, and links" = "保留字体、样式、颜色和链接";
 "Copy the underlying HTML markup" = "复制底层 HTML 标记";
 "Write the original image back to the clipboard" = "将原始图片重新写入剪贴板";
+"Copy recognized text from this image" = "复制从这张图片中识别出的文字";
 "Prefers web URL, falls back to local file path" = "优先使用网页 URL，其次使用本地图片路径";
 "Copy the original web image address" = "复制网页图片的原始地址";
 "Write the cached PNG file back to the clipboard" = "将缓存的 PNG 文件写回剪贴板";
@@ -95,6 +97,8 @@
 "Image copied" = "已复制图片";
 "Image file missing" = "图片文件已丢失";
 "Image Markdown copied" = "已复制图片 Markdown";
+"OCR text copied" = "已复制 OCR 文字";
+"OCR text is no longer available" = "OCR 文字已不可用";
 "Link opened" = "已打开链接";
 
 "Search clipboard history" = "搜索剪贴板历史";
