@@ -25,6 +25,7 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(settings.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(
             settings.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
@@ -39,6 +40,7 @@ struct AppSettingsTests {
         settings.plainTextHotKeyModifiers = 4_096
         settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
         settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
+        settings.appearanceMode = AppAppearanceMode.dark.rawValue
         settings.sensitiveContentStoragePolicy =
             SensitiveContentStoragePolicy.storeRedacted.rawValue
         settings.ignoredBundleIdentifiers = """
@@ -57,6 +59,7 @@ struct AppSettingsTests {
         #expect(restored.plainTextHotKeyModifiers == 4_096)
         #expect(restored.ocrRecognitionMode == OCRRecognitionMode.fast.rawValue)
         #expect(restored.ocrLanguageMode == OCRLanguageMode.english.rawValue)
+        #expect(restored.appearanceMode == AppAppearanceMode.dark.rawValue)
         #expect(
             restored.sensitiveContentStoragePolicy
                 == SensitiveContentStoragePolicy.storeRedacted.rawValue
@@ -82,6 +85,7 @@ struct AppSettingsTests {
         )
         #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(restored.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(
             restored.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
@@ -107,6 +111,7 @@ struct AppSettingsTests {
         defaults.set(Int(UInt32.max), forKey: "plainTextHotKeyModifiers")
         defaults.set("slow", forKey: "ocrRecognitionMode")
         defaults.set("everywhere", forKey: "ocrLanguageMode")
+        defaults.set("neon", forKey: "appearanceMode")
         defaults.set("encrypt", forKey: "sensitiveContentStoragePolicy")
 
         let settings = AppSettings(defaults: defaults)
@@ -132,6 +137,7 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(settings.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(
             settings.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
@@ -180,6 +186,10 @@ struct AppSettingsTests {
         #expect(
             defaults.string(forKey: "ocrLanguageMode")
                 == AppSettings.defaultOCRLanguageMode
+        )
+        #expect(
+            defaults.string(forKey: "appearanceMode")
+                == AppSettings.defaultAppearanceMode
         )
         #expect(
             defaults.string(forKey: "sensitiveContentStoragePolicy")
@@ -207,6 +217,7 @@ struct AppSettingsTests {
         settings.plainTextHotKeyModifiers = 4_096
         settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
         settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
+        settings.appearanceMode = AppAppearanceMode.light.rawValue
         settings.sensitiveContentStoragePolicy =
             SensitiveContentStoragePolicy.skip.rawValue
 
@@ -222,6 +233,7 @@ struct AppSettingsTests {
         settings.plainTextHotKeyModifiers = UInt32.max
         settings.ocrRecognitionMode = "slow"
         settings.ocrLanguageMode = "everywhere"
+        settings.appearanceMode = "neon"
         settings.sensitiveContentStoragePolicy = "encrypt"
 
         #expect(settings.historyLimit == AppSettings.defaultHistoryLimit)
@@ -245,6 +257,7 @@ struct AppSettingsTests {
         )
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(settings.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(
             settings.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
@@ -295,6 +308,10 @@ struct AppSettingsTests {
                 == AppSettings.defaultOCRLanguageMode
         )
         #expect(
+            defaults.string(forKey: "appearanceMode")
+                == AppSettings.defaultAppearanceMode
+        )
+        #expect(
             defaults.string(forKey: "sensitiveContentStoragePolicy")
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
@@ -320,6 +337,7 @@ struct AppSettingsTests {
         )
         #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
+        #expect(restored.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(
             restored.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy

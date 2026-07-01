@@ -252,6 +252,16 @@ struct AppearanceSettingsPage: View {
                     .labelsHidden()
                     .frame(width: 180)
                 }
+                SettingsRow(title: "Theme".localized) {
+                    Picker("", selection: $settings.appearanceMode) {
+                        ForEach(AppAppearanceMode.allCases, id: \.rawValue) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+                SettingsNote("Choose whether PastePilot follows the system appearance or uses a fixed light or dark theme.".localized)
             }
 
             SettingsGroup {
@@ -282,7 +292,7 @@ struct AppearanceSettingsPage: View {
                     Text("Adaptive".localized)
                         .foregroundStyle(.secondary)
                 }
-                SettingsNote("The window grows with your results and follows the system light or dark appearance.".localized)
+                SettingsNote("The window grows with your results and uses the selected theme.".localized)
             }
         }
     }

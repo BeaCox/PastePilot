@@ -13,6 +13,7 @@ struct PastePilotApp: App {
                 clearUnpinnedHistory: appDelegate.clearUnpinnedHistory,
                 updateController: appDelegate.updateController
             )
+            .pastePilotAppearance(appDelegate.settings)
         }
     }
 }

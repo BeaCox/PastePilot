@@ -99,6 +99,7 @@ final class AppSettings: ObservableObject {
     ]
     static let defaultOCRRecognitionMode = OCRRecognitionMode.accurate.rawValue
     static let defaultOCRLanguageMode = OCRLanguageMode.multilingual.rawValue
+    static let defaultAppearanceMode = AppAppearanceMode.system.rawValue
     static let defaultSensitiveContentStoragePolicy =
         SensitiveContentStoragePolicy.storeOriginal.rawValue
 
@@ -164,6 +165,10 @@ final class AppSettings: ObservableObject {
             "previewAnimationEnabled",
             default: true
         )
+        static let appearanceMode = AppSetting(
+            "appearanceMode",
+            default: AppSettings.defaultAppearanceMode
+        )
         static let ocrRecognitionMode = AppSetting(
             "ocrRecognitionMode",
             default: AppSettings.defaultOCRRecognitionMode
@@ -194,6 +199,7 @@ final class AppSettings: ObservableObject {
                 historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
                 pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
                 previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
+                appearanceMode.key: appearanceMode.defaultValue,
                 ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
                 ocrLanguageMode.key: ocrLanguageMode.defaultValue,
                 sensitiveContentStoragePolicy.key:
@@ -363,6 +369,17 @@ final class AppSettings: ObservableObject {
         didSet { persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled) }
     }
 
+    @Published var appearanceMode: String {
+        didSet {
+            persistSupportedValue(
+                appearanceMode,
+                supportedValue: Self.supportedAppearanceMode(appearanceMode),
+                assign: { appearanceMode = $0 },
+                persist: { persist($0, for: Setting.appearanceMode) }
+            )
+        }
+    }
+
     @Published var ocrRecognitionMode: String {
         didSet {
             persistSupportedValue(
@@ -464,6 +481,9 @@ final class AppSettings: ObservableObject {
             for: Setting.previewAnimationEnabled,
             in: defaults
         )
+        let storedAppearanceMode = Self.string(for: Setting.appearanceMode, in: defaults)
+        appearanceMode = AppAppearanceMode(rawValue: storedAppearanceMode)?
+            .rawValue ?? Setting.appearanceMode.defaultValue
         let storedOCRRecognitionMode = Self.string(
             for: Setting.ocrRecognitionMode,
             in: defaults
@@ -511,6 +531,7 @@ final class AppSettings: ObservableObject {
         historyTimeoutSeconds = Setting.historyTimeoutSeconds.defaultValue
         pasteCloseBehavior = Setting.pasteCloseBehavior.defaultValue
         previewAnimationEnabled = Setting.previewAnimationEnabled.defaultValue
+        appearanceMode = Setting.appearanceMode.defaultValue
         ocrRecognitionMode = Setting.ocrRecognitionMode.defaultValue
         ocrLanguageMode = Setting.ocrLanguageMode.defaultValue
         sensitiveContentStoragePolicy =
@@ -565,6 +586,11 @@ final class AppSettings: ObservableObject {
             ?? PasteCloseBehavior.closePreview.rawValue
     }
 
+    private static func supportedAppearanceMode(_ value: String) -> String {
+        AppAppearanceMode(rawValue: value)?.rawValue
+            ?? defaultAppearanceMode
+    }
+
     private static func supportedOCRRecognitionMode(_ value: String) -> String {
         OCRRecognitionMode(rawValue: value)?.rawValue
             ?? defaultOCRRecognitionMode
@@ -610,6 +636,7 @@ final class AppSettings: ObservableObject {
         persist(historyTimeoutSeconds, for: Setting.historyTimeoutSeconds)
         persist(pasteCloseBehavior, for: Setting.pasteCloseBehavior)
         persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled)
+        persist(appearanceMode, for: Setting.appearanceMode)
         persist(ocrRecognitionMode, for: Setting.ocrRecognitionMode)
         persist(ocrLanguageMode, for: Setting.ocrLanguageMode)
         persist(

@@ -145,6 +145,7 @@ after an update, so close old DMGs and keep only the installed copy in
 - Sensitive-content storage policy
 - OCR mode, language mode, and manual re-run for existing images
 - Menu bar icon style (PastePilot / Clipboard / Paperplane)
+- Theme mode (follow system / light / dark)
 - Hover preview toggle
 - Per-app ignore list with visual app picker
 - Automatic update checks with a manual **Check for Updates…** action

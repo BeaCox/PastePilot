@@ -54,7 +54,7 @@ extension AppDelegate {
                 title: "About PastePilot".localized,
                 size: NSSize(width: 520, height: 390),
                 autosaveName: "PastePilot.AboutWindow",
-                content: view
+                content: view.pastePilotAppearance(settings)
             )
         }
         showUtilityWindow(aboutWindow)
@@ -84,7 +84,7 @@ extension AppDelegate {
         welcomeWindow = makeUtilityWindow(
             title: "PastePilot",
             size: NSSize(width: 480, height: 420),
-            content: view
+            content: view.pastePilotAppearance(settings)
         )
         showUtilityWindow(welcomeWindow)
         return true
@@ -170,6 +170,7 @@ extension AppDelegate {
                     self?.resizePopover(size: size)
                 }
             )
+            .pastePilotAppearance(settings)
         )
         self.popover = popover
         return popover

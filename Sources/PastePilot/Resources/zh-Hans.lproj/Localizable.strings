@@ -204,6 +204,11 @@
 "English Only" = "仅英文";
 "Multilingual" = "多语言";
 "Data Folder" = "数据目录";
+"Theme" = "主题";
+"System" = "跟随系统";
+"Light" = "浅色";
+"Dark" = "深色";
+"Choose whether PastePilot follows the system appearance or uses a fixed light or dark theme." = "选择 PastePilot 跟随系统外观，或固定使用浅色/深色主题。";
 "Show Details on Hover" = "悬停显示完整详情";
 "Hover briefly to see full content, source app, and metadata." = "鼠标停留片刻后显示完整内容、来源应用和元数据。";
 "Animate Preview" = "预览动画";
@@ -214,7 +219,7 @@
 "Choose what closes after you copy or transform an item." = "选择复制或转换内容后自动关闭哪些界面。";
 "Menu Bar Window" = "菜单栏窗口";
 "Adaptive" = "自适应";
-"The window grows with your results and follows the system light or dark appearance." = "窗口会随结果数量调整高度，并自动跟随系统浅色或深色外观。";
+"The window grows with your results and uses the selected theme." = "窗口会随结果数量调整高度，并使用所选主题。";
 "Ignore These Apps" = "不记录以下应用";
 "Ignore rules only affect new copies and won't delete existing history." = "忽略规则只影响新复制内容，不会删除已有历史。";
 "%d ignored" = "已忽略 %d 个";

@@ -20,4 +20,4 @@
 
 - [ ] iCloud sync for cross-device history
 - [ ] Plugin system for custom content types and actions
-- [ ] Manual light/dark theme toggle
+- [x] Manual light/dark theme toggle
