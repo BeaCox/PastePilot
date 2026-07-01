@@ -13,28 +13,20 @@ extension MenuBarView {
     }
 
     func handleDisappear() {
-        previewTask?.cancel()
-        closePreviewTask?.cancel()
-        noticeTask?.cancel()
-        fullTextSearchTask?.cancel()
-        previewTask = nil
-        closePreviewTask = nil
-        noticeTask = nil
-        fullTextSearchTask = nil
-        fullTextSearch.clear()
+        interactionState.reset()
         previewedID = nil
         notice = nil
         historyItemFrames.removeAll(keepingCapacity: false)
     }
 
     func handlePanelHover(_ hovering: Bool) {
-        closePreviewTask?.cancel()
+        interactionState.closePreviewTask?.cancel()
         guard !hovering, previewedItem != nil else { return }
-        closePreviewTask = Task {
+        interactionState.closePreviewTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                previewTask?.cancel()
+                interactionState.previewTask?.cancel()
                 previewedID = nil
             }
         }
@@ -47,22 +39,22 @@ extension MenuBarView {
     }
 
     func scheduleFullTextSearch() {
-        fullTextSearchTask?.cancel()
+        interactionState.fullTextSearchTask?.cancel()
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let targets = store.externalContentSearchTargets()
         guard !query.isEmpty else {
-            fullTextSearch.clear(completedQuery: query)
+            interactionState.fullTextSearch.clear(completedQuery: query)
             return
         }
         let textDirectoryURL = store.textStore.directoryURL
         let historyRepository = store.historyRepository
-        let searchToken = fullTextSearch.start(query: query)
+        let searchToken = interactionState.fullTextSearch.start(query: query)
 
-        fullTextSearchTask = Task {
+        interactionState.fullTextSearchTask = Task {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else {
                 await MainActor.run {
-                    fullTextSearch.cancel(token: searchToken)
+                    interactionState.fullTextSearch.cancel(token: searchToken)
                 }
                 return
             }
@@ -85,12 +77,12 @@ extension MenuBarView {
             }
             guard !Task.isCancelled else {
                 await MainActor.run {
-                    fullTextSearch.cancel(token: searchToken)
+                    interactionState.fullTextSearch.cancel(token: searchToken)
                 }
                 return
             }
             await MainActor.run {
-                fullTextSearch.finish(token: searchToken, ids: ids)
+                interactionState.fullTextSearch.finish(token: searchToken, ids: ids)
                 selectFirstItem()
                 resize(preferredSize)
             }
@@ -122,7 +114,7 @@ extension MenuBarView {
             closePreview()
         } else if !searchText.isEmpty {
             searchText = ""
-            fullTextSearch.clear()
+            interactionState.fullTextSearch.clear()
         } else {
             closePopover()
         }
@@ -162,7 +154,7 @@ extension MenuBarView {
             searchFocused = true
         case .clearSearch:
             searchText = ""
-            fullTextSearch.clear()
+            interactionState.fullTextSearch.clear()
             searchFocused = true
         case .clearUnpinned:
             showsClearConfirmation = true
@@ -224,19 +216,19 @@ extension MenuBarView {
     }
 
     func handleRowHover(_ item: ClipboardItem, hovering: Bool) {
-        previewTask?.cancel()
+        interactionState.previewTask?.cancel()
         guard hovering else {
             schedulePreviewClose()
             return
         }
-        closePreviewTask?.cancel()
+        interactionState.closePreviewTask?.cancel()
         selectedID = item.id
         guard settings.hoverPreviewEnabled else { return }
         if previewedItem != nil {
             previewedID = item.id
             return
         }
-        previewTask = Task {
+        interactionState.previewTask = Task {
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
             await MainActor.run {
@@ -246,16 +238,16 @@ extension MenuBarView {
     }
 
     func handlePreviewHover(_ hovering: Bool) {
-        closePreviewTask?.cancel()
+        interactionState.closePreviewTask?.cancel()
         if !hovering {
             schedulePreviewClose()
         }
     }
 
     func schedulePreviewClose() {
-        closePreviewTask?.cancel()
+        interactionState.closePreviewTask?.cancel()
         guard previewedItem != nil else { return }
-        closePreviewTask = Task {
+        interactionState.closePreviewTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
             await MainActor.run {
@@ -273,7 +265,7 @@ extension MenuBarView {
     }
 
     func closePreview() {
-        previewTask?.cancel()
+        interactionState.previewTask?.cancel()
         previewedID = nil
     }
 
@@ -320,9 +312,9 @@ extension MenuBarView {
     }
 
     func showNotice(_ notice: PastePilotNotice) {
-        noticeTask?.cancel()
+        interactionState.noticeTask?.cancel()
         withAnimation { self.notice = notice }
-        noticeTask = Task {
+        interactionState.noticeTask = Task {
             try? await Task.sleep(for: notice.style == .success ? .seconds(1.3) : .seconds(2.4))
             guard !Task.isCancelled else { return }
             withAnimation { self.notice = nil }

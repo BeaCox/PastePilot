@@ -30,18 +30,14 @@ struct MenuBarView: View {
     @State var notice: PastePilotNotice?
     @State var needsScrollToSelection = false
     @State var showsClearConfirmation = false
-    @State var previewTask: Task<Void, Never>?
-    @State var closePreviewTask: Task<Void, Never>?
-    @State var noticeTask: Task<Void, Never>?
-    @State var fullTextSearchTask: Task<Void, Never>?
-    @State var fullTextSearch = FullTextSearchState()
+    @State var interactionState = MenuBarInteractionState()
     @State var historyItemFrames: [UUID: CGRect] = [:]
     @State var previewClosesInstantly = false
     @FocusState var searchFocused: Bool
 
     var filteredItems: [ClipboardItem] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fullTextIDs = fullTextSearch.matchingIDs(for: query)
+        let fullTextIDs = interactionState.fullTextSearch.matchingIDs(for: query)
         let matches = query.isEmpty ? store.items : store.items.filter {
             shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
         }

@@ -97,4 +97,25 @@ struct FullTextSearchStateTests {
         #expect(!state.isSearching)
         #expect(state.matchingIDs(for: "needle").isEmpty)
     }
+
+    @Test
+    func interactionStateResetClearsTasksAndSearch() {
+        let id = UUID()
+        var state = MenuBarInteractionState()
+        let token = state.fullTextSearch.start(query: "needle")
+        state.fullTextSearch.finish(token: token, ids: [id])
+        state.previewTask = Task {}
+        state.closePreviewTask = Task {}
+        state.noticeTask = Task {}
+        state.fullTextSearchTask = Task {}
+
+        state.reset()
+
+        #expect(state.previewTask == nil)
+        #expect(state.closePreviewTask == nil)
+        #expect(state.noticeTask == nil)
+        #expect(state.fullTextSearchTask == nil)
+        #expect(!state.fullTextSearch.isSearching)
+        #expect(state.fullTextSearch.matchingIDs(for: "needle").isEmpty)
+    }
 }
