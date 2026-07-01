@@ -25,16 +25,47 @@ extension ClipboardStore {
     }
 
     func estimatedStorageByteCount(for items: [ClipboardItem]) -> Int64 {
+        estimatedStorageByteCount(
+            for: items,
+            imageByteCounts: imageByteCounts(for: items),
+            textByteCounts: textByteCounts(for: items)
+        )
+    }
+
+    private func estimatedStorageByteCount(
+        for items: [ClipboardItem],
+        imageByteCounts: [String: Int64],
+        textByteCounts: [String: Int64]
+    ) -> Int64 {
         var total = historyRepository.estimatedHistoryByteCount(for: items)
-        let imageFileNames = Set(items.compactMap(\.imageFileName))
-        let textFileNames = Set(items.compactMap(\.contentFileName))
-        total += imageFileNames.reduce(Int64(0)) {
-            $0 + imageStore.byteCount(fileName: $1)
+        total += Set(items.compactMap(\.imageFileName)).reduce(Int64(0)) {
+            $0 + (imageByteCounts[$1] ?? 0)
         }
-        total += textFileNames.reduce(Int64(0)) {
-            $0 + textStore.byteCount(fileName: $1)
+        total += Set(items.compactMap(\.contentFileName)).reduce(Int64(0)) {
+            $0 + (textByteCounts[$1] ?? 0)
         }
         return total
+    }
+
+    private func imageByteCounts(for items: [ClipboardItem]) -> [String: Int64] {
+        byteCounts(
+            for: Set(items.compactMap(\.imageFileName)),
+            byteCount: imageStore.byteCount
+        )
+    }
+
+    private func textByteCounts(for items: [ClipboardItem]) -> [String: Int64] {
+        byteCounts(
+            for: Set(items.compactMap(\.contentFileName)),
+            byteCount: textStore.byteCount
+        )
+    }
+
+    private func byteCounts(
+        for fileNames: Set<String>,
+        byteCount: (String) -> Int64
+    ) -> [String: Int64] {
+        Dictionary(uniqueKeysWithValues: fileNames.map { ($0, byteCount($0)) })
     }
 
     @discardableResult
@@ -45,20 +76,35 @@ extension ClipboardStore {
         removeOrphanedImages()
         removeOrphanedText()
 
-        var removedItems: [ClipboardItem] = []
-        while estimatedRetainedStorageByteCount() > limit {
-            guard let oldestUnpinned = items
-                .filter({ !$0.isPinned })
-                .min(by: { $0.createdAt < $1.createdAt }) else {
-                break
-            }
-            removedItems.append(oldestUnpinned)
-            cancelOCR(for: oldestUnpinned.id)
-            deleteStoredResources(for: oldestUnpinned)
-            items.removeAll { $0.id == oldestUnpinned.id }
+        let imageByteCounts = imageByteCounts(for: items)
+        let textByteCounts = textByteCounts(for: items)
+        var retainedItems = items
+        var retainedByteCount = estimatedStorageByteCount(
+            for: retainedItems,
+            imageByteCounts: imageByteCounts,
+            textByteCounts: textByteCounts
+        )
+        var removedIDs = Set<UUID>()
+
+        let removableItems = items
+            .filter { !$0.isPinned }
+            .sorted { $0.createdAt < $1.createdAt }
+        for item in removableItems {
+            guard retainedByteCount > limit else { break }
+            removedIDs.insert(item.id)
+            retainedItems.removeAll { $0.id == item.id }
+            retainedByteCount = estimatedStorageByteCount(
+                for: retainedItems,
+                imageByteCounts: imageByteCounts,
+                textByteCounts: textByteCounts
+            )
         }
 
-        guard !removedItems.isEmpty else { return false }
+        guard !removedIDs.isEmpty else { return false }
+        let removedItems = items.filter { removedIDs.contains($0.id) }
+        cancelOCR(for: removedItems)
+        removedItems.forEach(deleteStoredResources)
+        items = retainedItems
         sortItems()
         return true
     }
