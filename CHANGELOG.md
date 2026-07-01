@@ -4,8 +4,22 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-01
+
 ### Changed
 
+- Clipboard history now uses SQLite (`history.sqlite`) with WAL and FTS5
+  trigram search for faster persistence and full-text lookup.
+- Existing `history.json` and `history.backup.json` files are imported
+  automatically on first launch and left on disk for downgrade safety.
+- Large text and images continue to use external `text/` and `images/` files
+  instead of being forced into the database.
+- Search now uses the SQLite index first, including externalized large text,
+  and keeps the previous file-scan path as a runtime fallback.
+- Local storage totals now include SQLite database, WAL, SHM, retained legacy
+  JSON, text files, and image files.
+- Downgrading to a pre-0.6.0 build will only show history already present in
+  the retained JSON files; history added in 0.6.0 is SQLite-only.
 - CI now runs the Swift concurrency check alongside the regular test suite.
 - Local app builds now read their default version from the repository `VERSION`
   file instead of a hard-coded shell script value.
@@ -18,6 +32,11 @@ All notable changes to PastePilot are documented in this file.
 - Sensitive-content redaction now preserves field names and authentication
   prefixes while masking secret values, with broader coverage for bearer
   tokens, JWTs, and private keys.
+
+### Fixed
+
+- JSON-to-TypeScript generation now remains plain string output after adding
+  GRDB's SQL string interpolation support to the app target.
 
 ## [0.5.1] - 2026-06-22
 
