@@ -13,6 +13,10 @@ let package = Package(
     ],
     dependencies: [
         .package(
+            url: "https://github.com/groue/GRDB.swift.git",
+            exact: "7.11.1"
+        ),
+        .package(
             url: "https://github.com/sparkle-project/Sparkle",
             exact: "2.9.2"
         )
@@ -21,6 +25,7 @@ let package = Package(
         .executableTarget(
             name: "PastePilot",
             dependencies: [
+                .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/PastePilot",

@@ -100,8 +100,8 @@ after an update, so close old DMGs and keep only the installed copy in
   entirely from history
 - Clipboard data stays local and no telemetry is collected
 - Network access is limited to checking and downloading updates from GitHub Releases
-- History is stored as versioned plain JSON at `~/Library/Application Support/PastePilot/history.json`
-- The last valid history file is retained as `history.backup.json` for recovery
+- History is stored in SQLite at `~/Library/Application Support/PastePilot/history.sqlite`
+- Existing `history.json` and `history.backup.json` files are retained for migration and downgrade compatibility
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
 - Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
 - The storage limit setting removes the oldest unpinned items when retained

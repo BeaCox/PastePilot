@@ -8,7 +8,7 @@ enum TypeScriptDeclarationGenerator {
     private static func declaration(name: String, value: Any, depth: Int) -> String {
         let indent = String(repeating: "  ", count: depth)
         if let dictionary = value as? [String: Any] {
-            let fields = dictionary.keys.sorted().map { key in
+            let fields = dictionary.keys.sorted().map { key -> String in
                 let fieldType = typeScriptType(dictionary[key] ?? NSNull(), depth: depth + 1)
                 return "\(indent)  \(safeKey(key)): \(fieldType);"
             }.joined(separator: "\n")
@@ -70,7 +70,7 @@ enum TypeScriptDeclarationGenerator {
 
     private static func objectType(_ dictionary: [String: Any], depth: Int) -> String {
         let indent = String(repeating: "  ", count: depth)
-        let fields = dictionary.keys.sorted().map { key in
+        let fields = dictionary.keys.sorted().map { key -> String in
             "\(indent)  \(safeKey(key)): \(typeScriptType(dictionary[key] ?? NSNull(), depth: depth + 1));"
         }.joined(separator: "\n")
         return "{\n\(fields)\n\(indent)}"
@@ -78,7 +78,7 @@ enum TypeScriptDeclarationGenerator {
 
     private static func objectType(_ dictionaries: [[String: Any]], depth: Int) -> String {
         let indent = String(repeating: "  ", count: depth)
-        let fields = Set(dictionaries.flatMap(\.keys)).sorted().map { key in
+        let fields = Set(dictionaries.flatMap(\.keys)).sorted().map { key -> String in
             let values = dictionaries.compactMap { $0[key] }
             let marker = values.count < dictionaries.count ? "?" : ""
             return "\(indent)  \(safeKey(key))\(marker): \(typeScriptType(for: values, depth: depth + 1));"

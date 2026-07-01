@@ -50,11 +50,12 @@ extension MenuBarView {
         fullTextSearchTask?.cancel()
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let targets = store.externalContentSearchTargets()
-        guard !query.isEmpty, !targets.isEmpty else {
+        guard !query.isEmpty else {
             fullTextSearch.clear(completedQuery: query)
             return
         }
         let textDirectoryURL = store.textStore.directoryURL
+        let historyRepository = store.historyRepository
         let searchToken = fullTextSearch.start(query: query)
 
         fullTextSearchTask = Task {
@@ -66,7 +67,11 @@ extension MenuBarView {
                 return
             }
             let searchTask = Task.detached(priority: .userInitiated) {
-                ClipboardFullTextSearch.matchingIDs(
+                if let ids = historyRepository.matchingIDs(query: query) {
+                    return ids
+                }
+                guard !targets.isEmpty else { return [] }
+                return ClipboardFullTextSearch.matchingIDs(
                     query: query,
                     targets: targets,
                     textDirectoryURL: textDirectoryURL,

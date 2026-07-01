@@ -25,7 +25,7 @@ Sources/PastePilot/
   PastePilotView.swift       # Main SwiftUI views (menu bar + full history)
   SettingsView.swift         # Preferences window
   ClipboardStore.swift       # Clipboard monitoring and history coordination
-  HistoryRepository.swift    # Versioned JSON persistence and backup recovery
+  HistoryRepository.swift    # SQLite history persistence and legacy JSON import
   ClipboardImageStore.swift  # Cached image file lifecycle
   OCRService.swift           # Vision-powered text recognition
   PlainTextPasteService.swift # Temporary plain-text paste and restoration
