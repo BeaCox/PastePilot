@@ -222,10 +222,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 historyLimit,
-                supportedValue: Self.supportedValue(
+                supportedValue: Self.supportedInteger(
                     historyLimit,
-                    in: Self.supportedHistoryLimits,
-                    default: Self.defaultHistoryLimit
+                    for: Setting.historyLimit,
+                    supportedValues: Self.supportedHistoryLimits
                 ),
                 assign: { historyLimit = $0 },
                 persist: { persist($0, for: Setting.historyLimit) }
@@ -241,10 +241,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 imageSizeLimitMB,
-                supportedValue: Self.supportedValue(
+                supportedValue: Self.supportedInteger(
                     imageSizeLimitMB,
-                    in: Self.supportedImageSizeLimitsMB,
-                    default: Self.defaultImageSizeLimitMB
+                    for: Setting.imageSizeLimitMB,
+                    supportedValues: Self.supportedImageSizeLimitsMB
                 ),
                 assign: { imageSizeLimitMB = $0 },
                 persist: { persist($0, for: Setting.imageSizeLimitMB) }
@@ -256,10 +256,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 storageLimitMB,
-                supportedValue: Self.supportedValue(
+                supportedValue: Self.supportedInteger(
                     storageLimitMB,
-                    in: Self.supportedStorageLimitsMB,
-                    default: Self.defaultStorageLimitMB
+                    for: Setting.storageLimitMB,
+                    supportedValues: Self.supportedStorageLimitsMB
                 ),
                 assign: { storageLimitMB = $0 },
                 persist: { persist($0, for: Setting.storageLimitMB) }
@@ -330,7 +330,11 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 menuBarIconStyle,
-                supportedValue: Self.supportedMenuBarIconStyle(menuBarIconStyle),
+                supportedValue: Self.supportedRawValue(
+                    menuBarIconStyle,
+                    for: Setting.menuBarIconStyle,
+                    as: MenuBarIconStyle.self
+                ),
                 assign: { menuBarIconStyle = $0 },
                 persist: { persist($0, for: Setting.menuBarIconStyle) }
             )
@@ -341,10 +345,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 historyTimeoutSeconds,
-                supportedValue: Self.supportedValue(
+                supportedValue: Self.supportedInteger(
                     historyTimeoutSeconds,
-                    in: Self.supportedHistoryTimeoutsSeconds,
-                    default: Self.defaultHistoryTimeoutSeconds
+                    for: Setting.historyTimeoutSeconds,
+                    supportedValues: Self.supportedHistoryTimeoutsSeconds
                 ),
                 assign: { historyTimeoutSeconds = $0 },
                 persist: { persist($0, for: Setting.historyTimeoutSeconds) }
@@ -356,8 +360,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 pasteCloseBehavior,
-                supportedValue: Self.supportedPasteCloseBehavior(
-                    pasteCloseBehavior
+                supportedValue: Self.supportedRawValue(
+                    pasteCloseBehavior,
+                    for: Setting.pasteCloseBehavior,
+                    as: PasteCloseBehavior.self
                 ),
                 assign: { pasteCloseBehavior = $0 },
                 persist: { persist($0, for: Setting.pasteCloseBehavior) }
@@ -373,7 +379,11 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 appearanceMode,
-                supportedValue: Self.supportedAppearanceMode(appearanceMode),
+                supportedValue: Self.supportedRawValue(
+                    appearanceMode,
+                    for: Setting.appearanceMode,
+                    as: AppAppearanceMode.self
+                ),
                 assign: { appearanceMode = $0 },
                 persist: { persist($0, for: Setting.appearanceMode) }
             )
@@ -384,8 +394,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 ocrRecognitionMode,
-                supportedValue: Self.supportedOCRRecognitionMode(
-                    ocrRecognitionMode
+                supportedValue: Self.supportedRawValue(
+                    ocrRecognitionMode,
+                    for: Setting.ocrRecognitionMode,
+                    as: OCRRecognitionMode.self
                 ),
                 assign: { ocrRecognitionMode = $0 },
                 persist: { persist($0, for: Setting.ocrRecognitionMode) }
@@ -397,7 +409,11 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 ocrLanguageMode,
-                supportedValue: Self.supportedOCRLanguageMode(ocrLanguageMode),
+                supportedValue: Self.supportedRawValue(
+                    ocrLanguageMode,
+                    for: Setting.ocrLanguageMode,
+                    as: OCRLanguageMode.self
+                ),
                 assign: { ocrLanguageMode = $0 },
                 persist: { persist($0, for: Setting.ocrLanguageMode) }
             )
@@ -408,8 +424,10 @@ final class AppSettings: ObservableObject {
         didSet {
             persistSupportedValue(
                 sensitiveContentStoragePolicy,
-                supportedValue: Self.supportedSensitiveContentStoragePolicy(
-                    sensitiveContentStoragePolicy
+                supportedValue: Self.supportedRawValue(
+                    sensitiveContentStoragePolicy,
+                    for: Setting.sensitiveContentStoragePolicy,
+                    as: SensitiveContentStoragePolicy.self
                 ),
                 assign: { sensitiveContentStoragePolicy = $0 },
                 persist: { persist($0, for: Setting.sensitiveContentStoragePolicy) }
@@ -424,21 +442,21 @@ final class AppSettings: ObservableObject {
         defaults.register(defaults: Setting.registeredDefaults)
         monitoringEnabled = Self.bool(for: Setting.monitoringEnabled, in: defaults)
         hoverPreviewEnabled = Self.bool(for: Setting.hoverPreviewEnabled, in: defaults)
-        historyLimit = Self.supportedValue(
-            Self.integer(for: Setting.historyLimit, in: defaults),
-            in: Self.supportedHistoryLimits,
-            default: Setting.historyLimit.defaultValue
+        historyLimit = Self.supportedInteger(
+            for: Setting.historyLimit,
+            in: defaults,
+            supportedValues: Self.supportedHistoryLimits
         )
         launchAtLogin = Self.bool(for: Setting.launchAtLogin, in: defaults)
-        imageSizeLimitMB = Self.supportedValue(
-            Self.integer(for: Setting.imageSizeLimitMB, in: defaults),
-            in: Self.supportedImageSizeLimitsMB,
-            default: Setting.imageSizeLimitMB.defaultValue
+        imageSizeLimitMB = Self.supportedInteger(
+            for: Setting.imageSizeLimitMB,
+            in: defaults,
+            supportedValues: Self.supportedImageSizeLimitsMB
         )
-        storageLimitMB = Self.supportedValue(
-            Self.integer(for: Setting.storageLimitMB, in: defaults),
-            in: Self.supportedStorageLimitsMB,
-            default: Setting.storageLimitMB.defaultValue
+        storageLimitMB = Self.supportedInteger(
+            for: Setting.storageLimitMB,
+            in: defaults,
+            supportedValues: Self.supportedStorageLimitsMB
         )
         ignoredBundleIdentifiers = Self.string(
             for: Setting.ignoredBundleIdentifiers,
@@ -463,46 +481,45 @@ final class AppSettings: ObservableObject {
         )
         plainTextHotKeyCode = plainTextHotKey.keyCode
         plainTextHotKeyModifiers = plainTextHotKey.modifiers
-        let storedIconStyle = Self.string(for: Setting.menuBarIconStyle, in: defaults)
-        menuBarIconStyle = MenuBarIconStyle(rawValue: storedIconStyle)?.rawValue
-            ?? Setting.menuBarIconStyle.defaultValue
-        historyTimeoutSeconds = Self.supportedValue(
-            Self.integer(for: Setting.historyTimeoutSeconds, in: defaults),
-            in: Self.supportedHistoryTimeoutsSeconds,
-            default: Setting.historyTimeoutSeconds.defaultValue
+        menuBarIconStyle = Self.supportedRawValue(
+            for: Setting.menuBarIconStyle,
+            in: defaults,
+            as: MenuBarIconStyle.self
         )
-        let storedPasteCloseBehavior = Self.string(
+        historyTimeoutSeconds = Self.supportedInteger(
+            for: Setting.historyTimeoutSeconds,
+            in: defaults,
+            supportedValues: Self.supportedHistoryTimeoutsSeconds
+        )
+        pasteCloseBehavior = Self.supportedRawValue(
             for: Setting.pasteCloseBehavior,
-            in: defaults
+            in: defaults,
+            as: PasteCloseBehavior.self
         )
-        pasteCloseBehavior = PasteCloseBehavior(rawValue: storedPasteCloseBehavior)?
-            .rawValue ?? Setting.pasteCloseBehavior.defaultValue
         previewAnimationEnabled = Self.bool(
             for: Setting.previewAnimationEnabled,
             in: defaults
         )
-        let storedAppearanceMode = Self.string(for: Setting.appearanceMode, in: defaults)
-        appearanceMode = AppAppearanceMode(rawValue: storedAppearanceMode)?
-            .rawValue ?? Setting.appearanceMode.defaultValue
-        let storedOCRRecognitionMode = Self.string(
+        appearanceMode = Self.supportedRawValue(
+            for: Setting.appearanceMode,
+            in: defaults,
+            as: AppAppearanceMode.self
+        )
+        ocrRecognitionMode = Self.supportedRawValue(
             for: Setting.ocrRecognitionMode,
-            in: defaults
+            in: defaults,
+            as: OCRRecognitionMode.self
         )
-        ocrRecognitionMode = OCRRecognitionMode(rawValue: storedOCRRecognitionMode)?
-            .rawValue ?? Setting.ocrRecognitionMode.defaultValue
-        let storedOCRLanguageMode = Self.string(
+        ocrLanguageMode = Self.supportedRawValue(
             for: Setting.ocrLanguageMode,
-            in: defaults
+            in: defaults,
+            as: OCRLanguageMode.self
         )
-        ocrLanguageMode = OCRLanguageMode(rawValue: storedOCRLanguageMode)?
-            .rawValue ?? Setting.ocrLanguageMode.defaultValue
-        let storedSensitiveContentStoragePolicy = Self.string(
+        sensitiveContentStoragePolicy = Self.supportedRawValue(
             for: Setting.sensitiveContentStoragePolicy,
-            in: defaults
+            in: defaults,
+            as: SensitiveContentStoragePolicy.self
         )
-        sensitiveContentStoragePolicy = SensitiveContentStoragePolicy(
-            rawValue: storedSensitiveContentStoragePolicy
-        )?.rawValue ?? Setting.sensitiveContentStoragePolicy.defaultValue
         persistCurrentValues()
     }
 
@@ -538,12 +555,24 @@ final class AppSettings: ObservableObject {
             Setting.sensitiveContentStoragePolicy.defaultValue
     }
 
-    private static func supportedValue(
+    private static func supportedInteger(
         _ value: Int,
-        in supportedValues: [Int],
-        default defaultValue: Int
+        for setting: AppSetting<Int>,
+        supportedValues: [Int]
     ) -> Int {
-        supportedValues.contains(value) ? value : defaultValue
+        supportedValues.contains(value) ? value : setting.defaultValue
+    }
+
+    private static func supportedInteger(
+        for setting: AppSetting<Int>,
+        in defaults: UserDefaults,
+        supportedValues: [Int]
+    ) -> Int {
+        supportedInteger(
+            integer(for: setting, in: defaults),
+            for: setting,
+            supportedValues: supportedValues
+        )
     }
 
     private static func validatedHotKey(
@@ -576,34 +605,24 @@ final class AppSettings: ObservableObject {
         return modifiersAreSupported ? modifiers : defaultModifiers
     }
 
-    private static func supportedMenuBarIconStyle(_ value: String) -> String {
-        MenuBarIconStyle(rawValue: value)?.rawValue
-            ?? MenuBarIconStyle.pastepilot.rawValue
+    private static func supportedRawValue<Value: RawRepresentable>(
+        _ value: String,
+        for setting: AppSetting<String>,
+        as type: Value.Type
+    ) -> String where Value.RawValue == String {
+        type.init(rawValue: value)?.rawValue ?? setting.defaultValue
     }
 
-    private static func supportedPasteCloseBehavior(_ value: String) -> String {
-        PasteCloseBehavior(rawValue: value)?.rawValue
-            ?? PasteCloseBehavior.closePreview.rawValue
-    }
-
-    private static func supportedAppearanceMode(_ value: String) -> String {
-        AppAppearanceMode(rawValue: value)?.rawValue
-            ?? defaultAppearanceMode
-    }
-
-    private static func supportedOCRRecognitionMode(_ value: String) -> String {
-        OCRRecognitionMode(rawValue: value)?.rawValue
-            ?? defaultOCRRecognitionMode
-    }
-
-    private static func supportedOCRLanguageMode(_ value: String) -> String {
-        OCRLanguageMode(rawValue: value)?.rawValue
-            ?? defaultOCRLanguageMode
-    }
-
-    private static func supportedSensitiveContentStoragePolicy(_ value: String) -> String {
-        SensitiveContentStoragePolicy(rawValue: value)?.rawValue
-            ?? defaultSensitiveContentStoragePolicy
+    private static func supportedRawValue<Value: RawRepresentable>(
+        for setting: AppSetting<String>,
+        in defaults: UserDefaults,
+        as type: Value.Type
+    ) -> String where Value.RawValue == String {
+        supportedRawValue(
+            string(for: setting, in: defaults),
+            for: setting,
+            as: type
+        )
     }
 
     private func persistSupportedValue<Value: Equatable>(
