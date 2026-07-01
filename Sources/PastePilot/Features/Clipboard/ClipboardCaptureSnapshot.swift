@@ -93,7 +93,6 @@ final class ClipboardCaptureQueue: @unchecked Sendable {
             imageRepresentations: imageRepresentations,
             rtfData: rtfData,
             html: html,
-            richTextPlainText: plainText(rtfData: rtfData, html: html),
             text: pasteboard.string(forType: .string),
             urlStrings: urlStrings
         )
@@ -176,7 +175,10 @@ final class ClipboardCaptureQueue: @unchecked Sendable {
         let html = pasteboardData.html
         guard rtfData != nil || html != nil else { return nil }
 
-        guard let plainText = pasteboardData.richTextPlainText,
+        guard let plainText = plainText(
+            rtfData: rtfData,
+            html: html
+        ),
               !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
         }
@@ -334,7 +336,6 @@ final class ClipboardCaptureQueue: @unchecked Sendable {
         let imageRepresentations: [ImageRepresentation]
         let rtfData: Data?
         let html: String?
-        let richTextPlainText: String?
         let text: String?
         let urlStrings: [String]
     }
