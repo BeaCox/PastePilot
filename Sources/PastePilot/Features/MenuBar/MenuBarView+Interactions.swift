@@ -48,6 +48,7 @@ extension MenuBarView {
         }
         let textDirectoryURL = store.textStore.directoryURL
         let historyRepository = store.historyRepository
+        let logger = store.logger
         let searchToken = interactionState.fullTextSearch.start(query: query)
 
         interactionState.fullTextSearchTask = Task {
@@ -59,8 +60,13 @@ extension MenuBarView {
                 return
             }
             let searchTask = Task.detached(priority: .userInitiated) {
-                if let ids = historyRepository.matchingIDs(query: query) {
+                do {
+                    let ids = try historyRepository.matchingIDs(query: query)
                     return ids
+                } catch {
+                    logger.log(
+                        "PastePilot SQLite history search failed; falling back to text scan: \(error)"
+                    )
                 }
                 guard !targets.isEmpty else { return [] }
                 return ClipboardFullTextSearch.matchingIDs(

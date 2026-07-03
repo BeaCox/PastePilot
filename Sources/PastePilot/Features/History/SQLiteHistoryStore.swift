@@ -22,6 +22,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private let dataDirectoryURL: URL
     private let databaseURL: URL
     private let textDirectoryURL: URL
+    private let dbQueueLock = NSLock()
+    private var cachedDBQueue: DatabaseQueue?
 
     init(
         dataDirectoryURL: URL,
@@ -37,7 +39,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         legacyLoader: () -> HistoryRepository.LegacyLoadResult?,
         legacyNormalizer: ([ClipboardItem]) -> [ClipboardItem]
     ) throws -> HistoryRepository.LoadResult {
-        let dbQueue = try openDatabase()
+        let dbQueue = try databaseQueue()
         var importedSource: HistoryRepository.LoadSource?
 
         try dbQueue.write { db in
@@ -79,7 +81,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     }
 
     func save(_ items: [ClipboardItem]) throws {
-        let dbQueue = try openDatabase()
+        let dbQueue = try databaseQueue()
         try dbQueue.write { db in
             try save(items, db: db)
             try setMetadataValue(
@@ -93,7 +95,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     func matchingIDs(query: String) throws -> Set<UUID> {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return [] }
-        let dbQueue = try openDatabase()
+        let dbQueue = try databaseQueue()
         return try dbQueue.read { db in
             guard try hasSearchIndex(db: db) else {
                 throw SQLiteHistoryError.searchUnavailable
@@ -115,6 +117,17 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             let ids = try String.fetchAll(db, sql: sql, arguments: arguments)
             return Set(ids.compactMap(UUID.init(uuidString:)))
         }
+    }
+
+    private func databaseQueue() throws -> DatabaseQueue {
+        dbQueueLock.lock()
+        defer { dbQueueLock.unlock() }
+        if let cachedDBQueue {
+            return cachedDBQueue
+        }
+        let dbQueue = try openDatabase()
+        cachedDBQueue = dbQueue
+        return dbQueue
     }
 
     private func openDatabase() throws -> DatabaseQueue {

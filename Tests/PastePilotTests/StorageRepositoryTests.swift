@@ -58,7 +58,7 @@ struct StorageRepositoryTests {
                     .path
             )
         )
-        #expect(repository.matchingIDs(query: "legacy-large-needle") == Set([item.id]))
+        #expect(try repository.matchingIDs(query: "legacy-large-needle") == Set([item.id]))
     }
 
     @Test
@@ -155,7 +155,26 @@ struct StorageRepositoryTests {
 
         let loadedIDs = Set(repository.load().items.map(\.id))
         #expect(loadedIDs == Set([retained.id]))
-        #expect(repository.matchingIDs(query: "stale searchable needle")?.isEmpty == true)
+        #expect(try repository.matchingIDs(query: "stale searchable needle").isEmpty)
+    }
+
+    @Test
+    func repositorySearchThrowsWhenSQLiteStoreCannotOpen() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data("not sqlite".utf8).write(
+            to: directory.appendingPathComponent("history.sqlite")
+        )
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+
+        var didThrow = false
+        do {
+            _ = try repository.matchingIDs(query: "needle")
+        } catch {
+            didThrow = true
+        }
+
+        #expect(didThrow)
     }
 
     @Test

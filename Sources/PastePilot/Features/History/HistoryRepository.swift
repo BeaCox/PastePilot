@@ -26,6 +26,7 @@ struct HistoryRepository: Sendable {
     }
 
     let dataDirectoryURL: URL
+    private let sqliteStore: SQLiteHistoryStore
 
     private var historyURL: URL {
         dataDirectoryURL.appendingPathComponent("history.json")
@@ -45,11 +46,19 @@ struct HistoryRepository: Sendable {
 
     init(dataDirectoryURL: URL) {
         self.dataDirectoryURL = dataDirectoryURL
+        self.sqliteStore = SQLiteHistoryStore(
+            dataDirectoryURL: dataDirectoryURL,
+            databaseURL: dataDirectoryURL.appendingPathComponent("history.sqlite"),
+            textDirectoryURL: dataDirectoryURL.appendingPathComponent(
+                "text",
+                isDirectory: true
+            )
+        )
     }
 
     func load() -> LoadResult {
         do {
-            return try sqliteStore().load(
+            return try sqliteStore.load(
                 legacyLoader: loadLegacyHistory,
                 legacyNormalizer: normalizeLegacyItemsForSQLiteImport
             )
@@ -65,11 +74,11 @@ struct HistoryRepository: Sendable {
     }
 
     func save(_ items: [ClipboardItem]) throws {
-        try sqliteStore().save(items)
+        try sqliteStore.save(items)
     }
 
-    func matchingIDs(query: String) -> Set<UUID>? {
-        try? sqliteStore().matchingIDs(query: query)
+    func matchingIDs(query: String) throws -> Set<UUID> {
+        try sqliteStore.matchingIDs(query: query)
     }
 
     func estimatedHistoryByteCount(for items: [ClipboardItem]) -> Int64 {
@@ -85,14 +94,6 @@ struct HistoryRepository: Sendable {
 
     func dataDirectoryByteCount() -> Int64 {
         Self.byteCount(of: dataDirectoryURL)
-    }
-
-    private func sqliteStore() -> SQLiteHistoryStore {
-        SQLiteHistoryStore(
-            dataDirectoryURL: dataDirectoryURL,
-            databaseURL: sqliteURL,
-            textDirectoryURL: textDirectoryURL
-        )
     }
 
     private func loadLegacyHistory() -> LegacyLoadResult? {

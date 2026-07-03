@@ -191,7 +191,7 @@ extension ClipboardStore {
                     matches: originalContent,
                     digest: processedContent.digest
                 )
-                    && (kind != .richText || $0.kind == .richText)
+                    && (kind == .richText) == ($0.kind == .richText)
             }
         ) { wasPinned in
             ClipboardItem(

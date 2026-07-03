@@ -167,6 +167,46 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func plainTextCaptureKeepsOlderRichTextWithSameContent() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let rtfData = Data("{\\rtf1 Formatted text}".utf8)
+        let html = "<strong>Formatted text</strong>"
+
+        #expect(
+            store.captureRichText(
+                rtfData: rtfData,
+                html: html,
+                plainText: "Formatted text",
+                source: (nil, nil)
+            )
+        )
+        let richTextItem = try #require(store.items.first)
+
+        store.captureText("Intervening item", source: (nil, nil))
+        store.captureText("Formatted text", source: (nil, nil))
+
+        #expect(store.items.count == 3)
+        #expect(store.items.first?.content == "Formatted text")
+        #expect(store.items.first?.kind == .text)
+        let retainedRichTextItem = try #require(
+            store.items.first { $0.id == richTextItem.id }
+        )
+        #expect(retainedRichTextItem.kind == .richText)
+        #expect(retainedRichTextItem.richTextRTFBase64 == rtfData.base64EncodedString())
+        #expect(retainedRichTextItem.richTextHTML == html)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func oversizedRichTextCaptureKeepsPlainTextAndDropsFormattingPayload() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -557,6 +597,7 @@ struct ClipboardStorageLifecycleTests {
                 atPath: imageStore.path(fileName: "new.png")
             )
         )
+        store.flushHistoryWrites()
     }
 
     @Test
@@ -715,5 +756,6 @@ struct ClipboardStorageLifecycleTests {
                 atPath: imageStore.path(fileName: "new.png")
             )
         )
+        store.flushHistoryWrites()
     }
 }

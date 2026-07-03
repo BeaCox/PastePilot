@@ -64,6 +64,7 @@ final class ClipboardStore: ObservableObject {
     deinit {
         timer?.invalidate()
         ocrTasksByItemID.values.forEach { $0.cancel() }
+        historyWriteQueue.flush()
     }
 
     func startMonitoring() {
