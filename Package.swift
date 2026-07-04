@@ -33,7 +33,10 @@ let package = Package(
         ),
         .testTarget(
             name: "PastePilotTests",
-            dependencies: ["PastePilot"],
+            dependencies: [
+                "PastePilot",
+                .product(name: "GRDB", package: "GRDB.swift")
+            ],
             path: "Tests/PastePilotTests"
         )
     ],

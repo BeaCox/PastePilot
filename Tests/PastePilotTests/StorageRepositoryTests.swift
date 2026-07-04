@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import GRDB
 import Testing
 import UniformTypeIdentifiers
 @testable import PastePilot
@@ -159,6 +160,30 @@ struct StorageRepositoryTests {
     }
 
     @Test
+    func repositoryRebuildsMissingSearchIndexForUnchangedItems() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let item = ClipboardItem(
+            content: "rehydrated searchable needle",
+            kind: .text
+        )
+        do {
+            let repository = HistoryRepository(dataDirectoryURL: directory)
+            try repository.save([item])
+        }
+        try dropSearchIndex(in: directory)
+
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        #expect(try repository.matchingIDs(query: "rehydrated searchable needle").isEmpty)
+
+        try repository.save([item])
+
+        #expect(
+            try repository.matchingIDs(query: "rehydrated searchable needle") == Set([item.id])
+        )
+    }
+
+    @Test
     func repositorySearchThrowsWhenSQLiteStoreCannotOpen() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -223,5 +248,14 @@ struct StorageRepositoryTests {
             options: [.prettyPrinted, .sortedKeys]
         )
         try data.write(to: url, options: .atomic)
+    }
+
+    private func dropSearchIndex(in directory: URL) throws {
+        let dbQueue = try DatabaseQueue(
+            path: directory.appendingPathComponent("history.sqlite").path
+        )
+        try dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "DROP TABLE IF EXISTS search_index")
+        }
     }
 }

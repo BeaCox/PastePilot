@@ -306,6 +306,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 (row["id"] as String, row["fingerprint"] as String)
             }
         )
+        let indexedIDs = try searchIndexItemIDs(db: db)
         let snapshotIDs = Set(storedItems.map { $0.item.id.uuidString })
         try deleteStaleItems(
             retaining: snapshotIDs,
@@ -315,12 +316,17 @@ final class SQLiteHistoryStore: @unchecked Sendable {
 
         for storedItem in storedItems {
             let item = storedItem.item
+            let itemID = item.id.uuidString
             let fingerprint = Self.fingerprint(for: storedItem)
-            guard existingFingerprints[item.id.uuidString] != fingerprint else {
+            let needsItemRefresh = existingFingerprints[itemID] != fingerprint
+            let needsSearchRefresh = indexedIDs.map { !$0.contains(itemID) } ?? false
+            guard needsItemRefresh || needsSearchRefresh else {
                 continue
             }
-            try upsert(storedItem, fingerprint: fingerprint, db: db)
-            try refreshChildren(for: storedItem, db: db)
+            if needsItemRefresh {
+                try upsert(storedItem, fingerprint: fingerprint, db: db)
+                try refreshChildren(for: storedItem, db: db)
+            }
             try refreshSearchIndex(for: storedItem, db: db)
         }
     }
@@ -527,6 +533,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 WHERE type = 'table' AND name = 'search_index'
                 """
         ) != nil
+    }
+
+    private func searchIndexItemIDs(db: Database) throws -> Set<String>? {
+        guard try hasSearchIndex(db: db) else { return nil }
+        let ids = try String.fetchAll(db, sql: "SELECT item_id FROM search_index")
+        return Set(ids)
     }
 
     private static func fingerprint(for storedItem: StoredItem) -> String {
