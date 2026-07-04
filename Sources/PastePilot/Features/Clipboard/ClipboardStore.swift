@@ -218,6 +218,7 @@ final class ClipboardStore: ObservableObject {
     func togglePinned(_ id: UUID) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].isPinned.toggle()
+        sortItems()
         save()
     }
 

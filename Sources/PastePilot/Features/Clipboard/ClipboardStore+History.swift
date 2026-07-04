@@ -2,12 +2,13 @@ import Foundation
 
 extension ClipboardStore {
     func sortItems() {
-        items.sort { $0.createdAt > $1.createdAt }
+        items = ClipboardHistoryOrdering.pinnedFirst(items)
     }
 
     func trimHistory(limit: Int) {
-        let pinned = items.filter(\.isPinned)
-        let recent = items.filter { !$0.isPinned }.prefix(max(1, limit))
+        let chronological = ClipboardHistoryOrdering.newestFirst(items)
+        let pinned = chronological.filter(\.isPinned)
+        let recent = chronological.filter { !$0.isPinned }.prefix(max(1, limit))
         let retainedIDs = Set((pinned + recent).map(\.id))
         let removedItems = items.filter { !retainedIDs.contains($0.id) }
         cancelOCR(for: removedItems)

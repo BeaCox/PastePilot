@@ -36,18 +36,18 @@ struct MenuBarView: View {
     @FocusState var searchFocused: Bool
 
     var filteredItems: [ClipboardItem] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fullTextIDs = interactionState.fullTextSearch.matchingIDs(for: query)
+        let query = ClipboardSearchQuery(searchText)
+        let fullTextIDs = interactionState.fullTextSearch.matchingIDs(for: query.rawValue)
         let matches = query.isEmpty ? store.items : store.items.filter {
             shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
         }
         return ClipboardHistoryOrdering.pinnedFirst(matches)
     }
 
-    func shortSearchMatches(_ item: ClipboardItem, query: String) -> Bool {
-        item.content.localizedCaseInsensitiveContains(query)
-            || item.kind.localizedTitle.localizedCaseInsensitiveContains(query)
-            || (item.ocrText?.localizedCaseInsensitiveContains(query) ?? false)
+    func shortSearchMatches(_ item: ClipboardItem, query: ClipboardSearchQuery) -> Bool {
+        query.matches(item.content)
+            || query.matches(item.kind.localizedTitle)
+            || query.matches(item.ocrText)
     }
 
     var selectedItem: ClipboardItem? {

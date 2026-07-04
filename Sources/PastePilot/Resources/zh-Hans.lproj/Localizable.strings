@@ -169,6 +169,9 @@
 "Open PastePilot shortcut is already in use." = "打开 PastePilot 的快捷键已被占用。";
 "Paste as Plain Text shortcut is already in use." = "粘贴为纯文本的快捷键已被占用。";
 "Open PastePilot and Paste as Plain Text shortcuts are already in use." = "打开 PastePilot 和粘贴为纯文本的快捷键均已被占用。";
+"No text is available to paste as plain text." = "没有可粘贴为纯文本的文字。";
+"Plain text could not be prepared for pasting." = "无法准备要粘贴的纯文本。";
+"Plain-text paste is already in progress." = "正在粘贴纯文本。";
 "Accessibility Permission Granted" = "辅助功能权限已生效";
 "Permission stopped working after an update?" = "更新后权限失效？";
 "1. Select the old PastePilot in Accessibility settings, then click the minus button at the bottom." = "1. 在辅助功能列表中选中旧 PastePilot，再点击底部的减号按钮。";

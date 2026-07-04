@@ -19,6 +19,18 @@ struct ClipboardTextStore {
         contains query: String,
         isCancelled: () -> Bool = { false }
     ) -> Bool {
+        content(
+            fileName: fileName,
+            matching: ClipboardSearchQuery(query),
+            isCancelled: isCancelled
+        )
+    }
+
+    func content(
+        fileName: String,
+        matching query: ClipboardSearchQuery,
+        isCancelled: () -> Bool = { false }
+    ) -> Bool {
         guard !query.isEmpty,
               !isCancelled(),
               let handle = try? FileHandle(forReadingFrom: url(fileName: fileName)) else {
@@ -26,7 +38,9 @@ struct ClipboardTextStore {
         }
         defer { try? handle.close() }
 
-        let overlapByteLimit = max(query.utf8.count * 4, 16)
+        let longestTermByteCount = query.terms.map(\.utf8.count).max() ?? 0
+        let overlapByteLimit = max(longestTermByteCount * 4, 16)
+        var unmatchedTerms = Set(query.terms)
         var overlap = Data()
 
         while true {
@@ -40,7 +54,11 @@ struct ClipboardTextStore {
             searchableData.append(chunk)
 
             let searchableText = String(decoding: searchableData, as: UTF8.self)
-            if searchableText.localizedCaseInsensitiveContains(query) {
+            for term in Array(unmatchedTerms)
+                where searchableText.localizedCaseInsensitiveContains(term) {
+                unmatchedTerms.remove(term)
+            }
+            if unmatchedTerms.isEmpty {
                 return true
             }
 
@@ -114,7 +132,8 @@ enum ClipboardFullTextSearch {
         textDirectoryURL: URL,
         isCancelled: () -> Bool = { false }
     ) -> Set<UUID> {
-        guard !query.isEmpty, !targets.isEmpty else { return [] }
+        let searchQuery = ClipboardSearchQuery(query)
+        guard !searchQuery.isEmpty, !targets.isEmpty else { return [] }
         let textStore = ClipboardTextStore(directoryURL: textDirectoryURL)
         var ids = Set<UUID>()
 
@@ -122,7 +141,7 @@ enum ClipboardFullTextSearch {
             guard !isCancelled() else { return ids }
             if textStore.content(
                 fileName: target.fileName,
-                contains: query,
+                matching: searchQuery,
                 isCancelled: isCancelled
             ) {
                 ids.insert(target.id)

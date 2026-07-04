@@ -96,6 +96,36 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func togglingPinnedReordersStoreItems() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let old = ClipboardItem(
+            content: "old",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 1)
+        )
+        let new = ClipboardItem(
+            content: "new",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 2)
+        )
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        store.items = [new, old]
+
+        store.togglePinned(old.id)
+
+        #expect(store.items.map(\.content) == ["old", "new"])
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func textExternalizationFailurePostsNoticeAndKeepsInlineContent() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -184,6 +184,46 @@ struct StorageRepositoryTests {
     }
 
     @Test
+    func repositorySearchMatchesAllTermsAcrossIndexedFields() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let contentItem = ClipboardItem(
+            content: "alpha release note",
+            kind: .text
+        )
+        let imageItem = ClipboardItem(
+            content: "screenshot",
+            kind: .image,
+            ocrText: "invoice total paid"
+        )
+        let fileItem = ClipboardItem(
+            content: "Project files",
+            kind: .file,
+            filePaths: ["/tmp/PastePilot/Search Notes.txt"]
+        )
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+
+        try repository.save([contentItem, imageItem, fileItem])
+
+        #expect(try repository.matchingIDs(query: "note alpha") == Set([contentItem.id]))
+        #expect(try repository.matchingIDs(query: "invoice paid") == Set([imageItem.id]))
+        #expect(try repository.matchingIDs(query: "pastepilot notes") == Set([fileItem.id]))
+    }
+
+    @Test
+    func repositorySearchUsesLikeFallbackForShortTerms() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let item = ClipboardItem(content: "go ui fix", kind: .text)
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+
+        try repository.save([item])
+
+        #expect(try repository.matchingIDs(query: "go ui") == Set([item.id]))
+        #expect(try repository.matchingIDs(query: "go zz").isEmpty)
+    }
+
+    @Test
     func repositorySearchThrowsWhenSQLiteStoreCannotOpen() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -220,16 +220,11 @@ final class AppSettings: ObservableObject {
 
     @Published var historyLimit: Int {
         didSet {
-            persistSupportedValue(
+            persistSupportedInteger(
                 historyLimit,
-                supportedValue: Self.supportedInteger(
-                    historyLimit,
-                    for: Setting.historyLimit,
-                    supportedValues: Self.supportedHistoryLimits
-                ),
-                assign: { historyLimit = $0 },
-                persist: { persist($0, for: Setting.historyLimit) }
-            )
+                for: Setting.historyLimit,
+                supportedValues: Self.supportedHistoryLimits
+            ) { historyLimit = $0 }
         }
     }
 
@@ -239,31 +234,21 @@ final class AppSettings: ObservableObject {
 
     @Published var imageSizeLimitMB: Int {
         didSet {
-            persistSupportedValue(
+            persistSupportedInteger(
                 imageSizeLimitMB,
-                supportedValue: Self.supportedInteger(
-                    imageSizeLimitMB,
-                    for: Setting.imageSizeLimitMB,
-                    supportedValues: Self.supportedImageSizeLimitsMB
-                ),
-                assign: { imageSizeLimitMB = $0 },
-                persist: { persist($0, for: Setting.imageSizeLimitMB) }
-            )
+                for: Setting.imageSizeLimitMB,
+                supportedValues: Self.supportedImageSizeLimitsMB
+            ) { imageSizeLimitMB = $0 }
         }
     }
 
     @Published var storageLimitMB: Int {
         didSet {
-            persistSupportedValue(
+            persistSupportedInteger(
                 storageLimitMB,
-                supportedValue: Self.supportedInteger(
-                    storageLimitMB,
-                    for: Setting.storageLimitMB,
-                    supportedValues: Self.supportedStorageLimitsMB
-                ),
-                assign: { storageLimitMB = $0 },
-                persist: { persist($0, for: Setting.storageLimitMB) }
-            )
+                for: Setting.storageLimitMB,
+                supportedValues: Self.supportedStorageLimitsMB
+            ) { storageLimitMB = $0 }
         }
     }
 
@@ -278,96 +263,69 @@ final class AppSettings: ObservableObject {
 
     @Published var hotKeyCode: Int {
         didSet {
-            persistSupportedValue(
+            persistSupportedHotKeyCode(
                 hotKeyCode,
-                supportedValue: Self.supportedHotKeyCode(hotKeyCode),
-                assign: { hotKeyCode = $0 },
-                persist: { persist($0, for: Setting.hotKeyCode) }
-            )
+                for: Setting.hotKeyCode
+            ) { hotKeyCode = $0 }
         }
     }
 
     @Published var hotKeyModifiers: UInt32 {
         didSet {
-            persistSupportedValue(
+            persistSupportedHotKeyModifiers(
                 hotKeyModifiers,
-                supportedValue: Self.supportedHotKeyModifiers(hotKeyModifiers),
-                assign: { hotKeyModifiers = $0 },
-                persist: { persist($0, for: Setting.hotKeyModifiers) }
-            )
+                for: Setting.hotKeyModifiers
+            ) { hotKeyModifiers = $0 }
         }
     }
 
     @Published var plainTextHotKeyCode: Int {
         didSet {
-            persistSupportedValue(
+            persistSupportedHotKeyCode(
                 plainTextHotKeyCode,
-                supportedValue: Self.supportedHotKeyCode(
-                    plainTextHotKeyCode,
-                    default: Self.defaultPlainTextHotKeyCode
-                ),
-                assign: { plainTextHotKeyCode = $0 },
-                persist: { persist($0, for: Setting.plainTextHotKeyCode) }
-            )
+                for: Setting.plainTextHotKeyCode,
+                default: Self.defaultPlainTextHotKeyCode
+            ) { plainTextHotKeyCode = $0 }
         }
     }
 
     @Published var plainTextHotKeyModifiers: UInt32 {
         didSet {
-            persistSupportedValue(
+            persistSupportedHotKeyModifiers(
                 plainTextHotKeyModifiers,
-                supportedValue: Self.supportedHotKeyModifiers(
-                    plainTextHotKeyModifiers,
-                    default: Self.defaultPlainTextHotKeyModifiers
-                ),
-                assign: { plainTextHotKeyModifiers = $0 },
-                persist: { persist($0, for: Setting.plainTextHotKeyModifiers) }
-            )
+                for: Setting.plainTextHotKeyModifiers,
+                default: Self.defaultPlainTextHotKeyModifiers
+            ) { plainTextHotKeyModifiers = $0 }
         }
     }
 
     @Published var menuBarIconStyle: String {
         didSet {
-            persistSupportedValue(
+            persistSupportedRawValue(
                 menuBarIconStyle,
-                supportedValue: Self.supportedRawValue(
-                    menuBarIconStyle,
-                    for: Setting.menuBarIconStyle,
-                    as: MenuBarIconStyle.self
-                ),
-                assign: { menuBarIconStyle = $0 },
-                persist: { persist($0, for: Setting.menuBarIconStyle) }
-            )
+                for: Setting.menuBarIconStyle,
+                as: MenuBarIconStyle.self
+            ) { menuBarIconStyle = $0 }
         }
     }
 
     @Published var historyTimeoutSeconds: Int {
         didSet {
-            persistSupportedValue(
+            persistSupportedInteger(
                 historyTimeoutSeconds,
-                supportedValue: Self.supportedInteger(
-                    historyTimeoutSeconds,
-                    for: Setting.historyTimeoutSeconds,
-                    supportedValues: Self.supportedHistoryTimeoutsSeconds
-                ),
-                assign: { historyTimeoutSeconds = $0 },
-                persist: { persist($0, for: Setting.historyTimeoutSeconds) }
-            )
+                for: Setting.historyTimeoutSeconds,
+                supportedValues: Self.supportedHistoryTimeoutsSeconds
+            ) { historyTimeoutSeconds = $0 }
         }
     }
 
     @Published var pasteCloseBehavior: String {
         didSet {
-            persistSupportedValue(
+            persistSupportedRawValue(
                 pasteCloseBehavior,
-                supportedValue: Self.supportedRawValue(
-                    pasteCloseBehavior,
-                    for: Setting.pasteCloseBehavior,
-                    as: PasteCloseBehavior.self
-                ),
-                assign: { pasteCloseBehavior = $0 },
-                persist: { persist($0, for: Setting.pasteCloseBehavior) }
-            )
+                for: Setting.pasteCloseBehavior,
+                as: PasteCloseBehavior.self
+            ) { pasteCloseBehavior = $0 }
         }
     }
 
@@ -377,61 +335,41 @@ final class AppSettings: ObservableObject {
 
     @Published var appearanceMode: String {
         didSet {
-            persistSupportedValue(
+            persistSupportedRawValue(
                 appearanceMode,
-                supportedValue: Self.supportedRawValue(
-                    appearanceMode,
-                    for: Setting.appearanceMode,
-                    as: AppAppearanceMode.self
-                ),
-                assign: { appearanceMode = $0 },
-                persist: { persist($0, for: Setting.appearanceMode) }
-            )
+                for: Setting.appearanceMode,
+                as: AppAppearanceMode.self
+            ) { appearanceMode = $0 }
         }
     }
 
     @Published var ocrRecognitionMode: String {
         didSet {
-            persistSupportedValue(
+            persistSupportedRawValue(
                 ocrRecognitionMode,
-                supportedValue: Self.supportedRawValue(
-                    ocrRecognitionMode,
-                    for: Setting.ocrRecognitionMode,
-                    as: OCRRecognitionMode.self
-                ),
-                assign: { ocrRecognitionMode = $0 },
-                persist: { persist($0, for: Setting.ocrRecognitionMode) }
-            )
+                for: Setting.ocrRecognitionMode,
+                as: OCRRecognitionMode.self
+            ) { ocrRecognitionMode = $0 }
         }
     }
 
     @Published var ocrLanguageMode: String {
         didSet {
-            persistSupportedValue(
+            persistSupportedRawValue(
                 ocrLanguageMode,
-                supportedValue: Self.supportedRawValue(
-                    ocrLanguageMode,
-                    for: Setting.ocrLanguageMode,
-                    as: OCRLanguageMode.self
-                ),
-                assign: { ocrLanguageMode = $0 },
-                persist: { persist($0, for: Setting.ocrLanguageMode) }
-            )
+                for: Setting.ocrLanguageMode,
+                as: OCRLanguageMode.self
+            ) { ocrLanguageMode = $0 }
         }
     }
 
     @Published var sensitiveContentStoragePolicy: String {
         didSet {
-            persistSupportedValue(
+            persistSupportedRawValue(
                 sensitiveContentStoragePolicy,
-                supportedValue: Self.supportedRawValue(
-                    sensitiveContentStoragePolicy,
-                    for: Setting.sensitiveContentStoragePolicy,
-                    as: SensitiveContentStoragePolicy.self
-                ),
-                assign: { sensitiveContentStoragePolicy = $0 },
-                persist: { persist($0, for: Setting.sensitiveContentStoragePolicy) }
-            )
+                for: Setting.sensitiveContentStoragePolicy,
+                as: SensitiveContentStoragePolicy.self
+            ) { sensitiveContentStoragePolicy = $0 }
         }
     }
 
@@ -622,6 +560,69 @@ final class AppSettings: ObservableObject {
             string(for: setting, in: defaults),
             for: setting,
             as: type
+        )
+    }
+
+    private func persistSupportedInteger(
+        _ value: Int,
+        for setting: AppSetting<Int>,
+        supportedValues: [Int],
+        assign: (Int) -> Void
+    ) {
+        persistSupportedValue(
+            value,
+            supportedValue: Self.supportedInteger(
+                value,
+                for: setting,
+                supportedValues: supportedValues
+            ),
+            assign: assign,
+            persist: { persist($0, for: setting) }
+        )
+    }
+
+    private func persistSupportedHotKeyCode(
+        _ value: Int,
+        for setting: AppSetting<Int>,
+        default defaultValue: Int = defaultOpenHotKeyCode,
+        assign: (Int) -> Void
+    ) {
+        persistSupportedValue(
+            value,
+            supportedValue: Self.supportedHotKeyCode(value, default: defaultValue),
+            assign: assign,
+            persist: { persist($0, for: setting) }
+        )
+    }
+
+    private func persistSupportedHotKeyModifiers(
+        _ value: UInt32,
+        for setting: AppSetting<UInt32>,
+        default defaultValue: UInt32 = defaultOpenHotKeyModifiers,
+        assign: (UInt32) -> Void
+    ) {
+        persistSupportedValue(
+            value,
+            supportedValue: Self.supportedHotKeyModifiers(
+                value,
+                default: defaultValue
+            ),
+            assign: assign,
+            persist: { persist($0, for: setting) }
+        )
+    }
+
+    private func persistSupportedRawValue<Value: RawRepresentable>(
+        _ value: String,
+        for setting: AppSetting<String>,
+        as type: Value.Type,
+        assign: (String) -> Void
+    ) where Value.RawValue == String {
+        persistSupportedValue(
+            value,
+            supportedValue: Self.supportedRawValue(value, for: setting, as: type),
+            assign: assign,
+            persist: { persist($0, for: setting) }
         )
     }
 

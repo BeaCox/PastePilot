@@ -174,6 +174,18 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func searchQueryMatchesAllTermsCaseInsensitively() {
+        let query = ClipboardSearchQuery("  alpha BETA  ")
+
+        #expect(query.rawValue == "alpha BETA")
+        #expect(query.terms == ["alpha", "BETA"])
+        #expect(query.canUseTrigramFullTextSearch)
+        #expect(query.matches("beta value before alpha value"))
+        #expect(!query.matches("alpha only"))
+        #expect(!ClipboardSearchQuery("go ui").canUseTrigramFullTextSearch)
+    }
+
+    @Test
     func jsonTransforms() {
         let json = #"{"b":2,"a":1}"#
         #expect(ContentTransformer.formatJSON(json)?.contains("\n") == true)
@@ -503,6 +515,36 @@ struct ContentBehaviorTests {
         #expect(
             AppDelegate.hotKeyRegistrationWarning(for: [.openPanel, .pastePlainText])
                 == "Open PastePilot and Paste as Plain Text shortcuts are already in use.".localized
+        )
+    }
+
+    @Test
+    @MainActor
+    func plainTextPasteFailureNoticesDescribeRecoverableFailures() {
+        #expect(AppDelegate.plainTextPasteFailureNotice(for: .pasted) == nil)
+        #expect(
+            AppDelegate.plainTextPasteFailureNotice(for: .accessibilityRequired) == nil
+        )
+        #expect(
+            AppDelegate.plainTextPasteFailureNotice(for: .noText)
+                == PastePilotNotice(
+                    "No text is available to paste as plain text.".localized,
+                    style: .warning
+                )
+        )
+        #expect(
+            AppDelegate.plainTextPasteFailureNotice(for: .pasteboardWriteFailed)
+                == PastePilotNotice(
+                    "Plain text could not be prepared for pasting.".localized,
+                    style: .error
+                )
+        )
+        #expect(
+            AppDelegate.plainTextPasteFailureNotice(for: .busy)
+                == PastePilotNotice(
+                    "Plain-text paste is already in progress.".localized,
+                    style: .warning
+                )
         )
     }
 

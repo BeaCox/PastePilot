@@ -93,8 +93,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     }
 
     func matchingIDs(query: String) throws -> Set<UUID> {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return [] }
+        let searchQuery = ClipboardSearchQuery(query)
+        guard !searchQuery.isEmpty else { return [] }
         let dbQueue = try databaseQueue()
         return try dbQueue.read { db in
             guard try hasSearchIndex(db: db) else {
@@ -103,15 +103,21 @@ final class SQLiteHistoryStore: @unchecked Sendable {
 
             let sql: String
             let arguments: StatementArguments
-            if query.count >= 3 {
+            if searchQuery.canUseTrigramFullTextSearch {
                 sql = "SELECT item_id FROM search_index WHERE body MATCH ?"
-                arguments = [Self.quotedFTSQuery(query)]
+                arguments = [Self.fullTextQuery(for: searchQuery)]
             } else {
+                let clauses = Array(
+                    repeating: "lower(body) LIKE ? ESCAPE '\\'",
+                    count: searchQuery.terms.count
+                ).joined(separator: " AND ")
                 sql = """
                     SELECT item_id FROM search_index
-                    WHERE lower(body) LIKE ? ESCAPE '\\'
+                    WHERE \(clauses)
                     """
-                arguments = [Self.likePattern(for: query.lowercased())]
+                arguments = StatementArguments(
+                    searchQuery.terms.map { Self.likePattern(for: $0.lowercased()) }
+                )
             }
 
             let ids = try String.fetchAll(db, sql: sql, arguments: arguments)
@@ -236,7 +242,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private func loadItems(db: Database) throws -> [ClipboardItem] {
         let rows = try Row.fetchAll(
             db,
-            sql: "SELECT * FROM items ORDER BY created_at DESC"
+            sql: "SELECT * FROM items ORDER BY is_pinned DESC, created_at DESC"
         )
         return try rows.compactMap { row in
             guard let id = UUID(uuidString: row["id"]) else { return nil }
@@ -576,8 +582,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         Array(repeating: "?", count: count).joined(separator: ", ")
     }
 
-    private static func quotedFTSQuery(_ query: String) -> String {
-        "\"\(query.replacingOccurrences(of: "\"", with: "\"\""))\""
+    private static func fullTextQuery(for query: ClipboardSearchQuery) -> String {
+        query.terms.map(quotedFTSTerm).joined(separator: " ")
+    }
+
+    private static func quotedFTSTerm(_ term: String) -> String {
+        "\"\(term.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
 
     private static func likePattern(for query: String) -> String {

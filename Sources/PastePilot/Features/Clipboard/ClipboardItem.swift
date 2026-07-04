@@ -143,8 +143,12 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
 }
 
 enum ClipboardHistoryOrdering {
+    static func newestFirst(_ items: [ClipboardItem]) -> [ClipboardItem] {
+        items.sorted { $0.createdAt > $1.createdAt }
+    }
+
     static func pinnedFirst(_ items: [ClipboardItem]) -> [ClipboardItem] {
-        let chronological = items.sorted { $0.createdAt > $1.createdAt }
+        let chronological = newestFirst(items)
         return chronological.filter(\.isPinned)
             + chronological.filter { !$0.isPinned }
     }

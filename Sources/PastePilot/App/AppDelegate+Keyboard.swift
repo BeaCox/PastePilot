@@ -248,6 +248,32 @@ extension AppDelegate {
         }
         if result == .accessibilityRequired {
             showAccessibilityRequiredAlert()
+        } else if let notice = Self.plainTextPasteFailureNotice(for: result) {
+            NotificationCenter.default.postPastePilotNotice(notice)
+        }
+    }
+
+    static func plainTextPasteFailureNotice(
+        for result: PlainTextPasteService.Result
+    ) -> PastePilotNotice? {
+        switch result {
+        case .pasted, .accessibilityRequired:
+            nil
+        case .noText:
+            PastePilotNotice(
+                "No text is available to paste as plain text.".localized,
+                style: .warning
+            )
+        case .pasteboardWriteFailed:
+            PastePilotNotice(
+                "Plain text could not be prepared for pasting.".localized,
+                style: .error
+            )
+        case .busy:
+            PastePilotNotice(
+                "Plain-text paste is already in progress.".localized,
+                style: .warning
+            )
         }
     }
 

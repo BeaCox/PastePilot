@@ -82,6 +82,24 @@ struct StorageQueueAndStoreTests {
     }
 
     @Test
+    func textStoreSearchFindsAllTermsAcrossDistantChunks() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text")
+        )
+        let fileName = "large.txt"
+        let content = "FirstNeedle\n"
+            + String(repeating: "middle content\n", count: 10_000)
+            + "SecondNeedle"
+
+        try textStore.save(content, fileName: fileName)
+
+        #expect(textStore.content(fileName: fileName, contains: "secondneedle firstneedle"))
+        #expect(!textStore.content(fileName: fileName, contains: "firstneedle missing"))
+    }
+
+    @Test
     func textStoreSearchStopsWhenCancelled() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
