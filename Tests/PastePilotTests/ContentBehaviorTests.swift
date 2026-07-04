@@ -58,6 +58,17 @@ struct ContentBehaviorTests {
         #expect(ContentAnalyzer.analyze(secret).containsSensitiveData)
         #expect(ContentAnalyzer.redacted(secret) == "API_KEY=••••••••")
 
+        let quotedPassword = #"password="hunter two""#
+        #expect(ContentAnalyzer.containsSensitiveData(quotedPassword))
+        #expect(ContentAnalyzer.redacted(quotedPassword) == #"password="••••••••""#)
+
+        let singleQuotedSecret = "client_secret='value with spaces'"
+        #expect(ContentAnalyzer.containsSensitiveData(singleQuotedSecret))
+        #expect(
+            ContentAnalyzer.redacted(singleQuotedSecret)
+                == "client_secret='••••••••'"
+        )
+
         let authorizationHeader = "Authorization: Bearer abcdefghijklmnopqrstuvwxyz012345"
         #expect(ContentAnalyzer.containsSensitiveData(authorizationHeader))
         #expect(ContentAnalyzer.redacted(authorizationHeader) == "Authorization: Bearer ••••••••")

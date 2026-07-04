@@ -12,17 +12,25 @@ enum ContentAnalyzer {
     }
 
     private static let redactionToken = "••••••••"
-    private static let sensitiveAssignmentPattern =
+    private static let sensitiveAssignmentKeyPattern =
         #"(?i)\b("#
             + #"api[_-]?key|access[_-]?token|auth[_-]?token|"#
             + #"client[_-]?secret|password|passwd|"#
             + #"aws[_-]?secret[_-]?access[_-]?key|secret[_-]?access[_-]?key"#
-            + #")\b(\s*[:=]\s*["']?)[^\s"',;}]+(["']?)"#
+            + #")\b"#
 
     private static let sensitivePatterns: [SensitivePattern] = [
         makeSensitivePattern(
-            sensitiveAssignmentPattern,
-            replacementTemplate: "$1$2\(redactionToken)$3"
+            sensitiveAssignmentKeyPattern + #"(\s*[:=]\s*)"[^"]*""#,
+            replacementTemplate: "$1$2\"\(redactionToken)\""
+        ),
+        makeSensitivePattern(
+            sensitiveAssignmentKeyPattern + #"(\s*[:=]\s*)'[^']*'"#,
+            replacementTemplate: "$1$2'\(redactionToken)'"
+        ),
+        makeSensitivePattern(
+            sensitiveAssignmentKeyPattern + #"(\s*[:=]\s*)[^\s"',;}]+"#,
+            replacementTemplate: "$1$2\(redactionToken)"
         ),
         makeSensitivePattern(
             #"(?i)\b(Bearer\s+)[A-Za-z0-9._~+/-]+=*\b"#,
