@@ -117,8 +117,8 @@ extension AppDelegate {
             dropView.onDropFiles = { [weak self] urls in
                 self?.handleStatusItemDrop(urls)
             }
-            dropView.onClick = { [weak self] in
-                self?.togglePopover()
+            dropView.onClick = { [weak self] event in
+                self?.handleStatusItemClick(event)
             }
             button.addSubview(dropView)
         }
@@ -174,6 +174,26 @@ extension AppDelegate {
         )
         self.popover = popover
         return popover
+    }
+
+    func handleStatusItemClick(_ event: NSEvent) {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags.contains(.option), flags.contains(.shift) {
+            store.ignoreNextCopy()
+            return
+        }
+        if flags.contains(.option) {
+            settings.monitoringEnabled.toggle()
+            NotificationCenter.default.postPastePilotNotice(
+                PastePilotNotice(
+                    settings.monitoringEnabled
+                        ? "Clipboard capture resumed".localized
+                        : "Clipboard capture paused".localized
+                )
+            )
+            return
+        }
+        togglePopover()
     }
 
     func handleStatusItemDrop(_ urls: [URL]) {

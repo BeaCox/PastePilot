@@ -109,6 +109,13 @@
 "Recent" = "最近项目";
 "%d items" = "%d 条记录";
 "Clear Unpinned" = "清除未固定记录";
+"Pause Capture" = "暂停捕获";
+"Resume Capture" = "恢复捕获";
+"Ignore Next Copy" = "忽略下一次复制";
+"Next copied item will be ignored" = "下一次复制会被忽略";
+"Ignored copied item" = "已忽略复制内容";
+"Clipboard capture paused" = "剪贴板捕获已暂停";
+"Clipboard capture resumed" = "剪贴板捕获已恢复";
 "Clear Unpinned History?" = "清除未固定的历史记录？";
 "Pinned items will be kept. This action cannot be undone." = "固定项目会被保留，此操作无法撤销。";
 "Unpin" = "取消置顶";

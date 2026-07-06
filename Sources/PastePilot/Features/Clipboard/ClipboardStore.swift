@@ -23,6 +23,7 @@ final class ClipboardStore: ObservableObject {
     var ocrTasksByItemID: [UUID: Task<Void, Never>] = [:]
     var ocrTaskTokensByItemID: [UUID: UUID] = [:]
     var ignoredContent: String?
+    var ignoreNextCopyBaselineChangeCount: Int?
     var lastPurgeCheck: Date = .distantPast
     var imageSaveGeneration = 0
     var discardAllImageSavesBeforeGeneration = 0
@@ -88,6 +89,17 @@ final class ClipboardStore: ObservableObject {
     func acknowledgeCurrentClipboard() {
         pendingCaptureChangeCount = nil
         lastChangeCount = pasteboard.changeCount
+    }
+
+    func ignoreNextCopy() {
+        ignoreNextCopyBaselineChangeCount = pasteboard.changeCount
+        pendingCaptureChangeCount = nil
+        noticePoster.post(
+            PastePilotNotice(
+                "Next copied item will be ignored".localized,
+                style: .success
+            )
+        )
     }
 
     func copy(_ content: String) {

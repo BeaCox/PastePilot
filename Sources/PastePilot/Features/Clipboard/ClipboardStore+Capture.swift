@@ -67,6 +67,21 @@ extension ClipboardStore {
         let changeCount = pasteboard.changeCount
         guard changeCount != lastChangeCount else { return }
         guard pendingCaptureChangeCount != changeCount else { return }
+
+        if let baseline = ignoreNextCopyBaselineChangeCount,
+           changeCount != baseline {
+            ignoreNextCopyBaselineChangeCount = nil
+            pendingCaptureChangeCount = nil
+            lastChangeCount = changeCount
+            noticePoster.post(
+                PastePilotNotice(
+                    "Ignored copied item".localized,
+                    style: .success
+                )
+            )
+            return
+        }
+
         pendingCaptureChangeCount = changeCount
 
         pasteboardCaptureQueue.capture(

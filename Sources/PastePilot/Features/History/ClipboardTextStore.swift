@@ -31,7 +31,7 @@ struct ClipboardTextStore {
         matching query: ClipboardSearchQuery,
         isCancelled: () -> Bool = { false }
     ) -> Bool {
-        guard !query.isEmpty,
+        guard query.hasSearchTerms,
               !isCancelled(),
               let handle = try? FileHandle(forReadingFrom: url(fileName: fileName)) else {
             return false
@@ -133,7 +133,7 @@ enum ClipboardFullTextSearch {
         isCancelled: () -> Bool = { false }
     ) -> Set<UUID> {
         let searchQuery = ClipboardSearchQuery(query)
-        guard !searchQuery.isEmpty, !targets.isEmpty else { return [] }
+        guard searchQuery.hasSearchTerms, !targets.isEmpty else { return [] }
         let textStore = ClipboardTextStore(directoryURL: textDirectoryURL)
         var ids = Set<UUID>()
 

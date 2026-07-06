@@ -33,6 +33,72 @@ struct ClipboardCaptureStorageTests {
 
     @Test
     @MainActor
+    func concealedPasteboardTypeIsIgnoredBeforeCapture() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let concealedType = NSPasteboard.PasteboardType(
+            rawValue: "org.nspasteboard.ConcealedType"
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setString("password=secret", forType: .string)
+        pasteboard.setString("", forType: concealedType)
+        let changeCount = pasteboard.changeCount
+        store.captureCurrentClipboard()
+
+        try await waitForClipboardAcknowledgement(
+            in: store,
+            changeCount: changeCount
+        )
+        #expect(store.items.isEmpty)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func ignoreNextCopySkipsOneChangedPasteboardItem() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        store.ignoreNextCopy()
+        pasteboard.clearContents()
+        pasteboard.setString("skip this", forType: .string)
+        let skippedChangeCount = pasteboard.changeCount
+        store.captureIfNeeded()
+
+        try await waitForClipboardAcknowledgement(
+            in: store,
+            changeCount: skippedChangeCount
+        )
+        #expect(store.items.isEmpty)
+
+        pasteboard.clearContents()
+        pasteboard.setString("capture this", forType: .string)
+        store.captureIfNeeded()
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.content == "capture this")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func largeTextCaptureExternalizesOriginalContent() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

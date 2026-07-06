@@ -5,7 +5,7 @@ import AppKit
 /// the panel.
 final class StatusItemDropView: NSView {
     var onDropFiles: (([URL]) -> Void)?
-    var onClick: (() -> Void)?
+    var onClick: ((NSEvent) -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -37,7 +37,7 @@ final class StatusItemDropView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        onClick?()
+        onClick?(event)
     }
 
     private func canImport(_ sender: NSDraggingInfo) -> Bool {

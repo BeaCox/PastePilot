@@ -201,13 +201,20 @@ struct StorageRepositoryTests {
             kind: .file,
             filePaths: ["/tmp/PastePilot/Search Notes.txt"]
         )
+        let appItem = ClipboardItem(
+            content: "shell output",
+            kind: .text,
+            sourceAppName: "Terminal",
+            sourceBundleIdentifier: "com.apple.Terminal"
+        )
         let repository = HistoryRepository(dataDirectoryURL: directory)
 
-        try repository.save([contentItem, imageItem, fileItem])
+        try repository.save([contentItem, imageItem, fileItem, appItem])
 
         #expect(try repository.matchingIDs(query: "note alpha") == Set([contentItem.id]))
         #expect(try repository.matchingIDs(query: "invoice paid") == Set([imageItem.id]))
         #expect(try repository.matchingIDs(query: "pastepilot notes") == Set([fileItem.id]))
+        #expect(try repository.matchingIDs(query: "apple terminal") == Set([appItem.id]))
     }
 
     @Test

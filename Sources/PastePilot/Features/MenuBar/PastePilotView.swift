@@ -37,9 +37,13 @@ struct MenuBarView: View {
 
     var filteredItems: [ClipboardItem] {
         let query = ClipboardSearchQuery(searchText)
-        let fullTextIDs = interactionState.fullTextSearch.matchingIDs(for: query.rawValue)
+        let fullTextIDs = interactionState.fullTextSearch.matchingIDs(
+            for: query.searchText
+        )
         let matches = query.isEmpty ? store.items : store.items.filter {
-            shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
+            guard query.matchesFilters($0) else { return false }
+            guard query.hasSearchTerms else { return true }
+            return shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
         }
         return ClipboardHistoryOrdering.pinnedFirst(matches)
     }

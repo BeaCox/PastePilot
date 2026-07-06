@@ -29,6 +29,20 @@ func waitForCapturedItem(
     return try #require(matchingItem)
 }
 
+@MainActor
+func waitForClipboardAcknowledgement(
+    in store: ClipboardStore,
+    changeCount: Int
+) async throws {
+    for _ in 0..<100 {
+        if store.lastChangeCount == changeCount {
+            return
+        }
+        try await Task.sleep(nanoseconds: 20_000_000)
+    }
+    #expect(store.lastChangeCount == changeCount)
+}
+
 func makeTestImage(width: Int, height: Int) throws -> CGImage {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let context = try #require(

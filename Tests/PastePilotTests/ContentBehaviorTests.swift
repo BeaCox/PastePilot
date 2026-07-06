@@ -179,10 +179,37 @@ struct ContentBehaviorTests {
 
         #expect(query.rawValue == "alpha BETA")
         #expect(query.terms == ["alpha", "BETA"])
+        #expect(query.searchText == "alpha BETA")
         #expect(query.canUseTrigramFullTextSearch)
         #expect(query.matches("beta value before alpha value"))
         #expect(!query.matches("alpha only"))
         #expect(!ClipboardSearchQuery("go ui").canUseTrigramFullTextSearch)
+    }
+
+    @Test
+    func searchQueryParsesQuotedPhrasesAndFilters() {
+        let item = ClipboardItem(
+            content: "alpha beta deploy",
+            kind: .json,
+            isPinned: true,
+            sourceAppName: "Terminal",
+            sourceBundleIdentifier: "com.apple.Terminal",
+            ocrText: "invoice paid"
+        )
+        let query = ClipboardSearchQuery(#"kind:json app:"terminal" pinned:true has:ocr "alpha beta""#)
+
+        #expect(query.terms == ["alpha beta"])
+        #expect(query.searchText == "alpha beta")
+        #expect(query.canUseTrigramFullTextSearch)
+        #expect(query.matches("prefix alpha beta suffix"))
+        #expect(!query.matches("alpha then beta"))
+        #expect(query.matchesFilters(item))
+        #expect(!ClipboardSearchQuery("kind:image").matchesFilters(item))
+        #expect(!ClipboardSearchQuery("app:safari").matchesFilters(item))
+        #expect(!ClipboardSearchQuery("pinned:false").matchesFilters(item))
+        #expect(!ClipboardSearchQuery("has:file").matchesFilters(item))
+        #expect(ClipboardSearchQuery("kind:json").isEmpty == false)
+        #expect(ClipboardSearchQuery("kind:json").hasSearchTerms == false)
     }
 
     @Test

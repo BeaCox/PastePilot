@@ -40,9 +40,10 @@ extension MenuBarView {
 
     func scheduleFullTextSearch() {
         interactionState.fullTextSearchTask?.cancel()
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let searchQuery = ClipboardSearchQuery(searchText)
+        let query = searchQuery.searchText
         let targets = store.externalContentSearchTargets()
-        guard !query.isEmpty else {
+        guard searchQuery.hasSearchTerms else {
             interactionState.fullTextSearch.clear(completedQuery: query)
             return
         }

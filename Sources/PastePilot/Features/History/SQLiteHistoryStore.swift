@@ -94,7 +94,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
 
     func matchingIDs(query: String) throws -> Set<UUID> {
         let searchQuery = ClipboardSearchQuery(query)
-        guard !searchQuery.isEmpty else { return [] }
+        guard searchQuery.hasSearchTerms else { return [] }
         let dbQueue = try databaseQueue()
         return try dbQueue.read { db in
             guard try hasSearchIndex(db: db) else {
@@ -495,6 +495,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         return [
             primaryContent,
             item.kind.rawValue,
+            item.sourceAppName,
+            item.sourceBundleIdentifier,
             item.ocrText,
             storedItem.filePaths.joined(separator: "\n")
         ]

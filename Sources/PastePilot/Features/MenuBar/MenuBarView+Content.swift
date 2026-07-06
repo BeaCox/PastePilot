@@ -73,6 +73,17 @@ extension MenuBarView {
             .font(.caption2)
             .foregroundStyle(.tertiary)
             Menu {
+                Button(
+                    settings.monitoringEnabled
+                        ? "Pause Capture".localized
+                        : "Resume Capture".localized
+                ) {
+                    settings.monitoringEnabled.toggle()
+                }
+                Button("Ignore Next Copy".localized) {
+                    store.ignoreNextCopy()
+                }
+                Divider()
                 Button("Clear Unpinned".localized) {
                     showsClearConfirmation = true
                 }
