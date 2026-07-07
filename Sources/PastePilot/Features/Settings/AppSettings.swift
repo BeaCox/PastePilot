@@ -102,6 +102,7 @@ final class AppSettings: ObservableObject {
     static let defaultAppearanceMode = AppAppearanceMode.system.rawValue
     static let defaultSensitiveContentStoragePolicy =
         SensitiveContentStoragePolicy.storeOriginal.rawValue
+    static let defaultCustomSensitivePatterns = ""
 
     private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
@@ -181,6 +182,10 @@ final class AppSettings: ObservableObject {
             "sensitiveContentStoragePolicy",
             default: AppSettings.defaultSensitiveContentStoragePolicy
         )
+        static let customSensitivePatterns = AppSetting(
+            "customSensitivePatterns",
+            default: AppSettings.defaultCustomSensitivePatterns
+        )
 
         static var registeredDefaults: [String: Any] {
             [
@@ -204,6 +209,8 @@ final class AppSettings: ObservableObject {
                 ocrLanguageMode.key: ocrLanguageMode.defaultValue,
                 sensitiveContentStoragePolicy.key:
                     sensitiveContentStoragePolicy.defaultValue,
+                customSensitivePatterns.key:
+                    customSensitivePatterns.defaultValue,
             ]
         }
     }
@@ -373,6 +380,15 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var customSensitivePatterns: String {
+        didSet {
+            persist(
+                customSensitivePatterns,
+                for: Setting.customSensitivePatterns
+            )
+        }
+    }
+
     @Published var hotKeyRegistrationWarning: String?
 
     init(defaults: UserDefaults = .standard) {
@@ -458,7 +474,15 @@ final class AppSettings: ObservableObject {
             in: defaults,
             as: SensitiveContentStoragePolicy.self
         )
+        customSensitivePatterns = Self.string(
+            for: Setting.customSensitivePatterns,
+            in: defaults
+        )
         persistCurrentValues()
+    }
+
+    var userSensitivePatterns: [UserSensitivePattern] {
+        UserSensitivePattern.patterns(from: customSensitivePatterns)
     }
 
     var ignoredBundleIdentifierSet: Set<String> {
@@ -491,6 +515,7 @@ final class AppSettings: ObservableObject {
         ocrLanguageMode = Setting.ocrLanguageMode.defaultValue
         sensitiveContentStoragePolicy =
             Setting.sensitiveContentStoragePolicy.defaultValue
+        customSensitivePatterns = Setting.customSensitivePatterns.defaultValue
     }
 
     private static func supportedInteger(
@@ -663,6 +688,7 @@ final class AppSettings: ObservableObject {
             sensitiveContentStoragePolicy,
             for: Setting.sensitiveContentStoragePolicy
         )
+        persist(customSensitivePatterns, for: Setting.customSensitivePatterns)
     }
 
     private static func bool(

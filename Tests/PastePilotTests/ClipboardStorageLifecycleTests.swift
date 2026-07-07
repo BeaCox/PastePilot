@@ -340,6 +340,108 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func customSensitivePatternCanStoreOriginalButHidePreview() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotCustomSensitiveOriginalTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.customSensitivePatterns = "project raven"
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        store.captureText("Project Raven launch notes", source: (nil, nil))
+
+        let item = try #require(store.items.first)
+        #expect(item.content == "Project Raven launch notes")
+        #expect(item.containsSensitiveData)
+        #expect(
+            store.previewSnippet(
+                for: item,
+                maxCharacters: 200,
+                revealsSensitiveContent: false
+            ).text == "•••••••• launch notes"
+        )
+        #expect(
+            store.previewSnippet(
+                for: item,
+                maxCharacters: 200,
+                revealsSensitiveContent: true
+            ).text == "Project Raven launch notes"
+        )
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func customSensitivePatternCanBeRedactedBeforeHistoryStorage() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotCustomSensitiveRedactTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.storeRedacted.rawValue
+        settings.customSensitivePatterns = "regex:customer-[0-9]+"
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        store.captureText("customer-42 profile", source: (nil, nil))
+
+        let item = try #require(store.items.first)
+        #expect(item.content == "•••••••• profile")
+        #expect(!item.containsSensitiveData)
+        #expect(store.content(for: item) == "•••••••• profile")
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func customSensitivePatternCanBeSkippedBeforeHistoryStorage() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotCustomSensitiveSkipTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.skip.rawValue
+        settings.customSensitivePatterns = "do not save"
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+
+        store.captureText("Do Not Save this item", source: (nil, nil))
+        store.captureText("ordinary note", source: (nil, nil))
+
+        #expect(store.items.map(\.content) == ["ordinary note"])
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func redactedSensitiveRichTextDropsOriginalFormattingPayload() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

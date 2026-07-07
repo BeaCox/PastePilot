@@ -177,7 +177,8 @@ final class ClipboardStore: ObservableObject {
             return TextPreview.detailSnippet(
                 for: item,
                 revealsSensitiveContent: revealsSensitiveContent,
-                maxCharacters: maxCharacters
+                maxCharacters: maxCharacters,
+                userPatterns: settings.userSensitivePatterns
             )
         }
 
@@ -186,7 +187,10 @@ final class ClipboardStore: ObservableObject {
             return TextPreview.Snippet(text: prefix, isTruncated: isTruncated)
         }
         return TextPreview.Snippet(
-            text: ContentAnalyzer.redacted(prefix),
+            text: ContentAnalyzer.redacted(
+                prefix,
+                userPatterns: settings.userSensitivePatterns
+            ),
             isTruncated: isTruncated
         )
     }

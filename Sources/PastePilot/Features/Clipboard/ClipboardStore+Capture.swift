@@ -156,14 +156,19 @@ extension ClipboardStore {
         }
         guard items.first?.content != content else { return }
 
-        let analysis = ContentAnalyzer.analyze(trimmedContent)
+        let userPatterns = settings.userSensitivePatterns
+        let analysis = ContentAnalyzer.analyze(
+            trimmedContent,
+            userPatterns: userPatterns
+        )
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return }
         guard let storageResult = sensitiveContentStorageResult(
             content: content,
             kind: analysis.kind,
             containsSensitiveData: analysis.containsSensitiveData,
             richTextRTFBase64: nil,
-            richTextHTML: nil
+            richTextHTML: nil,
+            userPatterns: userPatterns
         ) else {
             return
         }
@@ -280,11 +285,18 @@ extension ClipboardStore {
             rtfBase64: rtfBase64,
             html: html
         )
+        let userPatterns = settings.userSensitivePatterns
         let trimmedPlainText = plainText.trimmingCharacters(in: .whitespacesAndNewlines)
         let kind = payload.hasFormatting
             ? ContentKind.richText
-            : ContentAnalyzer.analyze(trimmedPlainText).kind
-        let containsSensitiveData = ContentAnalyzer.containsSensitiveData(plainText)
+            : ContentAnalyzer.analyze(
+                trimmedPlainText,
+                userPatterns: userPatterns
+            ).kind
+        let containsSensitiveData = ContentAnalyzer.containsSensitiveData(
+            plainText,
+            userPatterns: userPatterns
+        )
         guard items.first?.content != plainText
                 || items.first?.richTextRTFBase64 != payload.rtfBase64
                 || items.first?.richTextHTML != payload.html else {
@@ -295,7 +307,8 @@ extension ClipboardStore {
             kind: kind,
             containsSensitiveData: containsSensitiveData,
             richTextRTFBase64: payload.rtfBase64,
-            richTextHTML: payload.html
+            richTextHTML: payload.html,
+            userPatterns: userPatterns
         ) else {
             return true
         }
@@ -376,7 +389,8 @@ extension ClipboardStore {
         kind: ContentKind,
         containsSensitiveData: Bool,
         richTextRTFBase64: String?,
-        richTextHTML: String?
+        richTextHTML: String?,
+        userPatterns: [UserSensitivePattern] = []
     ) -> SensitiveContentStorageResult? {
         guard containsSensitiveData else {
             return SensitiveContentStorageResult(
@@ -402,10 +416,14 @@ extension ClipboardStore {
                 richTextHTML: richTextHTML
             )
         case .storeRedacted:
-            let redactedContent = ContentAnalyzer.redacted(content)
+            let redactedContent = ContentAnalyzer.redacted(
+                content,
+                userPatterns: userPatterns
+            )
             let redactedKind = kind == .richText
                 ? ContentAnalyzer.analyze(
-                    redactedContent.trimmingCharacters(in: .whitespacesAndNewlines)
+                    redactedContent.trimmingCharacters(in: .whitespacesAndNewlines),
+                    userPatterns: userPatterns
                 ).kind
                 : kind
             return SensitiveContentStorageResult(

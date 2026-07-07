@@ -30,6 +30,7 @@ struct AppSettingsTests {
             settings.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
+        #expect(settings.customSensitivePatterns.isEmpty)
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
@@ -43,6 +44,10 @@ struct AppSettingsTests {
         settings.appearanceMode = AppAppearanceMode.dark.rawValue
         settings.sensitiveContentStoragePolicy =
             SensitiveContentStoragePolicy.storeRedacted.rawValue
+        settings.customSensitivePatterns = """
+        project raven
+        regex:customer-[0-9]+
+        """
         settings.ignoredBundleIdentifiers = """
         com.apple.keychainaccess
 
@@ -63,6 +68,15 @@ struct AppSettingsTests {
         #expect(
             restored.sensitiveContentStoragePolicy
                 == SensitiveContentStoragePolicy.storeRedacted.rawValue
+        )
+        #expect(
+            restored.userSensitivePatterns == [
+                UserSensitivePattern(kind: .literal, value: "project raven"),
+                UserSensitivePattern(
+                    kind: .regularExpression,
+                    value: "customer-[0-9]+"
+                )
+            ]
         )
         #expect(
             restored.ignoredBundleIdentifierSet
@@ -90,6 +104,7 @@ struct AppSettingsTests {
             restored.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
+        #expect(restored.customSensitivePatterns.isEmpty)
     }
 
     @Test

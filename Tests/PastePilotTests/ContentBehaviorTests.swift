@@ -125,6 +125,47 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func userSensitivePatternsDetectAndRedactCustomContent() {
+        let patterns = UserSensitivePattern.patterns(from: """
+        project raven
+        regex:customer-[0-9]+
+        regex:[
+        """)
+
+        #expect(patterns.count == 3)
+        #expect(
+            ContentAnalyzer.containsSensitiveData(
+                "Project Raven launch notes",
+                userPatterns: patterns
+            )
+        )
+        #expect(
+            ContentAnalyzer.redacted(
+                "Project Raven launch notes",
+                userPatterns: patterns
+            ) == "•••••••• launch notes"
+        )
+        #expect(
+            ContentAnalyzer.containsSensitiveData(
+                "customer-42 profile",
+                userPatterns: patterns
+            )
+        )
+        #expect(
+            ContentAnalyzer.redacted(
+                "customer-42 profile",
+                userPatterns: patterns
+            ) == "•••••••• profile"
+        )
+        #expect(
+            !ContentAnalyzer.containsSensitiveData(
+                "ordinary note",
+                userPatterns: patterns
+            )
+        )
+    }
+
+    @Test
     func textPreviewKeepsLargeContentBounded() {
         let content = String(repeating: "a", count: TextPreview.countScanCharacterLimit + 1)
         let item = ClipboardItem(content: content, kind: .text)

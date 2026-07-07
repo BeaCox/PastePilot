@@ -177,6 +177,7 @@ extension MenuBarView {
                             CompactHistoryItem(
                                 item: item,
                                 image: store.thumbnail(for: item),
+                                userSensitivePatterns: settings.userSensitivePatterns,
                                 shortcutNumber: index < 9 ? index + 1 : nil,
                                 isSelected: selectedID == item.id,
                                 select: { selectedID = item.id },

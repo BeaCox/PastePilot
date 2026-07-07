@@ -156,6 +156,22 @@ struct StorageSettingsPage: View {
                     .labelsHidden()
                     .frame(width: 150)
                 }
+                SettingsRow(title: "Custom Patterns".localized) {
+                    TextEditor(text: $settings.customSensitivePatterns)
+                        .font(.system(size: 12, design: .monospaced))
+                        .scrollContentBackground(.hidden)
+                        .frame(width: 260, height: 86)
+                        .background(
+                            Color(nsColor: .textBackgroundColor).opacity(0.5),
+                            in: RoundedRectangle(cornerRadius: 6)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(.quaternary, lineWidth: 0.5)
+                        )
+                        .accessibilityLabel("Custom Sensitive Patterns".localized)
+                }
+                SettingsNote("Use one literal match per line. Prefix regular expressions with regex:. Invalid regular expressions are ignored.".localized)
                 SettingsNote("Redacted or skipped sensitive clipboard content is not recoverable from history.".localized)
             }
 

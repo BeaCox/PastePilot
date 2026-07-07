@@ -200,6 +200,9 @@
 "Save Original" = "保存原文";
 "Save Redacted" = "保存脱敏内容";
 "Do Not Save" = "不保存";
+"Custom Patterns" = "自定义规则";
+"Custom Sensitive Patterns" = "自定义敏感规则";
+"Use one literal match per line. Prefix regular expressions with regex:. Invalid regular expressions are ignored." = "每行填写一条普通文本匹配；正则表达式请以 regex: 开头。无效正则会被忽略。";
 "Redacted or skipped sensitive clipboard content is not recoverable from history." = "脱敏或跳过的敏感剪贴板内容无法从历史记录中恢复。";
 "Image Text Recognition" = "图片文字识别";
 "OCR Mode" = "OCR 模式";

@@ -15,10 +15,13 @@ enum TextPreview {
         let isTruncated: Bool
     }
 
-    static func summary(for item: ClipboardItem) -> String {
+    static func summary(
+        for item: ClipboardItem,
+        userPatterns: [UserSensitivePattern] = []
+    ) -> String {
         let snippet = clippedText(from: item.content, maxCharacters: summaryCharacterLimit)
         let visibleText = item.containsSensitiveData
-            ? ContentAnalyzer.redacted(snippet.text)
+            ? ContentAnalyzer.redacted(snippet.text, userPatterns: userPatterns)
             : snippet.text
         return visibleText
             .replacingOccurrences(of: "\n", with: " ")
@@ -28,7 +31,8 @@ enum TextPreview {
     static func detailSnippet(
         for item: ClipboardItem,
         revealsSensitiveContent: Bool,
-        maxCharacters: Int = detailCharacterLimit
+        maxCharacters: Int = detailCharacterLimit,
+        userPatterns: [UserSensitivePattern] = []
     ) -> Snippet {
         let snippet = clippedText(from: item.content, maxCharacters: maxCharacters)
         let isTruncated = snippet.isTruncated
@@ -37,7 +41,10 @@ enum TextPreview {
             return Snippet(text: snippet.text, isTruncated: isTruncated)
         }
         return Snippet(
-            text: ContentAnalyzer.redacted(snippet.text),
+            text: ContentAnalyzer.redacted(
+                snippet.text,
+                userPatterns: userPatterns
+            ),
             isTruncated: isTruncated
         )
     }

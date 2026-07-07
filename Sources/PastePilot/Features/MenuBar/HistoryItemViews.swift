@@ -3,6 +3,7 @@ import SwiftUI
 struct CompactHistoryItem: View {
     let item: ClipboardItem
     let image: NSImage?
+    let userSensitivePatterns: [UserSensitivePattern]
     let shortcutNumber: Int?
     let isSelected: Bool
     let select: () -> Void
@@ -121,7 +122,10 @@ struct CompactHistoryItem: View {
     }
 
     private var summary: String {
-        TextPreview.summary(for: item)
+        TextPreview.summary(
+            for: item,
+            userPatterns: userSensitivePatterns
+        )
     }
 
     private var showsActions: Bool {

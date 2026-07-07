@@ -1,5 +1,44 @@
 import Foundation
 
+struct UserSensitivePattern: Equatable, Sendable {
+    enum MatchKind: Equatable, Sendable {
+        case literal
+        case regularExpression
+    }
+
+    static let regularExpressionPrefix = "regex:"
+
+    let kind: MatchKind
+    let value: String
+
+    static func patterns(from text: String) -> [UserSensitivePattern] {
+        text.components(separatedBy: .newlines).compactMap(Self.init(rawLine:))
+    }
+
+    private init?(rawLine: String) {
+        let trimmedLine = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedLine.isEmpty else { return nil }
+
+        if trimmedLine.lowercased().hasPrefix(Self.regularExpressionPrefix) {
+            let valueStart = trimmedLine.index(
+                trimmedLine.startIndex,
+                offsetBy: Self.regularExpressionPrefix.count
+            )
+            let value = trimmedLine[valueStart...]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return nil }
+            self.init(kind: .regularExpression, value: value)
+        } else {
+            self.init(kind: .literal, value: trimmedLine)
+        }
+    }
+
+    init(kind: MatchKind, value: String) {
+        self.kind = kind
+        self.value = value
+    }
+}
+
 struct AnalysisResult {
     let kind: ContentKind
     let containsSensitiveData: Bool
@@ -74,11 +113,17 @@ enum ContentAnalyzer {
         "http", "https", "file", "mailto"
     ]
 
-    static func analyze(_ rawText: String) -> AnalysisResult {
+    static func analyze(
+        _ rawText: String,
+        userPatterns: [UserSensitivePattern] = []
+    ) -> AnalysisResult {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         return AnalysisResult(
             kind: detectKind(text),
-            containsSensitiveData: containsSensitiveData(text)
+            containsSensitiveData: containsSensitiveData(
+                text,
+                userPatterns: userPatterns
+            )
         )
     }
 
@@ -95,15 +140,21 @@ enum ContentAnalyzer {
         return .text
     }
 
-    static func containsSensitiveData(_ text: String) -> Bool {
+    static func containsSensitiveData(
+        _ text: String,
+        userPatterns: [UserSensitivePattern] = []
+    ) -> Bool {
         let range = NSRange(text.startIndex..., in: text)
-        return sensitivePatterns.contains {
+        return allSensitivePatterns(userPatterns: userPatterns).contains {
             $0.regex.firstMatch(in: text, range: range) != nil
         }
     }
 
-    static func redacted(_ text: String) -> String {
-        sensitivePatterns.reduce(text) { result, pattern in
+    static func redacted(
+        _ text: String,
+        userPatterns: [UserSensitivePattern] = []
+    ) -> String {
+        allSensitivePatterns(userPatterns: userPatterns).reduce(text) { result, pattern in
             let range = NSRange(result.startIndex..., in: result)
             return pattern.regex.stringByReplacingMatches(
                 in: result,
@@ -113,11 +164,40 @@ enum ContentAnalyzer {
         }
     }
 
+    private static func allSensitivePatterns(
+        userPatterns: [UserSensitivePattern]
+    ) -> [SensitivePattern] {
+        guard !userPatterns.isEmpty else { return sensitivePatterns }
+        return sensitivePatterns + userPatterns.compactMap(makeSensitivePattern)
+    }
+
+    private static func makeSensitivePattern(
+        _ userPattern: UserSensitivePattern
+    ) -> SensitivePattern? {
+        switch userPattern.kind {
+        case .literal:
+            makeSensitivePattern(
+                NSRegularExpression.escapedPattern(for: userPattern.value),
+                replacementTemplate: redactionToken,
+                options: .caseInsensitive
+            )
+        case .regularExpression:
+            makeSensitivePattern(
+                userPattern.value,
+                replacementTemplate: redactionToken
+            )
+        }
+    }
+
     private static func makeSensitivePattern(
         _ pattern: String,
-        replacementTemplate: String
+        replacementTemplate: String,
+        options: NSRegularExpression.Options = []
     ) -> SensitivePattern? {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: options
+        ) else {
             return nil
         }
         return SensitivePattern(

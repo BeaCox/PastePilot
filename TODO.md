@@ -56,7 +56,7 @@ Current PastePilot baseline:
 - [x] Extend search query syntax. Support filters such as `kind:json`,
   `app:Terminal`, `pinned:true`, `has:ocr`, and quoted phrases; index source app
   fields in `SQLiteHistoryStore.searchBody`.
-- [ ] Add user-defined sensitive patterns. Store custom regex or plain-word masks
+- [x] Add user-defined sensitive patterns. Store custom regex or plain-word masks
   in settings, apply them through `ContentAnalyzer`, and test store-original,
   store-redacted, and skip policies.
 - [ ] Add backup and restore. Export `history.sqlite`, `images/`, and `text/` to
