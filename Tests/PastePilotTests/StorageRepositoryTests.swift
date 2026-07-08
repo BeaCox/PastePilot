@@ -250,6 +250,118 @@ struct StorageRepositoryTests {
     }
 
     @Test
+    func repositoryBackupExportsAndRestoresSQLiteImagesAndText() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceDirectory = root.appendingPathComponent("source", isDirectory: true)
+        let restoredDirectory = root.appendingPathComponent("restored", isDirectory: true)
+        let preRestoreDirectory = root.appendingPathComponent("pre-restore", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: sourceDirectory.appendingPathComponent("images", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: sourceDirectory.appendingPathComponent("text", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+
+        let imageFileName = "image.png"
+        let textFileName = "external.txt"
+        let imageData = Data([0x89, 0x50, 0x4e, 0x47])
+        let externalText = "full external text"
+        try imageData.write(
+            to: sourceDirectory
+                .appendingPathComponent("images", isDirectory: true)
+                .appendingPathComponent(imageFileName)
+        )
+        try externalText.write(
+            to: sourceDirectory
+                .appendingPathComponent("text", isDirectory: true)
+                .appendingPathComponent(textFileName),
+            atomically: true,
+            encoding: .utf8
+        )
+        let item = ClipboardItem(
+            content: "preview",
+            kind: .image,
+            imageFileName: imageFileName,
+            contentFileName: textFileName
+        )
+        let sourceRepository = HistoryRepository(dataDirectoryURL: sourceDirectory)
+        try sourceRepository.save([item])
+
+        let archiveURL = root.appendingPathComponent("pastepilot-backup.zip")
+        let exportResult = try sourceRepository.exportBackup(to: archiveURL)
+        #expect(FileManager.default.fileExists(atPath: exportResult.archiveURL.path))
+
+        let restoredRepository = HistoryRepository(dataDirectoryURL: restoredDirectory)
+        let restoreResult = try restoredRepository.restoreBackup(
+            from: archiveURL,
+            preRestoreBackupDirectoryURL: preRestoreDirectory
+        )
+
+        let restoredItem = try #require(restoredRepository.load().items.first)
+        #expect(restoredItem.id == item.id)
+        #expect(
+            try Data(
+                contentsOf: restoredDirectory
+                    .appendingPathComponent("images", isDirectory: true)
+                    .appendingPathComponent(imageFileName)
+            ) == imageData
+        )
+        #expect(
+            try String(
+                contentsOf: restoredDirectory
+                    .appendingPathComponent("text", isDirectory: true)
+                    .appendingPathComponent(textFileName),
+                encoding: .utf8
+            ) == externalText
+        )
+        #expect(
+            FileManager.default.fileExists(
+                atPath: restoreResult.preRestoreBackupURL.path
+            )
+        )
+    }
+
+    @Test
+    func repositoryRestoreRejectsInvalidBackupBeforeReplacingData() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = root.appendingPathComponent("target", isDirectory: true)
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let existingItem = ClipboardItem(content: "existing", kind: .text)
+        try repository.save([existingItem])
+
+        let invalidRoot = root.appendingPathComponent("invalid-root", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: invalidRoot,
+            withIntermediateDirectories: true
+        )
+        try Data(
+            """
+            {
+              "kind": "PastePilotBackup",
+              "schemaVersion": 1,
+              "createdAt": "2026-01-01T00:00:00Z"
+            }
+            """.utf8
+        ).write(to: invalidRoot.appendingPathComponent("manifest.json"))
+        let invalidArchive = root.appendingPathComponent("invalid.zip")
+        try zipDirectory(invalidRoot, to: invalidArchive)
+
+        var didThrow = false
+        do {
+            _ = try repository.restoreBackup(from: invalidArchive)
+        } catch {
+            didThrow = true
+        }
+
+        #expect(didThrow)
+        #expect(repository.load().items.map(\.id) == [existingItem.id])
+    }
+
+    @Test
     func repositoryDistinguishesMissingAndUnrecoverableLegacyHistory() throws {
         let emptyDirectory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: emptyDirectory) }
@@ -304,5 +416,20 @@ struct StorageRepositoryTests {
         try dbQueue.writeWithoutTransaction { db in
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
+    }
+
+    private func zipDirectory(_ directory: URL, to archiveURL: URL) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        process.arguments = [
+            "-c",
+            "-k",
+            "--norsrc",
+            directory.path,
+            archiveURL.path
+        ]
+        try process.run()
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
     }
 }

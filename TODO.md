@@ -59,7 +59,7 @@ Current PastePilot baseline:
 - [x] Add user-defined sensitive patterns. Store custom regex or plain-word masks
   in settings, apply them through `ContentAnalyzer`, and test store-original,
   store-redacted, and skip policies.
-- [ ] Add backup and restore. Export `history.sqlite`, `images/`, and `text/` to
+- [x] Add backup and restore. Export `history.sqlite`, `images/`, and `text/` to
   a versioned zip; create a pre-restore backup; validate archive layout before
   replacing local data.
 - [ ] Add optional copy-and-paste action. Keep the current copy-only behavior as

@@ -21,6 +21,37 @@ extension ClipboardStore {
         historyRepository.dataDirectoryByteCount()
     }
 
+    @discardableResult
+    func exportBackup(to archiveURL: URL) throws -> HistoryBackupResult {
+        historyWriteQueue.flush()
+        try historyRepository.save(items)
+        let result = try historyRepository.exportBackup(to: archiveURL)
+        noticePoster.post(
+            PastePilotNotice(
+                "Backup exported".localized,
+                style: .success
+            )
+        )
+        return result
+    }
+
+    @discardableResult
+    func restoreBackup(from archiveURL: URL) throws -> HistoryRestoreResult {
+        historyWriteQueue.flush()
+        cancelAllOCRTasks()
+        discardPendingImageSaves()
+        let result = try historyRepository.restoreBackup(from: archiveURL)
+        thumbnailCache.removeAllObjects()
+        load()
+        noticePoster.post(
+            PastePilotNotice(
+                "Backup restored".localized,
+                style: .success
+            )
+        )
+        return result
+    }
+
     func estimatedRetainedStorageByteCount() -> Int64 {
         estimatedStorageByteCount(for: items)
     }

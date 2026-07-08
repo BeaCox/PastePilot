@@ -10,6 +10,8 @@ struct PastePilotApp: App {
                 settings: appDelegate.settings,
                 store: appDelegate.store,
                 openDataFolder: appDelegate.openDataFolder,
+                exportBackup: appDelegate.exportBackup,
+                restoreBackup: appDelegate.restoreBackup,
                 clearUnpinnedHistory: appDelegate.clearUnpinnedHistory,
                 updateController: appDelegate.updateController
             )

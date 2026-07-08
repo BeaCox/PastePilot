@@ -40,6 +40,56 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func clipboardStoreExportsAndRestoresBackupFromCurrentItems() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceDirectory = root.appendingPathComponent("source", isDirectory: true)
+        let targetDirectory = root.appendingPathComponent("target", isDirectory: true)
+        let archiveURL = root.appendingPathComponent("store-backup.zip")
+        let noticePoster = CapturingNoticePoster()
+        let sourceStore = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: sourceDirectory,
+            ocrService: StubOCRService(),
+            noticePoster: noticePoster,
+            logger: SilentPastePilotLogger()
+        )
+        let exportedItem = ClipboardItem(content: "exported from memory", kind: .text)
+        sourceStore.items = [exportedItem]
+
+        try sourceStore.exportBackup(to: archiveURL)
+
+        let targetStore = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: targetDirectory,
+            ocrService: StubOCRService(),
+            noticePoster: noticePoster,
+            logger: SilentPastePilotLogger()
+        )
+
+        try targetStore.restoreBackup(from: archiveURL)
+
+        #expect(targetStore.items.map(\.id) == [exportedItem.id])
+        #expect(
+            noticePoster.notices.contains(
+                PastePilotNotice("Backup exported".localized, style: .success)
+            )
+        )
+        #expect(
+            noticePoster.notices.contains(
+                PastePilotNotice("Backup restored".localized, style: .success)
+            )
+        )
+        sourceStore.flushHistoryWrites()
+        targetStore.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func clipboardStoreAppliesExpiryAndHistoryLimitWithInjectedStorage() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -125,6 +125,18 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         }
     }
 
+    func closeDatabase() throws {
+        dbQueueLock.lock()
+        let dbQueue = cachedDBQueue
+        cachedDBQueue = nil
+        dbQueueLock.unlock()
+
+        guard let dbQueue else { return }
+        try dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+        }
+    }
+
     private func databaseQueue() throws -> DatabaseQueue {
         dbQueueLock.lock()
         defer { dbQueueLock.unlock() }

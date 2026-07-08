@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import UniformTypeIdentifiers
 
 extension AppDelegate {
     @objc func togglePopover() {
@@ -250,8 +251,78 @@ extension AppDelegate {
         NSWorkspace.shared.activateFileViewerSelecting([store.dataDirectoryURL])
     }
 
+    func exportBackup() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.zip]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = defaultBackupFileName()
+
+        guard panel.runModal() == .OK,
+              let url = panel.url else {
+            return
+        }
+
+        do {
+            try store.exportBackup(to: url)
+        } catch {
+            showBackupErrorAlert(
+                title: "Backup could not be exported".localized,
+                error: error
+            )
+        }
+    }
+
+    func restoreBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.zip]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK,
+              let url = panel.url,
+              confirmsRestoreBackup() else {
+            return
+        }
+
+        do {
+            try store.restoreBackup(from: url)
+        } catch {
+            showBackupErrorAlert(
+                title: "Backup could not be restored".localized,
+                error: error
+            )
+        }
+    }
+
     func clearUnpinnedHistory() {
         store.clearUnpinned()
+    }
+
+    private func defaultBackupFileName(date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        return "PastePilot Backup \(formatter.string(from: date)).zip"
+    }
+
+    private func confirmsRestoreBackup() -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Restore Backup?".localized
+        alert.informativeText = "Current history will be backed up, then replaced with the selected archive.".localized
+        alert.addButton(withTitle: "Restore".localized)
+        alert.addButton(withTitle: "Cancel".localized)
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func showBackupErrorAlert(title: String, error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = error.localizedDescription
+        alert.runModal()
     }
 
     func statusImage(filled: Bool) -> NSImage? {

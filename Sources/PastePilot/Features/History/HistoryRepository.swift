@@ -81,6 +81,28 @@ struct HistoryRepository: Sendable {
         try sqliteStore.matchingIDs(query: query)
     }
 
+    func exportBackup(to archiveURL: URL) throws -> HistoryBackupResult {
+        try ensureSQLiteDatabaseExists()
+        try sqliteStore.closeDatabase()
+        return try HistoryBackupService(
+            dataDirectoryURL: dataDirectoryURL
+        ).exportBackup(to: archiveURL)
+    }
+
+    func restoreBackup(
+        from archiveURL: URL,
+        preRestoreBackupDirectoryURL: URL? = nil
+    ) throws -> HistoryRestoreResult {
+        try ensureSQLiteDatabaseExists()
+        try sqliteStore.closeDatabase()
+        return try HistoryBackupService(
+            dataDirectoryURL: dataDirectoryURL
+        ).restoreBackup(
+            from: archiveURL,
+            preRestoreBackupDirectoryURL: preRestoreBackupDirectoryURL
+        )
+    }
+
     func estimatedHistoryByteCount(for items: [ClipboardItem]) -> Int64 {
         let document = HistoryDocument(
             schemaVersion: HistoryDocument.currentSchemaVersion,
@@ -94,6 +116,13 @@ struct HistoryRepository: Sendable {
 
     func dataDirectoryByteCount() -> Int64 {
         Self.byteCount(of: dataDirectoryURL)
+    }
+
+    private func ensureSQLiteDatabaseExists() throws {
+        guard !FileManager.default.fileExists(atPath: sqliteURL.path) else {
+            return
+        }
+        try sqliteStore.save([])
     }
 
     private func loadLegacyHistory() -> LegacyLoadResult? {

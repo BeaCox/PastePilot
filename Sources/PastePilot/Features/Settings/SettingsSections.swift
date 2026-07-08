@@ -336,6 +336,8 @@ struct IgnoredAppsSettingsPage: View {
 
 struct AdvancedSettingsPage: View {
     let openDataFolder: () -> Void
+    let exportBackup: () -> Void
+    let restoreBackup: () -> Void
     let showClearHistoryConfirmation: () -> Void
     let updateController: UpdateController
     let showResetConfirmation: () -> Void
@@ -346,6 +348,15 @@ struct AdvancedSettingsPage: View {
                 SettingsRow(title: "Local Data".localized) {
                     Button("Open Data Folder".localized, action: openDataFolder)
                 }
+                SettingsRow(title: "Backup".localized) {
+                    Button("Export Backup…".localized, action: exportBackup)
+                }
+                SettingsRow(title: "Restore".localized) {
+                    Button("Restore Backup…".localized, role: .destructive) {
+                        restoreBackup()
+                    }
+                }
+                SettingsNote("Backups include history, images, and externalized text. Restoring creates a pre-restore backup first.".localized)
                 SettingsRow(title: "History".localized) {
                     Button("Clear Unpinned".localized, role: .destructive) {
                         showClearHistoryConfirmation()

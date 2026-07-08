@@ -35,6 +35,8 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var store: ClipboardStore
     let openDataFolder: () -> Void
+    let exportBackup: () -> Void
+    let restoreBackup: () -> Void
     let clearUnpinnedHistory: () -> Void
     let updateController: UpdateController
     @State private var selectedTab: SettingsTab = .general
@@ -88,6 +90,8 @@ struct SettingsView: View {
 
             AdvancedSettingsPage(
                 openDataFolder: openDataFolder,
+                exportBackup: exportBackup,
+                restoreBackup: restoreBackup,
                 showClearHistoryConfirmation: {
                     showsClearHistoryConfirmation = true
                 },

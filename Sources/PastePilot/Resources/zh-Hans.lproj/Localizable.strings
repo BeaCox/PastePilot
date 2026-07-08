@@ -31,6 +31,8 @@
 "Rich text formatting was too large to preserve" = "富文本格式过大，未保留格式";
 "Image could not be saved" = "图片无法保存";
 "Image exceeds the size limit" = "图片超过大小上限";
+"Backup exported" = "备份已导出";
+"Backup restored" = "备份已恢复";
 
 /* Action titles */
 "Copy File" = "复制文件";
@@ -242,6 +244,16 @@
 "Toggles whether clipboard content from this app is recorded." = "切换是否记录来自此应用的剪贴板内容。";
 "Local Data" = "本地数据";
 "Open Data Folder" = "打开数据目录";
+"Backup" = "备份";
+"Export Backup…" = "导出备份…";
+"Restore" = "恢复";
+"Restore Backup…" = "恢复备份…";
+"Backups include history, images, and externalized text. Restoring creates a pre-restore backup first." = "备份包含历史记录、图片和外置文本。恢复前会先创建恢复前备份。";
+"Restore Backup?" = "恢复备份？";
+"Current history will be backed up, then replaced with the selected archive." = "当前历史记录会先备份，然后替换为所选归档。";
+"Cancel" = "取消";
+"Backup could not be exported" = "无法导出备份";
+"Backup could not be restored" = "无法恢复备份";
 "History" = "历史记录";
 "Preferences" = "偏好设置";
 "Reset to Defaults…" = "恢复默认设置…";
