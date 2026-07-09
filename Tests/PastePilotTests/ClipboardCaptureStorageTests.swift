@@ -133,6 +133,13 @@ struct ClipboardCaptureStorageTests {
         #expect(copyMessage == "Copied: %@".localized("Copy Original".localized))
         #expect(pasteboard.string(forType: .string) == originalContent)
 
+        let copyResult = ClipboardActionFactory.performResult(
+            ClipboardActionFactory.copyAction(for: item),
+            using: store
+        )
+        #expect(copyResult.didCopy)
+        #expect(copyResult.message == "Copied: %@".localized("Copy Original".localized))
+
         store.delete(item.id)
         #expect(
             !FileManager.default.fileExists(

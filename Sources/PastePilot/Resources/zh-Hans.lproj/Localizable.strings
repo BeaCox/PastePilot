@@ -173,7 +173,7 @@
 "Paste as Plain Text Shortcut" = "粘贴为纯文本的快捷键";
 "Click a shortcut field and press a new combination; press Delete to reset." = "点击任一快捷键框后录制新组合；按 Delete 恢复默认值。";
 "Choose a different shortcut; both global actions currently use the same keys." = "请选择其他快捷键；两个全局操作当前使用了相同的按键。";
-"Only Paste as Plain Text requires Accessibility permission." = "只有粘贴为纯文本需要辅助功能权限。";
+"Paste as Plain Text and Paste After Copying require Accessibility permission." = "粘贴为纯文本和复制后自动粘贴都需要辅助功能权限。";
 "Global shortcut listener could not be installed." = "全局快捷键监听器无法安装。";
 "Open PastePilot shortcut is already in use." = "打开 PastePilot 的快捷键已被占用。";
 "Paste as Plain Text shortcut is already in use." = "粘贴为纯文本的快捷键已被占用。";
@@ -229,6 +229,8 @@
 "Animate Preview" = "预览动画";
 "Fade the detail preview in and out. Switching apps always closes it instantly." = "详情预览淡入淡出。切换到其他应用时始终立即关闭。";
 "After Copying" = "复制后";
+"Paste After Copying" = "复制后自动粘贴";
+"After a successful copy, close the panel and press Command-V in the previous app." = "复制成功后会关闭面板，并在上一个应用中按下 Command-V。";
 "Keep Panel Open" = "保持面板打开";
 "Close Panel" = "关闭面板";
 "Choose what closes after you copy or transform an item." = "选择复制或转换内容后自动关闭哪些界面。";
@@ -293,7 +295,8 @@
 "Request Permission" = "请求权限";
 "Accessibility Permission Required" = "需要辅助功能权限";
 "Global Shortcut Permission" = "全局快捷键权限";
-"Paste as Plain Text needs Accessibility permission.\n\nIf permission stopped working after an update, select the old PastePilot in Accessibility settings and click the minus button. Close old DMGs, then add /Applications/PastePilot.app again." = "粘贴为纯文本需要辅助功能权限。\n\n如果更新后权限失效，请在辅助功能列表中选中旧 PastePilot 并点击减号。关闭旧 DMG，再重新添加 /Applications/PastePilot.app。";
+"Paste as Plain Text and Paste After Copying need Accessibility permission.\n\nIf permission stopped working after an update, select the old PastePilot in Accessibility settings and click the minus button. Close old DMGs, then add /Applications/PastePilot.app again." = "粘贴为纯文本和复制后自动粘贴需要辅助功能权限。\n\n如果更新后权限失效，请在辅助功能列表中选中旧 PastePilot 并点击减号。关闭旧 DMG，再重新添加 /Applications/PastePilot.app。";
+"Auto paste needs Accessibility permission." = "自动粘贴需要辅助功能权限。";
 "Not Now" = "暂不处理";
 "Press %@ to open PastePilot anytime." = "随时按 %@ 呼出 PastePilot。";
 "Press %@ to paste without formatting." = "按 %@ 即可粘贴并移除格式。";

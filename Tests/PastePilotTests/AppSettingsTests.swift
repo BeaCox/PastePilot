@@ -26,6 +26,7 @@ struct AppSettingsTests {
         #expect(settings.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(settings.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
         #expect(settings.appearanceMode == AppSettings.defaultAppearanceMode)
+        #expect(settings.pasteAfterCopying == AppSettings.defaultPasteAfterCopying)
         #expect(
             settings.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
@@ -42,6 +43,7 @@ struct AppSettingsTests {
         settings.ocrRecognitionMode = OCRRecognitionMode.fast.rawValue
         settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
         settings.appearanceMode = AppAppearanceMode.dark.rawValue
+        settings.pasteAfterCopying = true
         settings.sensitiveContentStoragePolicy =
             SensitiveContentStoragePolicy.storeRedacted.rawValue
         settings.customSensitivePatterns = """
@@ -65,6 +67,7 @@ struct AppSettingsTests {
         #expect(restored.ocrRecognitionMode == OCRRecognitionMode.fast.rawValue)
         #expect(restored.ocrLanguageMode == OCRLanguageMode.english.rawValue)
         #expect(restored.appearanceMode == AppAppearanceMode.dark.rawValue)
+        #expect(restored.pasteAfterCopying)
         #expect(
             restored.sensitiveContentStoragePolicy
                 == SensitiveContentStoragePolicy.storeRedacted.rawValue
@@ -100,6 +103,7 @@ struct AppSettingsTests {
         #expect(restored.ocrRecognitionMode == AppSettings.defaultOCRRecognitionMode)
         #expect(restored.ocrLanguageMode == AppSettings.defaultOCRLanguageMode)
         #expect(restored.appearanceMode == AppSettings.defaultAppearanceMode)
+        #expect(restored.pasteAfterCopying == AppSettings.defaultPasteAfterCopying)
         #expect(
             restored.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy

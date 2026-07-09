@@ -297,7 +297,7 @@ extension AppDelegate {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = "Global Shortcut Permission".localized
-        alert.informativeText = "Paste as Plain Text needs Accessibility permission.\n\nIf permission stopped working after an update, select the old PastePilot in Accessibility settings and click the minus button. Close old DMGs, then add /Applications/PastePilot.app again.".localized
+        alert.informativeText = "Paste as Plain Text and Paste After Copying need Accessibility permission.\n\nIf permission stopped working after an update, select the old PastePilot in Accessibility settings and click the minus button. Close old DMGs, then add /Applications/PastePilot.app again.".localized
         alert.addButton(withTitle: "Open Accessibility Settings".localized)
         alert.addButton(withTitle: "Not Now".localized)
         NSApp.activate(ignoringOtherApps: true)

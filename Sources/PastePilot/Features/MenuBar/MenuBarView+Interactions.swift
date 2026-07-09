@@ -290,9 +290,29 @@ extension MenuBarView {
     }
 
     func performAction(_ action: ClipboardAction) {
-        let message = ClipboardActionFactory.perform(action, using: store)
-        applyPasteCloseBehavior(forcePreviewClose: action.closesInlinePreview)
-        showNotice(PastePilotNotice(message))
+        let result = ClipboardActionFactory.performResult(action, using: store)
+        if settings.pasteAfterCopying, result.didCopy {
+            pasteCopiedContent()
+        } else {
+            applyPasteCloseBehavior(forcePreviewClose: action.closesInlinePreview)
+        }
+        showNotice(PastePilotNotice(result.message))
+    }
+
+    func pasteCopiedContent() {
+        previewClosesInstantly = true
+        closePreview()
+        closePopover()
+        switch pasteAfterCopying() {
+        case .pasted:
+            break
+        case .accessibilityRequired:
+            showAccessibilityRequired()
+            showNotice(PastePilotNotice(
+                "Auto paste needs Accessibility permission.".localized,
+                style: .warning
+            ))
+        }
     }
 
     func applyPasteCloseBehavior(forcePreviewClose: Bool) {

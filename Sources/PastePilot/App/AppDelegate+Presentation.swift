@@ -167,6 +167,12 @@ extension AppDelegate {
                 },
                 quit: { [weak self] in self?.quit() },
                 closePopover: { [weak self] in self?.popover?.close() },
+                pasteAfterCopying: { [weak self] in
+                    self?.pasteShortcutService.paste() ?? .accessibilityRequired
+                },
+                showAccessibilityRequired: { [weak self] in
+                    self?.showAccessibilityRequiredAlert()
+                },
                 resize: { [weak self] size in
                     self?.resizePopover(size: size)
                 }

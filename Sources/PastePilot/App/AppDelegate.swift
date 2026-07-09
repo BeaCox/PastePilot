@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = ClipboardStore()
     let updateController = UpdateController()
     let plainTextPasteService = PlainTextPasteService()
+    let pasteShortcutService = PasteShortcutService()
     var aboutWindow: NSWindow?
     var welcomeWindow: NSWindow?
     var popover: NSPopover?

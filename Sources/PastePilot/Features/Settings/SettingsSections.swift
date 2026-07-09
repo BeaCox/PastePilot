@@ -43,7 +43,7 @@ struct GeneralSettingsPage: View {
                         .foregroundStyle(.orange)
                 } else {
                     SettingsNote(
-                        "Only Paste as Plain Text requires Accessibility permission.".localized
+                        "Paste as Plain Text and Paste After Copying require Accessibility permission.".localized
                     )
                 }
             }
@@ -288,6 +288,11 @@ struct AppearanceSettingsPage: View {
             }
 
             SettingsGroup {
+                Toggle(
+                    "Paste After Copying".localized,
+                    isOn: $settings.pasteAfterCopying
+                )
+                SettingsNote("After a successful copy, close the panel and press Command-V in the previous app.".localized)
                 SettingsRow(title: "After Copying".localized) {
                     Picker("", selection: $settings.pasteCloseBehavior) {
                         Text("Keep Panel Open".localized)
@@ -299,6 +304,7 @@ struct AppearanceSettingsPage: View {
                     }
                     .labelsHidden()
                     .frame(width: 180)
+                    .disabled(settings.pasteAfterCopying)
                 }
                 SettingsNote("Choose what closes after you copy or transform an item.".localized)
             }

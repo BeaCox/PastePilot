@@ -89,7 +89,7 @@ final class PlainTextPasteService {
             EventPostingPermission.isGranted
         },
         postPasteShortcut: @escaping () -> Void = {
-            PlainTextPasteService.postCommandV()
+            PasteShortcutService.postCommandV()
         },
         restoreDelay: Duration = .milliseconds(250)
     ) {
@@ -161,23 +161,4 @@ final class PlainTextPasteService {
         return nil
     }
 
-    nonisolated private static func postCommandV() {
-        guard let source = CGEventSource(stateID: .combinedSessionState),
-              let keyDown = CGEvent(
-                  keyboardEventSource: source,
-                  virtualKey: CGKeyCode(kVK_ANSI_V),
-                  keyDown: true
-              ),
-              let keyUp = CGEvent(
-                  keyboardEventSource: source,
-                  virtualKey: CGKeyCode(kVK_ANSI_V),
-                  keyDown: false
-              ) else {
-            return
-        }
-        keyDown.flags = .maskCommand
-        keyUp.flags = .maskCommand
-        keyDown.post(tap: .cghidEventTap)
-        keyUp.post(tap: .cghidEventTap)
-    }
 }

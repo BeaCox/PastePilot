@@ -23,6 +23,8 @@ struct MenuBarView: View {
     let checkForUpdates: @MainActor () -> Void
     let quit: @MainActor () -> Void
     let closePopover: @MainActor () -> Void
+    let pasteAfterCopying: @MainActor () -> PasteShortcutService.Result
+    let showAccessibilityRequired: @MainActor () -> Void
     let resize: @MainActor (CGSize) -> Void
     @State var searchText = ""
     @State var selectedID: UUID?

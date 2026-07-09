@@ -103,6 +103,7 @@ final class AppSettings: ObservableObject {
     static let defaultSensitiveContentStoragePolicy =
         SensitiveContentStoragePolicy.storeOriginal.rawValue
     static let defaultCustomSensitivePatterns = ""
+    static let defaultPasteAfterCopying = false
 
     private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
@@ -162,6 +163,10 @@ final class AppSettings: ObservableObject {
             "pasteCloseBehavior",
             default: PasteCloseBehavior.closePreview.rawValue
         )
+        static let pasteAfterCopying = AppSetting(
+            "pasteAfterCopying",
+            default: AppSettings.defaultPasteAfterCopying
+        )
         static let previewAnimationEnabled = AppSetting(
             "previewAnimationEnabled",
             default: true
@@ -203,6 +208,7 @@ final class AppSettings: ObservableObject {
                 menuBarIconStyle.key: menuBarIconStyle.defaultValue,
                 historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
                 pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
+                pasteAfterCopying.key: pasteAfterCopying.defaultValue,
                 previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
                 appearanceMode.key: appearanceMode.defaultValue,
                 ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
@@ -336,6 +342,10 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var pasteAfterCopying: Bool {
+        didSet { persist(pasteAfterCopying, for: Setting.pasteAfterCopying) }
+    }
+
     @Published var previewAnimationEnabled: Bool {
         didSet { persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled) }
     }
@@ -450,6 +460,10 @@ final class AppSettings: ObservableObject {
             in: defaults,
             as: PasteCloseBehavior.self
         )
+        pasteAfterCopying = Self.bool(
+            for: Setting.pasteAfterCopying,
+            in: defaults
+        )
         previewAnimationEnabled = Self.bool(
             for: Setting.previewAnimationEnabled,
             in: defaults
@@ -509,6 +523,7 @@ final class AppSettings: ObservableObject {
         menuBarIconStyle = Setting.menuBarIconStyle.defaultValue
         historyTimeoutSeconds = Setting.historyTimeoutSeconds.defaultValue
         pasteCloseBehavior = Setting.pasteCloseBehavior.defaultValue
+        pasteAfterCopying = Setting.pasteAfterCopying.defaultValue
         previewAnimationEnabled = Setting.previewAnimationEnabled.defaultValue
         appearanceMode = Setting.appearanceMode.defaultValue
         ocrRecognitionMode = Setting.ocrRecognitionMode.defaultValue
@@ -680,6 +695,7 @@ final class AppSettings: ObservableObject {
         persist(menuBarIconStyle, for: Setting.menuBarIconStyle)
         persist(historyTimeoutSeconds, for: Setting.historyTimeoutSeconds)
         persist(pasteCloseBehavior, for: Setting.pasteCloseBehavior)
+        persist(pasteAfterCopying, for: Setting.pasteAfterCopying)
         persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled)
         persist(appearanceMode, for: Setting.appearanceMode)
         persist(ocrRecognitionMode, for: Setting.ocrRecognitionMode)

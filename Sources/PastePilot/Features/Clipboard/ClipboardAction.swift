@@ -54,6 +54,11 @@ struct ClipboardAction: Identifiable {
     }
 }
 
+struct ClipboardActionResult: Equatable {
+    let message: String
+    let didCopy: Bool
+}
+
 enum ClipboardActionFactory {
     static func actions(for item: ClipboardItem) -> [ClipboardAction] {
         if item.kind == .image, let fileName = item.imageFileName {
@@ -270,21 +275,42 @@ enum ClipboardActionFactory {
 
     @MainActor
     static func perform(_ action: ClipboardAction, using store: ClipboardStore) -> String {
+        performResult(action, using: store).message
+    }
+
+    @MainActor
+    static func performResult(
+        _ action: ClipboardAction,
+        using store: ClipboardStore
+    ) -> ClipboardActionResult {
         switch action.effect {
         case let .copy(content):
             store.copy(content)
-            return "Copied: %@".localized(action.title)
+            return ClipboardActionResult(
+                message: "Copied: %@".localized(action.title),
+                didCopy: true
+            )
         case let .copyItem(id):
             guard let item = store.items.first(where: { $0.id == id }),
                   let content = store.content(for: item) else {
-                return "Content is no longer available".localized
+                return ClipboardActionResult(
+                    message: "Content is no longer available".localized,
+                    didCopy: false
+                )
             }
             store.copy(content)
-            return "Copied: %@".localized(action.title)
+            return ClipboardActionResult(
+                message: "Copied: %@".localized(action.title),
+                didCopy: true
+            )
         case let .copyImage(fileName):
-            return store.copyImage(fileName: fileName)
-                ? "Image copied".localized
-                : "Image file missing".localized
+            let didCopy = store.copyImage(fileName: fileName)
+            return ClipboardActionResult(
+                message: didCopy
+                    ? "Image copied".localized
+                    : "Image file missing".localized,
+                didCopy: didCopy
+            )
         case let .copyImageMarkdown(fileName, sourceURL, originalPath):
             let reference = sourceURL
                 ?? originalPath
@@ -298,58 +324,107 @@ enum ClipboardActionFactory {
                     altText: altText
                 )
             )
-            return "Image Markdown copied".localized
+            return ClipboardActionResult(
+                message: "Image Markdown copied".localized,
+                didCopy: true
+            )
         case let .copyOCRText(id):
             guard let item = store.items.first(where: { $0.id == id }),
                   let ocrText = item.ocrText?
                       .trimmingCharacters(in: .whitespacesAndNewlines),
                   !ocrText.isEmpty else {
-                return "OCR text is no longer available".localized
+                return ClipboardActionResult(
+                    message: "OCR text is no longer available".localized,
+                    didCopy: false
+                )
             }
             store.copy(ocrText)
-            return "OCR text copied".localized
+            return ClipboardActionResult(
+                message: "OCR text copied".localized,
+                didCopy: true
+            )
         case let .copyCachedImageFile(fileName):
-            return store.copyFiles([URL(fileURLWithPath: store.imagePath(fileName: fileName))])
-                ? "Files copied".localized
-                : "Image file missing".localized
+            let didCopy = store.copyFiles([
+                URL(fileURLWithPath: store.imagePath(fileName: fileName))
+            ])
+            return ClipboardActionResult(
+                message: didCopy
+                    ? "Files copied".localized
+                    : "Image file missing".localized,
+                didCopy: didCopy
+            )
         case let .copyFiles(urls):
-            return store.copyFiles(urls)
-                ? "Files copied".localized
-                : "Files are no longer available".localized
+            let didCopy = store.copyFiles(urls)
+            return ClipboardActionResult(
+                message: didCopy
+                    ? "Files copied".localized
+                    : "Files are no longer available".localized,
+                didCopy: didCopy
+            )
         case let .copyRichText(id):
             guard let item = store.items.first(where: { $0.id == id }) else {
-                return "Rich text is no longer available".localized
+                return ClipboardActionResult(
+                    message: "Rich text is no longer available".localized,
+                    didCopy: false
+                )
             }
-            return store.copyRichText(for: item)
-                ? "Rich text copied".localized
-                : "Rich text is no longer available".localized
+            let didCopy = store.copyRichText(for: item)
+            return ClipboardActionResult(
+                message: didCopy
+                    ? "Rich text copied".localized
+                    : "Rich text is no longer available".localized,
+                didCopy: didCopy
+            )
         case let .revealFiles(urls):
             let existingURLs = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
             guard !existingURLs.isEmpty else {
-                return "Files are no longer available".localized
+                return ClipboardActionResult(
+                    message: "Files are no longer available".localized,
+                    didCopy: false
+                )
             }
             NSWorkspace.shared.activateFileViewerSelecting(existingURLs)
-            return "Shown in Finder".localized
+            return ClipboardActionResult(
+                message: "Shown in Finder".localized,
+                didCopy: false
+            )
         case let .revealCachedImageFile(fileName):
             let url = URL(fileURLWithPath: store.imagePath(fileName: fileName))
             guard FileManager.default.fileExists(atPath: url.path) else {
-                return "Image file missing".localized
+                return ClipboardActionResult(
+                    message: "Image file missing".localized,
+                    didCopy: false
+                )
             }
             NSWorkspace.shared.activateFileViewerSelecting([url])
-            return "Shown in Finder".localized
+            return ClipboardActionResult(
+                message: "Shown in Finder".localized,
+                didCopy: false
+            )
         case let .quickLook(urls):
-            return QuickLookService.shared.preview(urls)
-                ? "Quick Look opened".localized
-                : "Files are no longer available".localized
+            let didOpen = QuickLookService.shared.preview(urls)
+            return ClipboardActionResult(
+                message: didOpen
+                    ? "Quick Look opened".localized
+                    : "Files are no longer available".localized,
+                didCopy: false
+            )
         case let .quickLookCachedImageFile(fileName):
-            return QuickLookService.shared.preview([
+            let didOpen = QuickLookService.shared.preview([
                 URL(fileURLWithPath: store.imagePath(fileName: fileName))
             ])
-                ? "Quick Look opened".localized
-                : "Image file missing".localized
+            return ClipboardActionResult(
+                message: didOpen
+                    ? "Quick Look opened".localized
+                    : "Image file missing".localized,
+                didCopy: false
+            )
         case let .open(url):
             NSWorkspace.shared.open(url)
-            return "Link opened".localized
+            return ClipboardActionResult(
+                message: "Link opened".localized,
+                didCopy: false
+            )
         }
     }
 
