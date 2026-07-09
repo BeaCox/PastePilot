@@ -11,6 +11,7 @@ final class PasteShortcutService {
 
     private let isAccessibilityGranted: @MainActor () -> Bool
     private let postPasteShortcut: @MainActor () -> Void
+    private let sleep: @MainActor (Duration) async -> Void
     private let pasteDelay: Duration
     private var pasteTask: Task<Void, Never>?
 
@@ -21,10 +22,14 @@ final class PasteShortcutService {
         postPasteShortcut: @escaping @MainActor () -> Void = {
             PasteShortcutService.postCommandV()
         },
+        sleep: @escaping @MainActor (Duration) async -> Void = { duration in
+            try? await Task.sleep(for: duration)
+        },
         pasteDelay: Duration = .milliseconds(120)
     ) {
         self.isAccessibilityGranted = isAccessibilityGranted
         self.postPasteShortcut = postPasteShortcut
+        self.sleep = sleep
         self.pasteDelay = pasteDelay
     }
 
@@ -40,7 +45,7 @@ final class PasteShortcutService {
         pasteTask?.cancel()
         pasteTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            try? await Task.sleep(for: pasteDelay)
+            await sleep(pasteDelay)
             guard !Task.isCancelled else { return }
             postPasteShortcut()
             pasteTask = nil

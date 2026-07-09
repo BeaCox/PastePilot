@@ -428,8 +428,24 @@ struct StorageRepositoryTests {
             directory.path,
             archiveURL.path
         ]
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
         try process.run()
         process.waitUntilExit()
-        #expect(process.terminationStatus == 0)
+        guard process.terminationStatus == 0 else {
+            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw NSError(
+                domain: "PastePilotTests.ZipDirectory",
+                code: Int(process.terminationStatus),
+                userInfo: [
+                    NSLocalizedDescriptionKey: output.map {
+                        "ditto failed: \($0)"
+                    } ?? "ditto exited with \(process.terminationStatus)"
+                ]
+            )
+        }
     }
 }
