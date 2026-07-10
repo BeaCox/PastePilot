@@ -65,7 +65,7 @@ Current PastePilot baseline:
 - [x] Add optional copy-and-paste action. Keep the current copy-only behavior as
   default, but provide a modifier or setting that copies the item and posts the
   paste keystroke after Accessibility permission is granted.
-- [ ] Add visual and interaction regression tests for the menu bar popover.
+- [x] Add visual and interaction regression tests for the menu bar popover.
   Cover search, preview, pin/delete, actions, notices, empty state, and
   long-content layout.
 

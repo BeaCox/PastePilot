@@ -38,43 +38,37 @@ struct MenuBarView: View {
     @FocusState var searchFocused: Bool
 
     var filteredItems: [ClipboardItem] {
-        let query = ClipboardSearchQuery(searchText)
-        let fullTextIDs = interactionState.fullTextSearch.matchingIDs(
-            for: query.searchText
+        MenuBarPopoverState.filteredItems(
+            from: store.items,
+            searchText: searchText,
+            fullTextSearch: interactionState.fullTextSearch
         )
-        let matches = query.isEmpty ? store.items : store.items.filter {
-            guard query.matchesFilters($0) else { return false }
-            guard query.hasSearchTerms else { return true }
-            return shortSearchMatches($0, query: query) || fullTextIDs.contains($0.id)
-        }
-        return ClipboardHistoryOrdering.pinnedFirst(matches)
     }
 
     func shortSearchMatches(_ item: ClipboardItem, query: ClipboardSearchQuery) -> Bool {
-        query.matches(item.content)
-            || query.matches(item.kind.localizedTitle)
-            || query.matches(item.ocrText)
+        MenuBarPopoverState.shortSearchMatches(item, query: query)
     }
 
     var selectedItem: ClipboardItem? {
-        guard let selectedID else { return filteredItems.first }
-        return filteredItems.first { $0.id == selectedID } ?? filteredItems.first
+        MenuBarPopoverState.selectedItem(
+            in: filteredItems,
+            selectedID: selectedID
+        )
     }
 
     var previewedItem: ClipboardItem? {
-        guard let previewedID else { return nil }
-        return store.items.first { $0.id == previewedID }
+        MenuBarPopoverState.previewedItem(
+            in: store.items,
+            previewedID: previewedID
+        )
     }
 
     var listPreferredHeight: CGFloat {
-        guard !filteredItems.isEmpty else { return 250 }
-        let sectionCount = (filteredItems.contains(where: \.isPinned) ? 1 : 0)
-            + (filteredItems.contains(where: { !$0.isPinned }) ? 1 : 0)
-        return min(450, max(190, 82 + CGFloat(sectionCount * 22) + CGFloat(filteredItems.count * 34)))
+        MenuBarPopoverState.preferredHeight(for: filteredItems)
     }
 
     var preferredSize: CGSize {
-        CGSize(width: 400, height: listPreferredHeight)
+        MenuBarPopoverState.preferredSize(for: filteredItems)
     }
 
     var body: some View {

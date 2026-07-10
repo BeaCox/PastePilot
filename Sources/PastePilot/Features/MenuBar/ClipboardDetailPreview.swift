@@ -49,9 +49,7 @@ struct ClipboardDetailPreview: View {
             .padding(.bottom, 12)
 
             ClipboardPreviewActionList(
-                actions: Array(
-                    ClipboardActionFactory.keyboardActions(for: item).prefix(9)
-                ),
+                actions: MenuBarPopoverState.previewActions(for: item),
                 performAction: performAction
             )
         }

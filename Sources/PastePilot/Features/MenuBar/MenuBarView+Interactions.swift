@@ -192,7 +192,7 @@ extension MenuBarView {
     }
 
     func shouldShowPinnedHeader(at index: Int, in items: [ClipboardItem]) -> Bool {
-        index == 0 && items.first?.isPinned == true
+        MenuBarPopoverState.shouldShowPinnedHeader(at: index, in: items)
     }
 
     func shouldShowRecentHeader(at index: Int) -> Bool {
@@ -200,11 +200,7 @@ extension MenuBarView {
     }
 
     func shouldShowRecentHeader(at index: Int, in items: [ClipboardItem]) -> Bool {
-        guard index < items.count,
-              !items[index].isPinned else {
-            return false
-        }
-        return index == 0 || items[index - 1].isPinned
+        MenuBarPopoverState.shouldShowRecentHeader(at: index, in: items)
     }
 
     func moveSelection(_ direction: MoveCommandDirection) {

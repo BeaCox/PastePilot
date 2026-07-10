@@ -264,26 +264,21 @@ extension MenuBarView {
     }
 
     private var emptyStateTitle: String {
-        if store.items.isEmpty {
-            return "Waiting for content".localized
-        }
-        if interactionState.fullTextSearch.isSearching {
-            return "Searching…".localized
-        }
-        return "No search results".localized
+        emptyState.title
     }
 
     private var emptyStateSystemImage: String {
-        store.items.isEmpty ? "clipboard" : "magnifyingglass"
+        emptyState.systemImage
     }
 
     private var emptyStateDescription: String {
-        if store.items.isEmpty {
-            return "Copied content will appear here automatically.".localized
-        }
-        if interactionState.fullTextSearch.isSearching {
-            return "Scanning large clipboard items.".localized
-        }
-        return "Try searching for other content or types.".localized
+        emptyState.description
+    }
+
+    private var emptyState: MenuBarPopoverEmptyState {
+        MenuBarPopoverState.emptyState(
+            itemCount: store.items.count,
+            isSearching: interactionState.fullTextSearch.isSearching
+        )
     }
 }
