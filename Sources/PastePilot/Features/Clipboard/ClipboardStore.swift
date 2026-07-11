@@ -110,6 +110,59 @@ final class ClipboardStore: ObservableObject {
         lastChangeCount = pasteboard.changeCount
     }
 
+    func copyOriginalItem(_ item: ClipboardItem) -> Bool {
+        if copyPasteboardRepresentations(for: item) {
+            return true
+        }
+        if item.kind == .file {
+            return copyFiles(item.fileURLs)
+        }
+        if item.kind == .richText, item.hasRichText {
+            return copyRichText(for: item)
+        }
+        if let fileName = item.imageFileName {
+            return copyImage(fileName: fileName)
+        }
+        guard let content = content(for: item) else { return false }
+        copy(content)
+        return true
+    }
+
+    func copyPasteboardRepresentations(for item: ClipboardItem) -> Bool {
+        guard let representations = item.pasteboardRepresentations,
+              !representations.isEmpty else {
+            return false
+        }
+
+        let groupedRepresentations = Dictionary(
+            grouping: representations.enumerated(),
+            by: { $0.element.itemIndex }
+        )
+        let pasteboardItems = groupedRepresentations.keys.sorted().compactMap { itemIndex in
+            let pasteboardItem = NSPasteboardItem()
+            let didSetAnyType = groupedRepresentations[itemIndex, default: []]
+                .sorted { $0.offset < $1.offset }
+                .reduce(false) { didSetSoFar, entry in
+                    pasteboardItem.setData(
+                        entry.element.data,
+                        forType: NSPasteboard.PasteboardType(
+                            rawValue: entry.element.typeIdentifier
+                        )
+                    ) || didSetSoFar
+                }
+            return didSetAnyType ? pasteboardItem : nil
+        }
+        guard !pasteboardItems.isEmpty else { return false }
+
+        pasteboard.clearContents()
+        let succeeded = pasteboard.writeObjects(pasteboardItems)
+        if succeeded {
+            pendingCaptureChangeCount = nil
+            lastChangeCount = pasteboard.changeCount
+        }
+        return succeeded
+    }
+
     func copyImage(fileName: String) -> Bool {
         guard let image = imageStore.image(fileName: fileName) else { return false }
         pasteboard.clearContents()
@@ -130,6 +183,10 @@ final class ClipboardStore: ObservableObject {
     }
 
     func copyRichText(for item: ClipboardItem) -> Bool {
+        if copyPasteboardRepresentations(for: item) {
+            return true
+        }
+
         let rtfData = item.richTextRTFBase64.flatMap {
             Data(base64Encoded: $0)
         }

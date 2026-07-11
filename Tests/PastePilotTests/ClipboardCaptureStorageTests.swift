@@ -33,6 +33,125 @@ struct ClipboardCaptureStorageTests {
 
     @Test
     @MainActor
+    func captureRetainsPasteboardRepresentationsAndCopyRestoresThem() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let customType = NSPasteboard.PasteboardType(
+            rawValue: "com.example.PastePilot.custom"
+        )
+        let customData = Data([0x70, 0x69, 0x6c, 0x6f, 0x74])
+
+        pasteboard.clearContents()
+        pasteboard.setString("represented text", forType: .string)
+        pasteboard.setData(customData, forType: customType)
+        store.captureCurrentClipboard()
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.content == "represented text")
+        #expect(item.hasPasteboardRepresentations)
+        #expect(
+            item.pasteboardRepresentations?.contains {
+                $0.typeIdentifier == customType.rawValue && $0.data == customData
+            } == true
+        )
+        #expect(ClipboardActionFactory.copyAction(for: item).id == "copy-original")
+
+        pasteboard.clearContents()
+        let result = ClipboardActionFactory.performResult(
+            ClipboardActionFactory.copyAction(for: item),
+            using: store
+        )
+
+        #expect(result.didCopy)
+        #expect(pasteboard.string(forType: .string) == "represented text")
+        #expect(pasteboard.data(forType: customType) == customData)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func redactedSensitiveCaptureDropsPasteboardRepresentations() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotRepresentationRedactionTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.sensitiveContentStoragePolicy =
+            SensitiveContentStoragePolicy.storeRedacted.rawValue
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let customType = NSPasteboard.PasteboardType(
+            rawValue: "com.example.PastePilot.secret"
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setString("API_KEY=super-secret-value", forType: .string)
+        pasteboard.setData(Data("secret bytes".utf8), forType: customType)
+        store.captureCurrentClipboard()
+
+        let item = try await waitForCapturedItem(in: store)
+        #expect(item.content == "API_KEY=••••••••")
+        #expect(!item.hasPasteboardRepresentations)
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
+    func pasteboardRepresentationPolicyAppliesSizeAndTypeLimits() throws {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let smallType = NSPasteboard.PasteboardType(
+            rawValue: "com.example.PastePilot.small"
+        )
+        let largeType = NSPasteboard.PasteboardType(
+            rawValue: "com.example.PastePilot.large"
+        )
+        let sourceType = NSPasteboard.PasteboardType(
+            rawValue: PasteboardRepresentationPolicy.sourcePasteboardTypeRawValue
+        )
+        let item = NSPasteboardItem()
+        item.setData(Data("small".utf8), forType: smallType)
+        item.setData(
+            Data(
+                repeating: 0x1,
+                count: PasteboardRepresentationPolicy.maxRepresentationByteCount + 1
+            ),
+            forType: largeType
+        )
+        item.setData(Data("source".utf8), forType: sourceType)
+
+        pasteboard.clearContents()
+        pasteboard.writeObjects([item])
+
+        let retained = PasteboardRepresentationPolicy.retainedRepresentations(
+            from: pasteboard,
+            rootTypes: pasteboard.types ?? []
+        )
+
+        #expect(retained.map(\.typeIdentifier) == [smallType.rawValue])
+        #expect(retained.first?.data == Data("small".utf8))
+    }
+
+    @Test
+    @MainActor
     func concealedPasteboardTypeIsIgnoredBeforeCapture() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -17,6 +17,7 @@ struct SensitiveContentStorageResult {
     let containsSensitiveData: Bool
     let richTextRTFBase64: String?
     let richTextHTML: String?
+    let pasteboardRepresentations: [ClipboardPasteboardRepresentation]
 }
 
 enum RichTextPayloadPolicy {
@@ -112,7 +113,8 @@ extension ClipboardStore {
             captureFiles(
                 urls: urls,
                 source: source,
-                pasteboardChangeCount: snapshot.changeCount
+                pasteboardChangeCount: snapshot.changeCount,
+                pasteboardRepresentations: snapshot.pasteboardRepresentations
             )
         case .image(let cgImage, let remoteURL, let originalPath):
             _ = saveImage(
@@ -120,7 +122,8 @@ extension ClipboardStore {
                 source: source,
                 remoteURL: remoteURL,
                 originalPath: originalPath,
-                pasteboardChangeCount: snapshot.changeCount
+                pasteboardChangeCount: snapshot.changeCount,
+                pasteboardRepresentations: snapshot.pasteboardRepresentations
             )
         case .richText(let rtfData, let html, let plainText):
             _ = captureRichText(
@@ -128,13 +131,15 @@ extension ClipboardStore {
                 html: html,
                 plainText: plainText,
                 source: source,
-                pasteboardChangeCount: snapshot.changeCount
+                pasteboardChangeCount: snapshot.changeCount,
+                pasteboardRepresentations: snapshot.pasteboardRepresentations
             )
         case .text(let content):
             captureText(
                 content,
                 source: source,
-                pasteboardChangeCount: snapshot.changeCount
+                pasteboardChangeCount: snapshot.changeCount,
+                pasteboardRepresentations: snapshot.pasteboardRepresentations
             )
         case .none:
             return
@@ -144,7 +149,8 @@ extension ClipboardStore {
     func captureText(
         _ content: String,
         source: (name: String?, bundleIdentifier: String?),
-        pasteboardChangeCount: Int? = nil
+        pasteboardChangeCount: Int? = nil,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedContent.isEmpty else {
@@ -168,6 +174,7 @@ extension ClipboardStore {
             containsSensitiveData: analysis.containsSensitiveData,
             richTextRTFBase64: nil,
             richTextHTML: nil,
+            pasteboardRepresentations: pasteboardRepresentations,
             userPatterns: userPatterns
         ) else {
             return
@@ -188,6 +195,7 @@ extension ClipboardStore {
         source: (name: String?, bundleIdentifier: String?),
         richTextRTFBase64: String?,
         richTextHTML: String?,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = [],
         pasteboardChangeCount: Int?
     ) {
         guard pasteboardChangeCount.map({ pasteboard.changeCount == $0 }) ?? true else {
@@ -224,6 +232,7 @@ extension ClipboardStore {
                 sourceBundleIdentifier: source.bundleIdentifier,
                 richTextRTFBase64: richTextRTFBase64,
                 richTextHTML: richTextHTML,
+                pasteboardRepresentations: pasteboardRepresentations,
                 contentFileName: processedContent.fileName,
                 contentDigest: processedContent.digest,
                 contentCharacterCount: processedContent.characterCount,
@@ -236,7 +245,8 @@ extension ClipboardStore {
     func captureFiles(
         urls: [URL],
         source: (name: String?, bundleIdentifier: String?),
-        pasteboardChangeCount: Int?
+        pasteboardChangeCount: Int?,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) {
         let normalized = urls
             .filter(\.isFileURL)
@@ -252,7 +262,8 @@ extension ClipboardStore {
            captureImageFile(
                url,
                source: source,
-               pasteboardChangeCount: pasteboardChangeCount
+               pasteboardChangeCount: pasteboardChangeCount,
+               pasteboardRepresentations: pasteboardRepresentations
            ) {
             return
         }
@@ -267,7 +278,8 @@ extension ClipboardStore {
                 isPinned: wasPinned,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier,
-                filePaths: paths
+                filePaths: paths,
+                pasteboardRepresentations: pasteboardRepresentations
             )
         }
     }
@@ -277,7 +289,8 @@ extension ClipboardStore {
         html: String?,
         plainText: String,
         source: (name: String?, bundleIdentifier: String?),
-        pasteboardChangeCount: Int? = nil
+        pasteboardChangeCount: Int? = nil,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) -> Bool {
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
         let rtfBase64 = rtfData?.base64EncodedString()
@@ -308,6 +321,7 @@ extension ClipboardStore {
             containsSensitiveData: containsSensitiveData,
             richTextRTFBase64: payload.rtfBase64,
             richTextHTML: payload.html,
+            pasteboardRepresentations: pasteboardRepresentations,
             userPatterns: userPatterns
         ) else {
             return true
@@ -351,6 +365,7 @@ extension ClipboardStore {
                 source: source,
                 richTextRTFBase64: storageResult.richTextRTFBase64,
                 richTextHTML: storageResult.richTextHTML,
+                pasteboardRepresentations: storageResult.pasteboardRepresentations,
                 pasteboardChangeCount: pasteboardChangeCount
             )
             return
@@ -373,6 +388,7 @@ extension ClipboardStore {
                     source: source,
                     richTextRTFBase64: storageResult.richTextRTFBase64,
                     richTextHTML: storageResult.richTextHTML,
+                    pasteboardRepresentations: storageResult.pasteboardRepresentations,
                     pasteboardChangeCount: pasteboardChangeCount
                 )
             }
@@ -390,6 +406,7 @@ extension ClipboardStore {
         containsSensitiveData: Bool,
         richTextRTFBase64: String?,
         richTextHTML: String?,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = [],
         userPatterns: [UserSensitivePattern] = []
     ) -> SensitiveContentStorageResult? {
         guard containsSensitiveData else {
@@ -398,7 +415,8 @@ extension ClipboardStore {
                 kind: kind,
                 containsSensitiveData: false,
                 richTextRTFBase64: richTextRTFBase64,
-                richTextHTML: richTextHTML
+                richTextHTML: richTextHTML,
+                pasteboardRepresentations: pasteboardRepresentations
             )
         }
 
@@ -413,7 +431,8 @@ extension ClipboardStore {
                 kind: kind,
                 containsSensitiveData: true,
                 richTextRTFBase64: richTextRTFBase64,
-                richTextHTML: richTextHTML
+                richTextHTML: richTextHTML,
+                pasteboardRepresentations: pasteboardRepresentations
             )
         case .storeRedacted:
             let redactedContent = ContentAnalyzer.redacted(
@@ -431,7 +450,8 @@ extension ClipboardStore {
                 kind: redactedKind,
                 containsSensitiveData: false,
                 richTextRTFBase64: nil,
-                richTextHTML: nil
+                richTextHTML: nil,
+                pasteboardRepresentations: []
             )
         case .skip:
             return nil

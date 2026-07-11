@@ -17,6 +17,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         let filePaths: [String]
         let richTextRTFBase64: String?
         let richTextHTML: String?
+        let pasteboardRepresentations: [ClipboardPasteboardRepresentation]
     }
 
     private let dataDirectoryURL: URL
@@ -217,6 +218,16 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             )
             """)
         try db.execute(sql: """
+            CREATE TABLE IF NOT EXISTS pasteboard_representations (
+                item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+                item_index INTEGER NOT NULL,
+                ordinal INTEGER NOT NULL,
+                type_identifier TEXT NOT NULL,
+                data BLOB NOT NULL,
+                PRIMARY KEY (item_id, item_index, ordinal)
+            )
+            """)
+        try db.execute(sql: """
             CREATE INDEX IF NOT EXISTS items_created_at_idx
             ON items(created_at DESC)
             """)
@@ -245,7 +256,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "1",
+            "2",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -277,6 +288,22 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     """,
                 arguments: [id.uuidString]
             )
+            let pasteboardRepresentations = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT item_index, type_identifier, data
+                    FROM pasteboard_representations
+                    WHERE item_id = ?
+                    ORDER BY item_index, ordinal
+                    """,
+                arguments: [id.uuidString]
+            ).map { representationRow in
+                ClipboardPasteboardRepresentation(
+                    itemIndex: representationRow["item_index"],
+                    typeIdentifier: representationRow["type_identifier"],
+                    data: representationRow["data"]
+                )
+            }
 
             return ClipboardItem(
                 id: id,
@@ -297,6 +324,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 filePaths: filePaths.isEmpty ? nil : filePaths,
                 richTextRTFBase64: richText?["rtf_base64"],
                 richTextHTML: richText?["html"],
+                pasteboardRepresentations: pasteboardRepresentations.isEmpty
+                    ? nil
+                    : pasteboardRepresentations,
                 contentFileName: row["content_file_name"],
                 contentDigest: row["content_digest"],
                 contentCharacterCount: row["content_character_count"],
@@ -313,7 +343,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 item: item,
                 filePaths: item.filePaths ?? [],
                 richTextRTFBase64: item.richTextRTFBase64,
-                richTextHTML: item.richTextHTML
+                richTextHTML: item.richTextHTML,
+                pasteboardRepresentations: item.pasteboardRepresentations ?? []
             )
         }
         let existingFingerprints = try Dictionary(
@@ -473,6 +504,28 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 arguments: [id, index, path]
             )
         }
+
+        try db.execute(
+            sql: "DELETE FROM pasteboard_representations WHERE item_id = ?",
+            arguments: [id]
+        )
+        for (index, representation) in storedItem.pasteboardRepresentations.enumerated() {
+            try db.execute(
+                sql: """
+                    INSERT INTO pasteboard_representations (
+                        item_id, item_index, ordinal, type_identifier, data
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    id,
+                    representation.itemIndex,
+                    index,
+                    representation.typeIdentifier,
+                    representation.data
+                ]
+            )
+        }
     }
 
     private func refreshSearchIndex(
@@ -564,7 +617,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private static func fingerprint(for storedItem: StoredItem) -> String {
         let item = storedItem.item
         var parts: [String] = []
-        parts.reserveCapacity(24)
+        parts.reserveCapacity(24 + storedItem.pasteboardRepresentations.count * 3)
         parts.append(item.id.uuidString)
         parts.append(item.content)
         parts.append(item.kind.rawValue)
@@ -583,6 +636,11 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         parts.append(storedItem.filePaths.joined(separator: "\u{1F}"))
         parts.append(storedItem.richTextRTFBase64 ?? "")
         parts.append(storedItem.richTextHTML ?? "")
+        for representation in storedItem.pasteboardRepresentations {
+            parts.append(String(representation.itemIndex))
+            parts.append(representation.typeIdentifier)
+            parts.append(ContentDigest.sha256Hex(for: representation.data))
+        }
         parts.append(item.contentFileName ?? "")
         parts.append(item.contentDigest ?? "")
         parts.append(item.contentCharacterCount.map(String.init) ?? "")

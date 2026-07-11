@@ -123,6 +123,18 @@ struct StorageRepositoryTests {
             filePaths: ["/tmp/one.txt", "/tmp/two.txt"],
             richTextRTFBase64: Data("{\\rtf1 Round trip}".utf8).base64EncodedString(),
             richTextHTML: "<strong>Round trip</strong>",
+            pasteboardRepresentations: [
+                ClipboardPasteboardRepresentation(
+                    itemIndex: 0,
+                    typeIdentifier: "public.utf8-plain-text",
+                    data: Data("Round trip".utf8)
+                ),
+                ClipboardPasteboardRepresentation(
+                    itemIndex: 1,
+                    typeIdentifier: "com.example.PastePilot.custom",
+                    data: Data([0x1, 0x2, 0x3])
+                )
+            ],
             contentFileName: nil,
             contentDigest: String(repeating: "b", count: 64),
             contentCharacterCount: 10,

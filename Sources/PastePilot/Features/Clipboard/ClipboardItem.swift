@@ -66,6 +66,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let filePaths: [String]?
     let richTextRTFBase64: String?
     let richTextHTML: String?
+    let pasteboardRepresentations: [ClipboardPasteboardRepresentation]?
     let contentFileName: String?
     let contentDigest: String?
     let contentCharacterCount: Int?
@@ -92,6 +93,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         filePaths: [String]? = nil,
         richTextRTFBase64: String? = nil,
         richTextHTML: String? = nil,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation]? = nil,
         contentFileName: String? = nil,
         contentDigest: String? = nil,
         contentCharacterCount: Int? = nil,
@@ -117,6 +119,9 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.filePaths = filePaths
         self.richTextRTFBase64 = richTextRTFBase64
         self.richTextHTML = richTextHTML
+        self.pasteboardRepresentations = pasteboardRepresentations?.isEmpty == true
+            ? nil
+            : pasteboardRepresentations
         self.contentFileName = contentFileName
         self.contentDigest = contentDigest
         self.contentCharacterCount = contentCharacterCount
@@ -135,6 +140,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
 
     var hasRichText: Bool {
         richTextRTFBase64 != nil || richTextHTML != nil
+    }
+
+    var hasPasteboardRepresentations: Bool {
+        pasteboardRepresentations?.isEmpty == false
     }
 
     var hasExternalContent: Bool {
@@ -178,6 +187,7 @@ extension ClipboardItem {
             filePaths: filePaths,
             richTextRTFBase64: richTextRTFBase64,
             richTextHTML: richTextHTML,
+            pasteboardRepresentations: pasteboardRepresentations,
             contentFileName: fileName,
             contentDigest: digest ?? contentDigest ?? ContentDigest.sha256Hex(for: content),
             contentCharacterCount: content.count,

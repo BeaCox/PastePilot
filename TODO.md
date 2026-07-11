@@ -74,7 +74,7 @@ Current PastePilot baseline:
 - [ ] iCloud sync for cross-device history
 - [ ] Plugin system for custom content types and actions
 - [x] Manual light/dark theme toggle
-- [ ] Preserve original pasteboard representations for high-fidelity replay.
+- [x] Preserve original pasteboard representations for high-fidelity replay.
   Add a typed asset side table for selected pasteboard types, with strict size
   limits and cleanup, so rich text, file groups, and app-specific formats can be
   restored when safe.

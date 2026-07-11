@@ -62,7 +62,7 @@ struct ClipboardActionResult: Equatable {
 enum ClipboardActionFactory {
     static func actions(for item: ClipboardItem) -> [ClipboardAction] {
         if item.kind == .image, let fileName = item.imageFileName {
-            let actions: [ClipboardAction]
+            var actions: [ClipboardAction]
             if let originalPath = item.imageOriginalPath {
                 actions = imageActions(
                     fileName: fileName,
@@ -80,24 +80,22 @@ enum ClipboardActionFactory {
                     usesCachedFile: true
                 )
             }
+            if item.hasPasteboardRepresentations {
+                actions.insert(originalCopyAction(for: item), at: 0)
+            }
             return deduplicated(insertingOCRTextAction(for: item, into: actions))
         }
 
         var actions = [
-            ClipboardAction(
-                id: "copy",
-                title: "Copy Original".localized,
-                detail: "Copy as-is back to the clipboard".localized,
-                symbol: "doc.on.doc",
-                effect: item.hasExternalContent
-                    ? .copyItem(item.id)
-                    : .copy(item.content)
-            )
+            originalCopyAction(for: item)
         ]
 
         switch item.kind {
         case .file:
             actions = fileActions(for: item.fileURLs)
+            if item.hasPasteboardRepresentations {
+                actions.insert(originalCopyAction(for: item), at: 0)
+            }
         case .richText:
             actions.insert(
                 ClipboardAction(
@@ -230,6 +228,9 @@ enum ClipboardActionFactory {
     }
 
     static func copyAction(for item: ClipboardItem) -> ClipboardAction {
+        if item.hasPasteboardRepresentations {
+            return originalCopyAction(for: item)
+        }
         if item.kind == .file {
             return ClipboardAction(
                 id: "copy-files",
@@ -268,6 +269,18 @@ enum ClipboardActionFactory {
         )
     }
 
+    static func originalCopyAction(for item: ClipboardItem) -> ClipboardAction {
+        ClipboardAction(
+            id: item.hasPasteboardRepresentations ? "copy-original" : "copy",
+            title: "Copy Original".localized,
+            detail: "Copy as-is back to the clipboard".localized,
+            symbol: "doc.on.doc",
+            effect: item.hasExternalContent || item.hasPasteboardRepresentations
+                ? .copyItem(item.id)
+                : .copy(item.content)
+        )
+    }
+
     static func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {
         let copy = copyAction(for: item)
         return [copy] + actions(for: item).filter { $0.id != copy.id }
@@ -291,17 +304,18 @@ enum ClipboardActionFactory {
                 didCopy: true
             )
         case let .copyItem(id):
-            guard let item = store.items.first(where: { $0.id == id }),
-                  let content = store.content(for: item) else {
+            guard let item = store.items.first(where: { $0.id == id }) else {
                 return ClipboardActionResult(
                     message: "Content is no longer available".localized,
                     didCopy: false
                 )
             }
-            store.copy(content)
+            let didCopy = store.copyOriginalItem(item)
             return ClipboardActionResult(
-                message: "Copied: %@".localized(action.title),
-                didCopy: true
+                message: didCopy
+                    ? "Copied: %@".localized(action.title)
+                    : "Content is no longer available".localized,
+                didCopy: didCopy
             )
         case let .copyImage(fileName):
             let didCopy = store.copyImage(fileName: fileName)

@@ -6,7 +6,8 @@ extension ClipboardStore {
     func captureImageFile(
         _ url: URL,
         source: (name: String?, bundleIdentifier: String?),
-        pasteboardChangeCount: Int?
+        pasteboardChangeCount: Int?,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) -> Bool {
         guard let image = NSImage(contentsOf: url) else { return false }
         return saveImage(
@@ -14,7 +15,8 @@ extension ClipboardStore {
             source: source,
             remoteURL: nil,
             originalPath: url.path,
-            pasteboardChangeCount: pasteboardChangeCount
+            pasteboardChangeCount: pasteboardChangeCount,
+            pasteboardRepresentations: pasteboardRepresentations
         )
     }
 
@@ -23,7 +25,8 @@ extension ClipboardStore {
         source: (name: String?, bundleIdentifier: String?),
         remoteURL: String?,
         originalPath: String?,
-        pasteboardChangeCount: Int?
+        pasteboardChangeCount: Int?,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) -> Bool {
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
         guard let cgImage = image.cgImage(
@@ -39,7 +42,8 @@ extension ClipboardStore {
             source: source,
             remoteURL: remoteURL,
             originalPath: originalPath,
-            pasteboardChangeCount: pasteboardChangeCount
+            pasteboardChangeCount: pasteboardChangeCount,
+            pasteboardRepresentations: pasteboardRepresentations
         )
     }
 
@@ -48,7 +52,8 @@ extension ClipboardStore {
         source: (name: String?, bundleIdentifier: String?),
         remoteURL: String?,
         originalPath: String?,
-        pasteboardChangeCount: Int?
+        pasteboardChangeCount: Int?,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) -> Bool {
         guard !isIgnored(bundleIdentifier: source.bundleIdentifier) else { return true }
 
@@ -72,7 +77,8 @@ extension ClipboardStore {
                     originalPath: originalPath,
                     pasteboardChangeCount: pasteboardChangeCount,
                     ocrImage: cgImage,
-                    imageSaveGeneration: saveGeneration
+                    imageSaveGeneration: saveGeneration,
+                    pasteboardRepresentations: pasteboardRepresentations
                 )
             }
         }
@@ -87,7 +93,8 @@ extension ClipboardStore {
         originalPath: String?,
         pasteboardChangeCount: Int?,
         ocrImage: CGImage,
-        imageSaveGeneration: Int? = nil
+        imageSaveGeneration: Int? = nil,
+        pasteboardRepresentations: [ClipboardPasteboardRepresentation] = []
     ) {
         switch result {
         case .success(let processedImage):
@@ -127,7 +134,8 @@ extension ClipboardStore {
                 imageDigest: processedImage.digest,
                 imageSourceURL: remoteURL,
                 imageOriginalPath: originalPath,
-                filePaths: originalPath.map { [$0] }
+                filePaths: originalPath.map { [$0] },
+                pasteboardRepresentations: pasteboardRepresentations
             )
             let duplicateItems = items.filter {
                 $0.imageDigest == processedImage.digest

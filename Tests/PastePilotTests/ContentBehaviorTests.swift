@@ -635,6 +635,7 @@ struct ContentBehaviorTests {
             from: Data(legacyJSON.utf8)
         )
         #expect(legacyItem.sourceAppName == nil)
+        #expect(legacyItem.pasteboardRepresentations == nil)
 
         let oldPinned = ClipboardItem(
             content: "pinned",
