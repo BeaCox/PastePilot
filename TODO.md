@@ -84,7 +84,7 @@ Current PastePilot baseline:
 - [ ] Add a compact library window for organization. Keep the menu bar fast, but
   provide a larger surface for saved clips, bulk cleanup, source-app filters,
   notes, and drag reordering.
-- [ ] Build a declarative action registry. Move built-in actions toward a common
+- [x] Build a declarative action registry. Move built-in actions toward a common
   model with id, title, symbol, accepted kinds, input source, output effect, and
   close behavior; use this as the path toward a plugin system.
 - [ ] Support safe custom actions before arbitrary plugins. Start with local

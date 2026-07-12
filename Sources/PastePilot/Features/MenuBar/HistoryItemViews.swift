@@ -94,22 +94,14 @@ struct CompactHistoryItem: View {
             if !item.fileURLs.isEmpty {
                 Button("Quick Look".localized) {
                     performAction(
-                        ClipboardAction(
-                            id: "quick-look",
-                            title: "Quick Look".localized,
-                            detail: "Preview using the macOS system viewer".localized,
-                            symbol: "eye",
+                        ClipboardActionRegistry.quickLook.action(
                             effect: .quickLook(item.fileURLs)
                         )
                     )
                 }
                 Button("Show in Finder".localized) {
                     performAction(
-                        ClipboardAction(
-                            id: "reveal-files",
-                            title: "Show in Finder".localized,
-                            detail: "Reveal the original file location".localized,
-                            symbol: "folder",
+                        ClipboardActionRegistry.revealFiles.action(
                             effect: .revealFiles(item.fileURLs)
                         )
                     )

@@ -3,25 +3,13 @@ import Foundation
 extension ClipboardActionFactory {
     static func textActions(for content: String) -> [ClipboardAction] {
         [
-            ClipboardAction(
-                id: "camel-case",
-                title: "Convert to camelCase".localized,
-                detail: "For JavaScript and Swift variable names".localized,
-                symbol: "arrow.up.forward",
+            ClipboardActionRegistry.camelCase.action(
                 effect: .copy(ContentTransformer.toCamelCase(content))
             ),
-            ClipboardAction(
-                id: "snake-case",
-                title: "Convert to snake_case".localized,
-                detail: "For database fields and Python variables".localized,
-                symbol: "arrow.down.forward",
+            ClipboardActionRegistry.snakeCase.action(
                 effect: .copy(ContentTransformer.toSnakeCase(content))
             ),
-            ClipboardAction(
-                id: "escape",
-                title: "Escape as String".localized,
-                detail: "Handle quotes, backslashes, and newlines".localized,
-                symbol: "quote.opening",
+            ClipboardActionRegistry.escapeString.action(
                 effect: .copy(ContentTransformer.escapeString(content))
             )
         ]
@@ -29,11 +17,7 @@ extension ClipboardActionFactory {
 
     static func codeActions(for content: String) -> [ClipboardAction] {
         [
-            ClipboardAction(
-                id: "markdown-code-block",
-                title: "Wrap in Markdown Code Block".localized,
-                detail: "Ready to paste into issues or chats".localized,
-                symbol: "text.badge.checkmark",
+            ClipboardActionRegistry.markdownCodeBlock.action(
                 effect: .copy(ContentTransformer.markdownCodeBlock(content))
             )
         ]
@@ -46,11 +30,7 @@ extension ClipboardActionFactory {
             return extractedCommandActions(extracted)
         }
         return [
-            ClipboardAction(
-                id: "shell-code-block",
-                title: "Wrap in Shell Code Block".localized,
-                detail: "Generate a Markdown code block with sh language tag".localized,
-                symbol: "chevron.left.forwardslash.chevron.right",
+            ClipboardActionRegistry.shellCodeBlock.action(
                 effect: .copy(ContentTransformer.shellCodeBlock(content))
             )
         ]
@@ -58,18 +38,10 @@ extension ClipboardActionFactory {
 
     static func extractedCommandActions(_ extracted: String) -> [ClipboardAction] {
         [
-            ClipboardAction(
-                id: "extract-shell",
-                title: "Extract Commands".localized,
-                detail: "Strip prompts and output, keep only runnable commands".localized,
-                symbol: "terminal",
+            ClipboardActionRegistry.extractShell.action(
                 effect: .copy(extracted)
             ),
-            ClipboardAction(
-                id: "extracted-shell-code-block",
-                title: "Command Code Block".localized,
-                detail: "Wrap extracted commands in a Markdown shell code block".localized,
-                symbol: "chevron.left.forwardslash.chevron.right",
+            ClipboardActionRegistry.extractedShellCodeBlock.action(
                 effect: .copy(ContentTransformer.shellCodeBlock(extracted))
             )
         ]
@@ -78,25 +50,14 @@ extension ClipboardActionFactory {
     static func fileActions(for urls: [URL]) -> [ClipboardAction] {
         guard !urls.isEmpty else { return [] }
         return [
-            ClipboardAction(
-                id: "copy-files",
-                title: urls.count == 1 ? "Copy File".localized : "Copy Files".localized,
-                detail: "Write the original files back to the clipboard".localized,
-                symbol: "doc.on.doc",
-                effect: .copyFiles(urls)
+            ClipboardActionRegistry.copyFiles.action(
+                effect: .copyFiles(urls),
+                title: urls.count == 1 ? "Copy File".localized : "Copy Files".localized
             ),
-            ClipboardAction(
-                id: "quick-look",
-                title: "Quick Look".localized,
-                detail: "Preview using the macOS system viewer".localized,
-                symbol: "eye",
+            ClipboardActionRegistry.quickLook.action(
                 effect: .quickLook(urls)
             ),
-            ClipboardAction(
-                id: "reveal-files",
-                title: "Show in Finder".localized,
-                detail: "Reveal the original file location".localized,
-                symbol: "folder",
+            ClipboardActionRegistry.revealFiles.action(
                 effect: .revealFiles(urls)
             )
         ]
@@ -110,49 +71,34 @@ extension ClipboardActionFactory {
         usesCachedFile: Bool
     ) -> [ClipboardAction] {
         var actions = [
-            ClipboardAction(
-                id: "copy-image",
-                title: "Copy Image".localized,
-                detail: "Write the original image back to the clipboard".localized,
-                symbol: "photo",
+            ClipboardActionRegistry.copyImage.action(
                 effect: .copyImage(fileName)
             )
         ]
 
         if let sourceURL {
             actions.append(
-                ClipboardAction(
-                    id: "copy-image-url",
-                    title: "Copy Image URL".localized,
-                    detail: "Copy the original web image address".localized,
-                    symbol: "link",
+                ClipboardActionRegistry.copyImageURL.action(
                     effect: .copy(sourceURL)
                 )
             )
         } else if usesCachedFile {
-            actions.append(ClipboardAction(
-                id: "copy-image-file",
-                title: "Copy File".localized,
-                detail: "Write the cached PNG file back to the clipboard".localized,
-                symbol: "doc.on.doc",
-                effect: .copyCachedImageFile(fileName)
-            ))
+            actions.append(
+                ClipboardActionRegistry.copyImageFile.action(
+                    effect: .copyCachedImageFile(fileName)
+                )
+            )
         } else if let fileURL {
-            actions.append(ClipboardAction(
-                id: "copy-image-file",
-                title: "Copy File".localized,
-                detail: "Write the original files back to the clipboard".localized,
-                symbol: "doc.on.doc",
-                effect: .copyFiles([fileURL])
-            ))
+            actions.append(
+                ClipboardActionRegistry.copyImageFile.action(
+                    effect: .copyFiles([fileURL]),
+                    detail: "Write the original files back to the clipboard".localized
+                )
+            )
         }
 
         actions.append(
-            ClipboardAction(
-                id: "copy-image-markdown",
-                title: "Copy Markdown".localized,
-                detail: "Prefers web URL, falls back to local file path".localized,
-                symbol: "text.badge.checkmark",
+            ClipboardActionRegistry.copyImageMarkdown.action(
                 effect: .copyImageMarkdown(
                     fileName: fileName,
                     sourceURL: sourceURL,
@@ -162,35 +108,30 @@ extension ClipboardActionFactory {
         )
 
         if usesCachedFile {
-            actions.append(ClipboardAction(
-                id: "quick-look",
-                title: "Quick Look".localized,
-                detail: "Preview using the macOS system viewer".localized,
-                symbol: "eye",
-                effect: .quickLookCachedImageFile(fileName)
-            ))
-            actions.append(ClipboardAction(
-                id: "reveal-files",
-                title: "Show in Finder".localized,
-                detail: "Reveal the cached PNG file".localized,
-                symbol: "folder",
-                effect: .revealCachedImageFile(fileName)
-            ))
+            actions.append(
+                ClipboardActionRegistry.quickLook.action(
+                    effect: .quickLookCachedImageFile(fileName),
+                    inputSource: .imageFile
+                )
+            )
+            actions.append(
+                ClipboardActionRegistry.revealFiles.action(
+                    effect: .revealCachedImageFile(fileName),
+                    detail: "Reveal the cached PNG file".localized,
+                    inputSource: .imageFile
+                )
+            )
         } else if let fileURL {
-            actions.append(ClipboardAction(
-                id: "quick-look",
-                title: "Quick Look".localized,
-                detail: "Preview using the macOS system viewer".localized,
-                symbol: "eye",
-                effect: .quickLook([fileURL])
-            ))
-            actions.append(ClipboardAction(
-                id: "reveal-files",
-                title: "Show in Finder".localized,
-                detail: "Reveal the original file location".localized,
-                symbol: "folder",
-                effect: .revealFiles([fileURL])
-            ))
+            actions.append(
+                ClipboardActionRegistry.quickLook.action(
+                    effect: .quickLook([fileURL])
+                )
+            )
+            actions.append(
+                ClipboardActionRegistry.revealFiles.action(
+                    effect: .revealFiles([fileURL])
+                )
+            )
         }
 
         return actions
@@ -213,11 +154,7 @@ extension ClipboardActionFactory {
             !ocrText.isEmpty else {
             return nil
         }
-        return ClipboardAction(
-            id: "copy-ocr-text",
-            title: "Copy OCR Text".localized,
-            detail: "Copy recognized text from this image".localized,
-            symbol: "text.viewfinder",
+        return ClipboardActionRegistry.copyOCRText.action(
             effect: .copyOCRText(item.id)
         )
     }

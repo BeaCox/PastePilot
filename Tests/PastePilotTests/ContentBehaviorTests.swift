@@ -524,6 +524,64 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func clipboardActionRegistryDescribesBuiltInActions() throws {
+        let definitions = ClipboardActionRegistry.allDefinitions
+        let ids = definitions.map(\.id)
+
+        #expect(!definitions.isEmpty)
+        #expect(ids.count == Set(ids).count)
+        #expect(definitions.allSatisfy { !$0.title.isEmpty })
+        #expect(definitions.allSatisfy { !$0.symbol.isEmpty })
+        #expect(definitions.allSatisfy { !$0.acceptedKinds.isEmpty })
+
+        let quickLook = try #require(
+            ClipboardActionRegistry.definition(for: "quick-look")
+        )
+        #expect(quickLook.acceptedKinds == Set([ContentKind.file, .image]))
+        #expect(quickLook.inputSource == .fileURLs)
+        #expect(quickLook.outputEffect == .quickLook)
+        #expect(quickLook.closeBehavior == .closeInlinePreview)
+
+        let typeScript = try #require(
+            ClipboardActionRegistry.definition(for: "typescript")
+        )
+        #expect(typeScript.acceptedKinds == Set([ContentKind.json]))
+        #expect(typeScript.inputSource == .generatedContent)
+        #expect(typeScript.outputEffect == .clipboardText)
+        #expect(typeScript.closeBehavior == .keepInlinePreview)
+    }
+
+    @Test
+    func generatedActionsCarryRegistryMetadata() throws {
+        let json = ClipboardItem(content: #"{"name":"PastePilot"}"#, kind: .json)
+        let formatJSON = try #require(
+            ClipboardActionFactory.actions(for: json)
+                .first { $0.id == "format-json" }
+        )
+
+        #expect(formatJSON.acceptedKinds == Set([ContentKind.json]))
+        #expect(formatJSON.inputSource == .generatedContent)
+        #expect(formatJSON.outputEffect == .clipboardText)
+        #expect(formatJSON.closeBehavior == .keepInlinePreview)
+
+        let image = ClipboardItem(
+            content: "Image 80 × 80",
+            kind: .image,
+            imageFileName: "cached.png"
+        )
+        let quickLook = try #require(
+            ClipboardActionFactory.actions(for: image)
+                .first { $0.id == "quick-look" }
+        )
+
+        #expect(quickLook.acceptedKinds == Set([ContentKind.file, .image]))
+        #expect(quickLook.inputSource == .imageFile)
+        #expect(quickLook.outputEffect == .quickLook)
+        #expect(quickLook.closeBehavior == .closeInlinePreview)
+        #expect(quickLook.closesInlinePreview)
+    }
+
+    @Test
     func imageFileAndRichTextActions() {
         let webImage = ClipboardItem(
             content: "Image 320 × 180",

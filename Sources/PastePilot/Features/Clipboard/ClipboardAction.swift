@@ -22,11 +22,66 @@ struct ClipboardAction: Identifiable {
         case open(URL)
     }
 
+    enum InputSource: String, Equatable {
+        case itemContent
+        case itemIdentity
+        case generatedContent
+        case imageAsset
+        case imageURL
+        case imageFile
+        case fileURLs
+        case richText
+        case ocrText
+        case url
+    }
+
+    enum OutputEffect: String, Equatable {
+        case clipboardText
+        case clipboardItem
+        case clipboardImage
+        case clipboardFiles
+        case clipboardRichText
+        case revealInFinder
+        case quickLook
+        case openURL
+    }
+
+    enum CloseBehavior: String, Equatable {
+        case keepInlinePreview
+        case closeInlinePreview
+    }
+
     let id: String
     let title: String
     let detail: String
     let symbol: String
+    let acceptedKinds: Set<ContentKind>
+    let inputSource: InputSource
+    let outputEffect: OutputEffect
+    let closeBehavior: CloseBehavior
     let effect: Effect
+
+    init(
+        id: String,
+        title: String,
+        detail: String,
+        symbol: String,
+        acceptedKinds: Set<ContentKind> = Set(ContentKind.allCases),
+        inputSource: InputSource = .generatedContent,
+        outputEffect: OutputEffect? = nil,
+        closeBehavior: CloseBehavior? = nil,
+        effect: Effect
+    ) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.symbol = symbol
+        self.acceptedKinds = acceptedKinds
+        self.inputSource = inputSource
+        self.outputEffect = outputEffect ?? Self.outputEffect(for: effect)
+        self.closeBehavior = closeBehavior ?? Self.closeBehavior(for: effect)
+        self.effect = effect
+    }
 
     var preview: String? {
         if case let .copy(content) = effect { return content }
@@ -34,10 +89,40 @@ struct ClipboardAction: Identifiable {
     }
 
     var closesInlinePreview: Bool {
+        closeBehavior == .closeInlinePreview
+    }
+
+    private static func outputEffect(for effect: Effect) -> OutputEffect {
+        switch effect {
+        case .copy,
+             .copyImageMarkdown,
+             .copyOCRText:
+            return .clipboardText
+        case .copyItem:
+            return .clipboardItem
+        case .copyImage:
+            return .clipboardImage
+        case .copyCachedImageFile,
+             .copyFiles:
+            return .clipboardFiles
+        case .copyRichText:
+            return .clipboardRichText
+        case .revealCachedImageFile,
+             .revealFiles:
+            return .revealInFinder
+        case .quickLookCachedImageFile,
+             .quickLook:
+            return .quickLook
+        case .open:
+            return .openURL
+        }
+    }
+
+    private static func closeBehavior(for effect: Effect) -> CloseBehavior {
         switch effect {
         case .quickLookCachedImageFile,
              .quickLook:
-            return true
+            return .closeInlinePreview
         case .copy,
              .copyItem,
              .copyImage,
@@ -49,7 +134,7 @@ struct ClipboardAction: Identifiable {
              .revealCachedImageFile,
              .revealFiles,
              .open:
-            return false
+            return .keepInlinePreview
         }
     }
 }
@@ -98,22 +183,14 @@ enum ClipboardActionFactory {
             }
         case .richText:
             actions.insert(
-                ClipboardAction(
-                    id: "copy-rich-text",
-                    title: "Copy with Formatting".localized,
-                    detail: "Preserve fonts, styles, colors, and links".localized,
-                    symbol: "textformat",
+                ClipboardActionRegistry.copyRichText.action(
                     effect: .copyRichText(item.id)
                 ),
                 at: 0
             )
             if let html = item.richTextHTML {
                 actions.append(
-                    ClipboardAction(
-                        id: "copy-html",
-                        title: "Copy HTML Source".localized,
-                        detail: "Copy the underlying HTML markup".localized,
-                        symbol: "chevron.left.forwardslash.chevron.right",
+                    ClipboardActionRegistry.copyHTML.action(
                         effect: .copy(html)
                     )
                 )
@@ -124,33 +201,21 @@ enum ClipboardActionFactory {
             guard !item.hasExternalContent else { break }
             if let formatted = ContentTransformer.formatJSON(item.content) {
                 actions.append(
-                    ClipboardAction(
-                        id: "format-json",
-                        title: "Format JSON".localized,
-                        detail: "Sort keys and indent for readability".localized,
-                        symbol: "increase.indent",
+                    ClipboardActionRegistry.formatJSON.action(
                         effect: .copy(formatted)
                     )
                 )
             }
             if let minified = ContentTransformer.minifyJSON(item.content) {
                 actions.append(
-                    ClipboardAction(
-                        id: "minify-json",
-                        title: "Minify JSON".localized,
-                        detail: "Remove whitespace for payloads and configs".localized,
-                        symbol: "decrease.indent",
+                    ClipboardActionRegistry.minifyJSON.action(
                         effect: .copy(minified)
                     )
                 )
             }
             if let typeScript = ContentTransformer.jsonToTypeScript(item.content) {
                 actions.append(
-                    ClipboardAction(
-                        id: "typescript",
-                        title: "Generate TypeScript Types".localized,
-                        detail: "Infer an interface from field values".localized,
-                        symbol: "t.square",
+                    ClipboardActionRegistry.typeScript.action(
                         effect: .copy(typeScript)
                     )
                 )
@@ -159,12 +224,9 @@ enum ClipboardActionFactory {
             guard !item.hasExternalContent else { break }
             if let url = URL(string: item.content) {
                 actions.insert(
-                    ClipboardAction(
-                        id: "open-url",
-                        title: "Open in Browser".localized,
-                        detail: url.host ?? "Open this link".localized,
-                        symbol: "safari",
-                        effect: .open(url)
+                    ClipboardActionRegistry.openURL.action(
+                        effect: .open(url),
+                        detail: url.host ?? "Open this link".localized
                     ),
                     at: 0
                 )
@@ -172,11 +234,7 @@ enum ClipboardActionFactory {
         case .color:
             guard !item.hasExternalContent else { break }
             actions.append(
-                ClipboardAction(
-                    id: "uppercase-color",
-                    title: "Copy Uppercased Color".localized,
-                    detail: "Normalize hex color format".localized,
-                    symbol: "paintpalette",
+                ClipboardActionRegistry.uppercaseColor.action(
                     effect: .copy(item.content.uppercased())
                 )
             )
@@ -184,11 +242,7 @@ enum ClipboardActionFactory {
             guard !item.hasExternalContent else { break }
             actions.append(contentsOf: shellActions(for: item.content))
             actions.append(
-                ClipboardAction(
-                    id: "quote-command",
-                    title: "Escape for String Embedding".localized,
-                    detail: "Escape quotes, backslashes, and newlines".localized,
-                    symbol: "quote.opening",
+                ClipboardActionRegistry.quoteCommand.action(
                     effect: .copy(ContentTransformer.escapeString(item.content))
                 )
             )
@@ -198,11 +252,7 @@ enum ClipboardActionFactory {
                 actions.append(contentsOf: extractedCommandActions(extracted))
             }
             actions.append(
-                ClipboardAction(
-                    id: "markdown-error",
-                    title: "Wrap in Markdown Code Block".localized,
-                    detail: "Ready to paste into issues or chats".localized,
-                    symbol: "text.badge.checkmark",
+                ClipboardActionRegistry.markdownError.action(
                     effect: .copy(ContentTransformer.markdownCodeBlock(item.content))
                 )
             )
@@ -232,52 +282,46 @@ enum ClipboardActionFactory {
             return originalCopyAction(for: item)
         }
         if item.kind == .file {
-            return ClipboardAction(
-                id: "copy-files",
-                title: "Copy Files".localized,
-                detail: "Write the original files back to the clipboard".localized,
-                symbol: "doc.on.doc",
+            return ClipboardActionRegistry.copyFiles.action(
                 effect: .copyFiles(item.fileURLs)
             )
         }
         if item.kind == .richText, item.hasRichText {
-            return ClipboardAction(
-                id: "copy-rich-text",
-                title: "Copy with Formatting".localized,
-                detail: "Preserve fonts, styles, colors, and links".localized,
-                symbol: "textformat",
+            return ClipboardActionRegistry.copyRichText.action(
                 effect: .copyRichText(item.id)
             )
         }
         if let fileName = item.imageFileName {
-            return ClipboardAction(
-                id: "copy-image",
-                title: "Copy Image".localized,
-                detail: "Write the original image back to the clipboard".localized,
-                symbol: "doc.on.doc",
+            return ClipboardActionRegistry.copyImage.action(
                 effect: .copyImage(fileName)
             )
         }
-        return ClipboardAction(
-            id: "copy",
-            title: "Copy Original".localized,
-            detail: "Copy as-is back to the clipboard".localized,
-            symbol: "doc.on.doc",
-            effect: item.hasExternalContent
-                ? .copyItem(item.id)
-                : .copy(item.content)
+        let copyEffect: ClipboardAction.Effect = item.hasExternalContent
+            ? .copyItem(item.id)
+            : .copy(item.content)
+        return ClipboardActionRegistry.copyText.action(
+            effect: copyEffect,
+            inputSource: item.hasExternalContent ? .itemIdentity : nil,
+            outputEffect: item.hasExternalContent ? .clipboardItem : nil
         )
     }
 
     static func originalCopyAction(for item: ClipboardItem) -> ClipboardAction {
-        ClipboardAction(
-            id: item.hasPasteboardRepresentations ? "copy-original" : "copy",
-            title: "Copy Original".localized,
-            detail: "Copy as-is back to the clipboard".localized,
-            symbol: "doc.on.doc",
-            effect: item.hasExternalContent || item.hasPasteboardRepresentations
+        let definition = item.hasPasteboardRepresentations
+            ? ClipboardActionRegistry.copyOriginalRepresentation
+            : ClipboardActionRegistry.copyText
+        let copyEffect: ClipboardAction.Effect =
+            item.hasExternalContent || item.hasPasteboardRepresentations
                 ? .copyItem(item.id)
                 : .copy(item.content)
+        return definition.action(
+            effect: copyEffect,
+            inputSource: item.hasExternalContent || item.hasPasteboardRepresentations
+                ? .itemIdentity
+                : nil,
+            outputEffect: item.hasExternalContent || item.hasPasteboardRepresentations
+                ? .clipboardItem
+                : nil
         )
     }
 
