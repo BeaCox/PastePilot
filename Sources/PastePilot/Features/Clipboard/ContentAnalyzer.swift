@@ -39,12 +39,46 @@ struct UserSensitivePattern: Equatable, Sendable {
     }
 }
 
+enum ContentAnalysisTrait: String, CaseIterable, Hashable {
+    case json
+    case url
+    case color
+    case shellCommand
+    case error
+    case markdown
+    case sourceCode
+    case yaml
+    case xml
+    case sql
+    case base64
+    case naturalLanguage
+    case email
+    case uuid
+    case jwt
+}
+
 struct AnalysisResult {
     let kind: ContentKind
     let containsSensitiveData: Bool
+    let confidence: Double
+    let reasons: [String]
+    let traits: Set<ContentAnalysisTrait>
 }
 
 enum ContentAnalyzer {
+    private struct DetectionCandidate {
+        let kind: ContentKind
+        let confidence: Double
+        let priority: Int
+        var reasons: [String]
+        var traits: Set<ContentAnalysisTrait>
+    }
+
+    private struct TraitMatch {
+        let trait: ContentAnalysisTrait
+        let reason: String
+    }
+
     private struct SensitivePattern {
         let regex: NSRegularExpression
         let replacementTemplate: String
@@ -118,26 +152,69 @@ enum ContentAnalyzer {
         userPatterns: [UserSensitivePattern] = []
     ) -> AnalysisResult {
         let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let detection = detectContent(text)
+        let containsSensitiveData = containsSensitiveData(
+            text,
+            userPatterns: userPatterns
+        )
+        var reasons = detection.reasons
+        if containsSensitiveData {
+            appendUnique("Sensitive content pattern matched", to: &reasons)
+        }
         return AnalysisResult(
-            kind: detectKind(text),
-            containsSensitiveData: containsSensitiveData(
-                text,
-                userPatterns: userPatterns
-            )
+            kind: detection.kind,
+            containsSensitiveData: containsSensitiveData,
+            confidence: detection.confidence,
+            reasons: reasons,
+            traits: detection.traits
         )
     }
 
-    private static func detectKind(_ text: String) -> ContentKind {
-        if isJSON(text) { return .json }
-        if isSupportedURL(text) { return .url }
-        if text.range(of: #"^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\([^)]+\)|hsla?\([^)]+\))$"#, options: .regularExpression) != nil {
-            return .color
+    private static func detectContent(_ text: String) -> DetectionCandidate {
+        guard !text.isEmpty else {
+            return DetectionCandidate(
+                kind: .text,
+                confidence: 0.05,
+                priority: 0,
+                reasons: ["Empty or whitespace-only content"],
+                traits: []
+            )
         }
-        if looksLikeError(text) { return .error }
-        if looksLikeCommand(text) { return .command }
-        if looksLikeMarkdown(text) { return .markdown }
-        if looksLikeCode(text) { return .code }
-        return .text
+
+        var candidates = [
+            DetectionCandidate(
+                kind: .text,
+                confidence: 0.1,
+                priority: 0,
+                reasons: ["No stronger content pattern matched"],
+                traits: []
+            )
+        ]
+        [
+            jsonCandidate(for: text),
+            urlCandidate(for: text),
+            colorCandidate(for: text),
+            errorCandidate(for: text),
+            commandCandidate(for: text),
+            markdownCandidate(for: text),
+            codeCandidate(for: text)
+        ].compactMap(\.self).forEach { candidates.append($0) }
+
+        var traits = Set(candidates.flatMap(\.traits))
+        let secondaryMatches = secondaryTraitMatches(in: text)
+        secondaryMatches.forEach { traits.insert($0.trait) }
+
+        var selected = candidates.max {
+            if $0.confidence == $1.confidence {
+                return $0.priority < $1.priority
+            }
+            return $0.confidence < $1.confidence
+        } ?? candidates[0]
+        secondaryMatches
+            .filter { !selected.traits.contains($0.trait) }
+            .forEach { appendUnique($0.reason, to: &selected.reasons) }
+        selected.traits = traits
+        return selected
     }
 
     static func containsSensitiveData(
@@ -206,51 +283,324 @@ enum ContentAnalyzer {
         )
     }
 
-    private static func isJSON(_ text: String) -> Bool {
+    private static func jsonCandidate(for text: String) -> DetectionCandidate? {
         guard let data = text.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               object is [String: Any] || object is [Any] else {
-            return false
+            return nil
         }
-        return true
+        return DetectionCandidate(
+            kind: .json,
+            confidence: 0.98,
+            priority: 100,
+            reasons: ["Parsed as JSON object or array"],
+            traits: [.json]
+        )
     }
 
-    private static func isSupportedURL(_ text: String) -> Bool {
+    private static func urlCandidate(for text: String) -> DetectionCandidate? {
         guard !text.contains(where: \.isWhitespace),
               let scheme = URL(string: text)?.scheme?.lowercased(),
               supportedURLSchemes.contains(scheme) else {
-            return false
+            return nil
         }
-        return true
+        return DetectionCandidate(
+            kind: .url,
+            confidence: 0.93,
+            priority: 90,
+            reasons: ["Supported URL scheme \"\(scheme)\" matched"],
+            traits: [.url]
+        )
     }
 
-    private static func looksLikeError(_ text: String) -> Bool {
+    private static func colorCandidate(for text: String) -> DetectionCandidate? {
+        guard matches(
+            #"^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\([^)]+\)|hsla?\([^)]+\))$"#,
+            in: text
+        ) else {
+            return nil
+        }
+        return DetectionCandidate(
+            kind: .color,
+            confidence: 0.9,
+            priority: 80,
+            reasons: ["CSS color literal matched"],
+            traits: [.color]
+        )
+    }
+
+    private static func errorCandidate(for text: String) -> DetectionCandidate? {
         let markers = [
             "error:", "fatal:", "exception", "traceback", "stack trace",
             "uncaught", "segmentation fault", "command not found", "permission denied"
         ]
         let lowercased = text.lowercased()
-        return markers.contains(where: lowercased.contains)
-            || text.range(of: #"\b[A-Z][A-Za-z]+Error\b"#, options: .regularExpression) != nil
-    }
-
-    private static func looksLikeCommand(_ text: String) -> Bool {
-        if text.contains("\n") {
-            return ContentTransformer.extractShellCommands(text) != nil
+        if let marker = markers.first(where: lowercased.contains) {
+            return DetectionCandidate(
+                kind: .error,
+                confidence: 0.86,
+                priority: 70,
+                reasons: ["Error marker \"\(marker)\" matched"],
+                traits: [.error]
+            )
         }
-        guard text.count < 500 else { return false }
-        return ContentTransformer.promptedCommand(from: text) != nil
-            || ContentTransformer.isBareShellCommand(text)
+        guard matches(#"\b[A-Z][A-Za-z]+Error\b"#, in: text) else {
+            return nil
+        }
+        return DetectionCandidate(
+            kind: .error,
+            confidence: 0.88,
+            priority: 70,
+            reasons: ["Exception or error type name matched"],
+            traits: [.error]
+        )
     }
 
-    private static func looksLikeMarkdown(_ text: String) -> Bool {
-        text.range(of: #"(?m)^(#{1,6}\s|[-*]\s|\d+\.\s|>\s|```)"#, options: .regularExpression) != nil
-            || text.range(of: #"\[[^\]]+\]\([^)]+\)"#, options: .regularExpression) != nil
+    private static func commandCandidate(for text: String) -> DetectionCandidate? {
+        if text.contains("\n") {
+            guard let extracted = ContentTransformer.extractShellCommands(text) else {
+                return nil
+            }
+            let confidence = extracted.trimmingCharacters(in: .whitespacesAndNewlines)
+                == text.trimmingCharacters(in: .whitespacesAndNewlines)
+                ? 0.84
+                : 0.88
+            return DetectionCandidate(
+                kind: .command,
+                confidence: confidence,
+                priority: 60,
+                reasons: ["Shell commands extracted from text"],
+                traits: [.shellCommand]
+            )
+        }
+        guard text.count < 500 else { return nil }
+        if ContentTransformer.promptedCommand(from: text) != nil {
+            return DetectionCandidate(
+                kind: .command,
+                confidence: 0.9,
+                priority: 60,
+                reasons: ["Shell prompt command matched"],
+                traits: [.shellCommand]
+            )
+        }
+        guard ContentTransformer.isBareShellCommand(text) else { return nil }
+        return DetectionCandidate(
+            kind: .command,
+            confidence: 0.84,
+            priority: 60,
+            reasons: ["Known shell executable matched"],
+            traits: [.shellCommand]
+        )
     }
 
-    private static func looksLikeCode(_ text: String) -> Bool {
+    private static func markdownCandidate(for text: String) -> DetectionCandidate? {
+        let blockSyntaxMatched = matches(
+            #"(?m)^(#{1,6}\s|[-*]\s|\d+\.\s|>\s|```)"#,
+            in: text
+        )
+        let linkSyntaxMatched = matches(#"\[[^\]]+\]\([^)]+\)"#, in: text)
+        guard blockSyntaxMatched || linkSyntaxMatched else { return nil }
+        return DetectionCandidate(
+            kind: .markdown,
+            confidence: blockSyntaxMatched ? 0.76 : 0.7,
+            priority: 50,
+            reasons: [
+                blockSyntaxMatched
+                    ? "Markdown block syntax matched"
+                    : "Markdown link syntax matched"
+            ],
+            traits: [.markdown]
+        )
+    }
+
+    private static func codeCandidate(for text: String) -> DetectionCandidate? {
+        var traits: Set<ContentAnalysisTrait> = []
+        var reasons: [String] = []
+        var confidence = 0.0
+
+        if looksLikeXML(text) {
+            traits.insert(.xml)
+            appendUnique("XML-like tags matched", to: &reasons)
+            confidence = max(confidence, 0.82)
+        }
+        if looksLikeSQL(text) {
+            traits.insert(.sql)
+            appendUnique("SQL statement keywords matched", to: &reasons)
+            confidence = max(confidence, 0.8)
+        }
+        if looksLikeYAML(text) {
+            traits.insert(.yaml)
+            appendUnique("YAML-style key/value lines matched", to: &reasons)
+            confidence = max(confidence, 0.68)
+        }
+        if looksLikeSourceCode(text) {
+            traits.insert(.sourceCode)
+            appendUnique("Source code syntax markers matched", to: &reasons)
+            confidence = max(confidence, 0.72)
+        }
+
+        guard confidence > 0 else { return nil }
+        if traits.subtracting([.yaml, .xml, .sql]).isEmpty {
+            traits.insert(.sourceCode)
+        }
+        return DetectionCandidate(
+            kind: .code,
+            confidence: confidence,
+            priority: 40,
+            reasons: reasons,
+            traits: traits
+        )
+    }
+
+    private static func secondaryTraitMatches(in text: String) -> [TraitMatch] {
+        var traitMatches: [TraitMatch] = []
+        if looksLikeYAML(text) {
+            traitMatches.append(TraitMatch(
+                trait: .yaml,
+                reason: "YAML-style key/value lines matched"
+            ))
+        }
+        if looksLikeXML(text) {
+            traitMatches.append(TraitMatch(
+                trait: .xml,
+                reason: "XML-like tags matched"
+            ))
+        }
+        if looksLikeSQL(text) {
+            traitMatches.append(TraitMatch(
+                trait: .sql,
+                reason: "SQL statement keywords matched"
+            ))
+        }
+        if looksLikeBase64(text) {
+            traitMatches.append(TraitMatch(
+                trait: .base64,
+                reason: "Base64 payload shape matched"
+            ))
+        }
+        if looksLikeNaturalLanguage(text) {
+            traitMatches.append(TraitMatch(
+                trait: .naturalLanguage,
+                reason: "Natural language sentence structure matched"
+            ))
+        }
+        if matches(
+            #"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#,
+            in: text,
+            options: [.caseInsensitive]
+        ) {
+            traitMatches.append(TraitMatch(
+                trait: .email,
+                reason: "Email address pattern matched"
+            ))
+        }
+        if matches(
+            #"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b"#,
+            in: text,
+            options: [.caseInsensitive]
+        ) {
+            traitMatches.append(TraitMatch(
+                trait: .uuid,
+                reason: "UUID pattern matched"
+            ))
+        }
+        if matches(
+            #"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"#,
+            in: text
+        ) {
+            traitMatches.append(TraitMatch(
+                trait: .jwt,
+                reason: "JWT token shape matched"
+            ))
+        }
+        return traitMatches
+    }
+
+    private static func looksLikeSourceCode(_ text: String) -> Bool {
         let markers = ["func ", "function ", "const ", "let ", "var ", "class ", "struct ", "import ", "=>", "();", " {"]
         let score = markers.reduce(0) { $0 + (text.contains($1) ? 1 : 0) }
         return score >= 2 || (text.contains("\n") && text.contains("{") && text.contains("}"))
+    }
+
+    private static func looksLikeYAML(_ text: String) -> Bool {
+        guard text.contains("\n") else { return false }
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+        guard lines.count >= 2 else { return false }
+        let keyValueCount = lines.filter {
+            matches(#"^[A-Za-z0-9_.-]+\s*:\s+.+$"#, in: $0)
+        }.count
+        return keyValueCount >= 2
+    }
+
+    private static func looksLikeXML(_ text: String) -> Bool {
+        matches(#"^\s*<\?xml\b[\s\S]*\?>[\s\S]*<[/A-Za-z]"#, in: text)
+            || matches(
+                #"^\s*<([A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>[\s\S]*</\1>\s*$"#,
+                in: text
+            )
+    }
+
+    private static func looksLikeSQL(_ text: String) -> Bool {
+        matches(
+            #"(?is)^\s*(SELECT|WITH|INSERT\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE)\b[\s\S]*(\bFROM\b|\bSET\b|\bVALUES\b|\bTABLE\b|;)"#,
+            in: text
+        )
+    }
+
+    private static func looksLikeBase64(_ text: String) -> Bool {
+        let trimCharacters = CharacterSet(
+            charactersIn: #""'`,.;:()[]{}<>"#
+        )
+        return text
+            .components(separatedBy: .whitespacesAndNewlines)
+            .contains { rawToken in
+                let token = rawToken.trimmingCharacters(in: trimCharacters)
+                guard token.count >= 16,
+                      token.count % 4 == 0,
+                      token.contains("=") || token.contains("+") || token.contains("/"),
+                      matches(#"^[A-Za-z0-9+/]+={0,2}$"#, in: token),
+                      Data(base64Encoded: token) != nil else {
+                    return false
+                }
+                return true
+            }
+    }
+
+    private static func looksLikeNaturalLanguage(_ text: String) -> Bool {
+        let words = text
+            .components(separatedBy: CharacterSet.letters.inverted)
+            .filter { $0.count >= 2 }
+        guard words.count >= 5 else { return false }
+
+        let lowercased = " \(text.lowercased()) "
+        let commonWords = [
+            " the ", " and ", " or ", " to ", " for ", " with ", " about ",
+            " this ", " that ", " is ", " are "
+        ]
+        return commonWords.contains(where: lowercased.contains)
+            || matches(#"[.!?]\s*$"#, in: text)
+    }
+
+    private static func matches(
+        _ pattern: String,
+        in text: String,
+        options: NSRegularExpression.Options = []
+    ) -> Bool {
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: options
+        ) else {
+            return false
+        }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.firstMatch(in: text, range: range) != nil
+    }
+
+    private static func appendUnique(_ reason: String, to reasons: inout [String]) {
+        guard !reasons.contains(reason) else { return }
+        reasons.append(reason)
     }
 }

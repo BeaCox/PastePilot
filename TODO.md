@@ -105,7 +105,7 @@ Current PastePilot baseline:
   identical screenshots saved with different encodings.
 - [ ] Add link metadata and QR/barcode extraction. Keep network metadata strictly
   opt-in; use local Vision barcode detection for QR codes in images.
-- [ ] Improve content detection with confidence and reasons. Replace the current
+- [x] Improve content detection with confidence and reasons. Replace the current
   ordered detector chain with analyzers that can report scores, explanations,
   and secondary traits such as language, JWT, YAML, XML, SQL, Base64, email, or
   UUID.

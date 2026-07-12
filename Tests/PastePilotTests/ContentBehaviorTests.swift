@@ -53,6 +53,67 @@ struct ContentBehaviorTests {
     }
 
     @Test
+    func contentAnalysisReportsConfidenceReasonsAndSecondaryTraits() {
+        let json = ContentAnalyzer.analyze(#"{"name":"PastePilot"}"#)
+        #expect(json.kind == .json)
+        #expect(json.confidence >= 0.95)
+        #expect(json.traits.contains(.json))
+        #expect(json.reasons.contains { $0.contains("JSON") })
+
+        let yaml = ContentAnalyzer.analyze(
+            """
+            name: PastePilot
+            version: 1
+            """
+        )
+        #expect(yaml.kind == .code)
+        #expect(yaml.traits.contains(.yaml))
+        #expect(yaml.traits.contains(.sourceCode))
+        #expect(yaml.reasons.contains { $0.contains("YAML") })
+
+        let xml = ContentAnalyzer.analyze("<note><to>Ada</to></note>")
+        #expect(xml.kind == .code)
+        #expect(xml.traits.contains(.xml))
+
+        let sql = ContentAnalyzer.analyze(
+            "SELECT id, email FROM users WHERE id = 42;"
+        )
+        #expect(sql.kind == .code)
+        #expect(sql.traits.contains(.sql))
+
+        let plainTraits = ContentAnalyzer.analyze(
+            "support@example.com 550e8400-e29b-41d4-a716-446655440000 SGVsbG8sIFBhc3RlUGlsb3Q="
+        )
+        #expect(plainTraits.kind == .text)
+        #expect(plainTraits.traits.contains(.email))
+        #expect(plainTraits.traits.contains(.uuid))
+        #expect(plainTraits.traits.contains(.base64))
+        #expect(
+            plainTraits.reasons.contains {
+                $0.contains("Email address")
+            }
+        )
+
+        let naturalLanguage = ContentAnalyzer.analyze(
+            "This is a short note about PastePilot history."
+        )
+        #expect(naturalLanguage.kind == .text)
+        #expect(naturalLanguage.traits.contains(.naturalLanguage))
+        #expect(
+            naturalLanguage.reasons.contains {
+                $0.contains("Natural language")
+            }
+        )
+
+        let jwt = ContentAnalyzer.analyze(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.signature"
+        )
+        #expect(jwt.traits.contains(.jwt))
+        #expect(jwt.containsSensitiveData)
+        #expect(jwt.reasons.contains("Sensitive content pattern matched"))
+    }
+
+    @Test
     func sensitiveContentDetectionAndRedaction() {
         let secret = "API_KEY=super-secret-value"
         #expect(ContentAnalyzer.analyze(secret).containsSensitiveData)
