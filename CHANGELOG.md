@@ -4,6 +4,55 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-13
+
+### Added
+
+- Backup and restore can export `history.sqlite`, image files, and externalized
+  text into a versioned archive, validate restore input, and create a
+  pre-restore backup before replacing local data.
+- Capture controls now include persistent pause and one-shot **Ignore Next
+  Copy** support for sensitive workflows.
+- Search supports filters such as `kind:json`, `app:Terminal`, `pinned:true`,
+  and `has:ocr`, with quoted phrases and source app fields included in the
+  SQLite search body.
+- Users can define custom sensitive-content patterns and choose whether matches
+  are stored as original text, stored redacted, or skipped.
+- Optional copy-and-paste behavior can paste a copied history item after
+  Accessibility permission is granted.
+- Original pasteboard representations are preserved for supported clipboard
+  types so rich text, file groups, images, and app-specific formats can be
+  replayed with higher fidelity.
+- Clipboard items can now have editable titles, notes, and aliases that are
+  persisted separately from captured content, indexed in search, shown in
+  previews, and retained when duplicate content moves to the top.
+
+### Changed
+
+- Built-in clipboard actions now flow through a declarative registry with
+  stable ids, titles, symbols, accepted kinds, effects, and preview close
+  behavior.
+- Content detection now reports confidence, reasons, and secondary traits such
+  as YAML, XML, SQL, JWT, Base64, email, UUID, source code, and natural
+  language.
+- Menu bar search and paste feedback were refined so filtered results,
+  full-text matches, notices, and inline previews stay responsive and stable.
+- History search and SQLite lifecycle handling were hardened, including
+  rebuilding missing search index entries and keeping storage scans bounded.
+
+### Fixed
+
+- Quoted secret redaction now preserves surrounding syntax while masking the
+  sensitive value.
+- Paste shortcut tests were stabilized to avoid timing-sensitive failures.
+
+### Maintenance
+
+- Added menu bar popover regression coverage for search, preview, pin/delete,
+  actions, notices, empty states, and long-content layout.
+- Split SQLite history storage, menu interaction state, and related tests into
+  narrower units.
+
 ## [0.6.0] - 2026-07-01
 
 ### Changed
