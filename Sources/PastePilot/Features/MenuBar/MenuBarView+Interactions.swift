@@ -164,7 +164,7 @@ extension MenuBarView {
             interactionState.fullTextSearch.clear()
             searchFocused = true
         case .clearUnpinned:
-            showsClearConfirmation = true
+            beginClearUnpinnedConfirmation()
         case let .performAction(index):
             performAction(at: index)
         case .close:
@@ -192,6 +192,7 @@ extension MenuBarView {
         metadataTitle = item.userTitle ?? ""
         metadataNote = item.userNote ?? ""
         metadataAliases = (item.userAliases ?? []).joined(separator: ", ")
+        prepareForTopLevelPresentation()
         editingMetadataItemID = item.id
     }
 
@@ -204,10 +205,22 @@ extension MenuBarView {
             aliases: parsedMetadataAliases
         )
         editingMetadataItemID = nil
+        previewClosesInstantly = false
     }
 
     func cancelMetadataEdit() {
         editingMetadataItemID = nil
+        previewClosesInstantly = false
+    }
+
+    func beginClearUnpinnedConfirmation() {
+        prepareForTopLevelPresentation()
+        showsClearConfirmation = true
+    }
+
+    func prepareForTopLevelPresentation() {
+        previewClosesInstantly = true
+        closePreview()
     }
 
     private var parsedMetadataAliases: [String] {

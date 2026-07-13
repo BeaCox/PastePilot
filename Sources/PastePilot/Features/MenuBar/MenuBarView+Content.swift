@@ -33,6 +33,11 @@ extension MenuBarView {
         .onChange(of: selectedID) {
             handleSelectionChange()
         }
+        .onChange(of: showsClearConfirmation) {
+            if !showsClearConfirmation {
+                previewClosesInstantly = false
+            }
+        }
         .sheet(isPresented: metadataEditorPresented) {
             ClipboardMetadataEditor(
                 title: $metadataTitle,
@@ -94,7 +99,7 @@ extension MenuBarView {
                 }
                 Divider()
                 Button("Clear Unpinned".localized) {
-                    showsClearConfirmation = true
+                    beginClearUnpinnedConfirmation()
                 }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 Divider()

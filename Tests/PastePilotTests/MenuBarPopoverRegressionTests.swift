@@ -186,6 +186,44 @@ struct MenuBarPopoverRegressionTests {
     }
 
     @Test
+    func popoverKeyboardMonitorIgnoresTopLevelEditorsAndSheets() {
+        let popoverWindow = NSWindow()
+        let editorWindow = NSWindow()
+
+        #expect(
+            AppDelegate.shouldHandlePopoverKeyEvent(
+                popoverIsShown: true,
+                eventWindow: popoverWindow,
+                popoverWindow: popoverWindow
+            )
+        )
+        #expect(
+            !AppDelegate.shouldHandlePopoverKeyEvent(
+                popoverIsShown: true,
+                eventWindow: editorWindow,
+                popoverWindow: popoverWindow
+            )
+        )
+        #expect(
+            !AppDelegate.shouldHandlePopoverKeyEvent(
+                popoverIsShown: false,
+                eventWindow: popoverWindow,
+                popoverWindow: popoverWindow
+            )
+        )
+
+        popoverWindow.beginSheet(editorWindow)
+        #expect(
+            !AppDelegate.shouldHandlePopoverKeyEvent(
+                popoverIsShown: true,
+                eventWindow: popoverWindow,
+                popoverWindow: popoverWindow
+            )
+        )
+        popoverWindow.endSheet(editorWindow)
+    }
+
+    @Test
     func pinDeleteActionsNoticesAndRenderingStayConnected() throws {
         let defaultsName = "PastePilotPopoverTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: defaultsName))

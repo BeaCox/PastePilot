@@ -5,7 +5,15 @@ import Foundation
 extension AppDelegate {
     func registerPopoverKeyMonitor() {
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard self?.popover?.isShown == true else { return event }
+            guard let self,
+                  let popover = self.popover,
+                  Self.shouldHandlePopoverKeyEvent(
+                      popoverIsShown: popover.isShown,
+                      eventWindow: event.window,
+                      popoverWindow: popover.contentViewController?.view.window
+                  ) else {
+                return event
+            }
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
             if flags == .command,
@@ -52,7 +60,7 @@ extension AppDelegate {
             case UInt16(kVK_DownArrow):
                 command = .moveDown
             case UInt16(kVK_Space):
-                if let editor = self?.popover?.contentViewController?
+                if let editor = self.popover?.contentViewController?
                     .view.window?.firstResponder as? NSTextView,
                    !editor.string.isEmpty {
                     return event
@@ -69,6 +77,25 @@ extension AppDelegate {
             Self.post(.keyboard(command))
             return nil
         }
+    }
+
+    static func shouldHandlePopoverKeyEvent(
+        popoverIsShown: Bool,
+        eventWindow: NSWindow?,
+        popoverWindow: NSWindow?
+    ) -> Bool {
+        guard popoverIsShown,
+              let eventWindow,
+              let popoverWindow,
+              eventWindow === popoverWindow else {
+            return false
+        }
+
+        // SwiftUI sheets (such as Edit Details) use their own key window. Do
+        // not turn Return or other keys intended for that window into popover
+        // actions. The sheet check also covers events AppKit associates with
+        // the presenting window during its presentation transition.
+        return popoverWindow.attachedSheet == nil
     }
 
     func registerHotKey() {
