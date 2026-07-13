@@ -8,9 +8,11 @@
 
 A local-first macOS clipboard manager that understands developer content.
 
-PastePilot recognizes commands, JSON, code, errors, colors, screenshots, and
-files, then suggests the next useful action from your menu bar. No plugins, no
-telemetry, no cloud sync. Everything stays on your Mac.
+PastePilot recognizes commands, JSON, code, errors, colors, screenshots, rich
+text, and files, then suggests the next useful action from your menu bar. It
+keeps high-fidelity pasteboard data when safe, supports searchable notes and
+aliases, and includes local backup/restore. No telemetry, no cloud sync.
+Everything stays on your Mac.
 
 [Download latest release](https://github.com/BeaCox/PastePilot/releases/latest) ·
 [See demo](#demo) ·
@@ -29,6 +31,11 @@ you copied and turns it into useful developer actions.
   generate TypeScript interfaces from API responses.
 - **Find screenshots by text.** OCR copied images locally with macOS Vision,
   then search clipboard history by visible text.
+- **Organize history without changing the copied content.** Add titles, notes,
+  and aliases that stay searchable and survive duplicate recapture.
+- **Handle sensitive workflows deliberately.** Pause capture, ignore the next
+  copy, define custom sensitive patterns, or skip/redact sensitive matches
+  before they are written to history.
 - **Keep clipboard data local.** No plugins, no telemetry, and no cloud sync.
 
 ## Demo
@@ -64,6 +71,37 @@ PastePilot automatically identifies 11 content types and tailors actions to each
 | **File** | Files from Finder | Copy, Quick Look, Show in Finder |
 | **Plain Text** | Everything else | Convert to `camelCase` / `snake_case`, escape as string |
 
+### Search and Organization
+
+Search works across captured content, OCR text, source app metadata, file paths,
+and your own titles, notes, and aliases. Use plain text, quoted phrases, or
+filters:
+
+| Query | Meaning |
+|-------|---------|
+| `kind:json` | JSON clipboard items |
+| `app:Terminal` | Content copied from Terminal |
+| `pinned:true` | Pinned items only |
+| `has:ocr` | Images with recognized text |
+| `has:title`, `has:note`, `has:alias` | Items with user metadata |
+| `"release notes"` | Exact phrase match |
+
+Right-click any history item and choose **Edit Details…** to add a title, note,
+or aliases. These fields are stored separately from captured content, indexed in
+search, and kept when duplicate content is copied again and moved back to the
+top.
+
+### High-Fidelity Clipboard Replay
+
+PastePilot stores selected original pasteboard representations with strict size
+and type limits. When available, copying from history restores richer clipboard
+data instead of only plain text:
+
+- Rich text can preserve formatting and HTML source
+- File groups can be copied back as files
+- Images keep cached PNG data plus source URL or original path metadata
+- Supported app-specific pasteboard formats can be replayed when safe
+
 ### Command Intelligence
 
 Built for the pain of copying `$ npm install` from a README and having to delete the `$` yourself:
@@ -85,6 +123,9 @@ clipboard text without fonts, colors, links, or other rich-text formatting.
 PastePilot restores the original clipboard contents immediately afterward, so
 images, files, and rich text remain available for normal pasting.
 
+PastePilot can also paste immediately after copying a history item when
+**Paste After Copying** is enabled and Accessibility permission is granted.
+
 Both global shortcuts are managed together in General settings. Opening
 PastePilot does not require Accessibility permission; pasting as plain text
 does, because it sends a paste keystroke to the active app. Click **Request
@@ -95,15 +136,21 @@ after an update, so close old DMGs and keep only the installed copy in
 ### Privacy & Security
 
 - Detects and masks API keys, tokens, passwords, and private keys
+- Supports custom sensitive-content patterns with literal or `regex:` rules
 - Sensitive content hidden by default with optional reveal
 - Sensitive content can be saved as original text, saved redacted, or skipped
   entirely from history
+- Capture can be paused persistently, and **Ignore Next Copy** skips one
+  clipboard change without reading it into history
 - Clipboard data stays local and no telemetry is collected
 - Network access is limited to checking and downloading updates from GitHub Releases
 - History is stored in SQLite at `~/Library/Application Support/PastePilot/history.sqlite`
 - Existing `history.json` and `history.backup.json` files are retained for migration and downgrade compatibility
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
 - Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
+- Titles, notes, aliases, and retained pasteboard representations may be
+  persisted in history for search and high-fidelity replay
+- Backup archives include the SQLite database, externalized text, and images
 - The storage limit setting removes the oldest unpinned items when retained
   history exceeds the chosen local data size
 - Sensitive-content masking only hides values in the UI; use the redacted or
@@ -115,8 +162,10 @@ after an update, so close old DMGs and keep only the installed copy in
 - **Hover preview** — pause on any item to see full content, source app, and metadata
 - **Keyboard-driven** — search, navigation, previews, item actions, pinning,
   deletion, and cleanup all have keyboard paths
-- **Search** — filter history by content, type, or OCR text
+- **Search** — filter history by content, type, source app, pin state, OCR text,
+  titles, notes, and aliases
 - **Pin** — pinned items stay at the top and survive cleanup
+- **Edit details** — add searchable titles, notes, and aliases from the context menu
 - **Drag & drop** — drop files or images directly into the popover
 
 #### Keyboard shortcuts
@@ -143,7 +192,9 @@ after an update, so close old DMGs and keep only the installed copy in
 - Total local storage limit
 - Image size limit
 - Sensitive-content storage policy
+- Custom sensitive-content patterns
 - OCR mode, language mode, and manual re-run for existing images
+- Paste after copying
 - Menu bar icon style (PastePilot / Clipboard / Paperplane)
 - Theme mode (follow system / light / dark)
 - Hover preview toggle
@@ -284,7 +335,8 @@ make test
 Tests use Swift Testing through a standard SwiftPM test target. The suite covers
 content analysis and transforms, action generation, settings persistence,
 history format compatibility and backup recovery, image cleanup, expiry,
-storage limits, OCR refresh, and history limits.
+storage limits, OCR refresh, high-fidelity pasteboard replay, editable metadata,
+menu bar regression behavior, and history limits.
 
 ## Contributing
 
