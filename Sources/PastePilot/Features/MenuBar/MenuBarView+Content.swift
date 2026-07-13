@@ -33,6 +33,15 @@ extension MenuBarView {
         .onChange(of: selectedID) {
             handleSelectionChange()
         }
+        .sheet(isPresented: metadataEditorPresented) {
+            ClipboardMetadataEditor(
+                title: $metadataTitle,
+                note: $metadataNote,
+                aliases: $metadataAliases,
+                save: saveMetadataEdit,
+                cancel: cancelMetadataEdit
+            )
+        }
     }
 
     var notificationHandlingPanel: some View {
@@ -189,6 +198,9 @@ extension MenuBarView {
                                     previewedID = item.id
                                 },
                                 performAction: performAction,
+                                editMetadata: {
+                                    beginEditingMetadata(for: item)
+                                },
                                 copy: {
                                     performAction(ClipboardActionFactory.copyAction(for: item))
                                 },
@@ -280,5 +292,70 @@ extension MenuBarView {
             itemCount: store.items.count,
             isSearching: interactionState.fullTextSearch.isSearching
         )
+    }
+
+    private var metadataEditorPresented: Binding<Bool> {
+        Binding(
+            get: {
+                editingMetadataItemID != nil
+            },
+            set: { isPresented in
+                if !isPresented {
+                    cancelMetadataEdit()
+                }
+            }
+        )
+    }
+}
+
+private struct ClipboardMetadataEditor: View {
+    @Binding var title: String
+    @Binding var note: String
+    @Binding var aliases: String
+    let save: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Edit Details".localized)
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Title".localized)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Title".localized, text: $title)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Aliases".localized)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Aliases".localized, text: $aliases)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Note".localized)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $note)
+                    .font(.body)
+                    .frame(minHeight: 90)
+                    .scrollContentBackground(.hidden)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel".localized, action: cancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Save".localized, action: save)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(18)
+        .frame(width: 360)
     }
 }

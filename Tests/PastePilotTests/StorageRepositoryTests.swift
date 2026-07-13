@@ -102,6 +102,102 @@ struct StorageRepositoryTests {
     }
 
     @Test
+    func repositoryAddsUserMetadataColumnsToExistingSQLiteStore() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let id = UUID()
+        let dbQueue = try DatabaseQueue(
+            path: directory.appendingPathComponent("history.sqlite").path
+        )
+        try dbQueue.write { db in
+            try db.execute(sql: """
+                CREATE TABLE items (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    fingerprint TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    is_pinned INTEGER NOT NULL,
+                    contains_sensitive_data INTEGER NOT NULL,
+                    source_app_name TEXT,
+                    source_bundle_identifier TEXT,
+                    image_file_name TEXT,
+                    image_width INTEGER,
+                    image_height INTEGER,
+                    image_byte_count INTEGER,
+                    image_digest TEXT,
+                    image_source_url TEXT,
+                    image_original_path TEXT,
+                    content_file_name TEXT,
+                    content_digest TEXT,
+                    content_character_count INTEGER,
+                    content_line_count INTEGER,
+                    content_byte_count INTEGER,
+                    ocr_text TEXT
+                )
+                """)
+            try db.execute(
+                sql: """
+                    INSERT INTO items (
+                        id, fingerprint, content, kind, created_at, is_pinned,
+                        contains_sensitive_data, source_app_name,
+                        source_bundle_identifier, image_file_name, image_width,
+                        image_height, image_byte_count, image_digest,
+                        image_source_url, image_original_path, content_file_name,
+                        content_digest, content_character_count,
+                        content_line_count, content_byte_count, ocr_text
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    id.uuidString,
+                    "legacy-fingerprint",
+                    "legacy sqlite row",
+                    "text",
+                    1.0,
+                    0,
+                    0,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil,
+                    nil
+                ]
+            )
+        }
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+
+        let loadedItem = try #require(repository.load().items.first)
+        #expect(loadedItem.id == id)
+        #expect(loadedItem.userTitle == nil)
+
+        let updatedItem = ClipboardItem(
+            id: loadedItem.id,
+            content: loadedItem.content,
+            kind: loadedItem.kind,
+            createdAt: loadedItem.createdAt,
+            userTitle: "Migrated title",
+            userNote: "Migrated note",
+            userAliases: ["legacy"]
+        )
+        try repository.save([updatedItem])
+
+        let reloadedItem = try #require(repository.load().items.first)
+        #expect(reloadedItem.userTitle == "Migrated title")
+        #expect(reloadedItem.userNote == "Migrated note")
+        #expect(reloadedItem.userAliases == ["legacy"])
+    }
+
+    @Test
     func repositorySaveLoadRoundTripsClipboardItemFields() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -140,7 +236,10 @@ struct StorageRepositoryTests {
             contentCharacterCount: 10,
             contentLineCount: 1,
             contentByteCount: 10,
-            ocrText: "recognized text"
+            ocrText: "recognized text",
+            userTitle: "Deploy snippet",
+            userNote: "Use after staging checks",
+            userAliases: ["release", "ship it"]
         )
         let repository = HistoryRepository(dataDirectoryURL: directory)
 
@@ -219,14 +318,23 @@ struct StorageRepositoryTests {
             sourceAppName: "Terminal",
             sourceBundleIdentifier: "com.apple.Terminal"
         )
+        let metadataItem = ClipboardItem(
+            content: "plain body",
+            kind: .text,
+            userTitle: "Customer escalation",
+            userNote: "Needs billing review",
+            userAliases: ["vip", "renewal"]
+        )
         let repository = HistoryRepository(dataDirectoryURL: directory)
 
-        try repository.save([contentItem, imageItem, fileItem, appItem])
+        try repository.save([contentItem, imageItem, fileItem, appItem, metadataItem])
 
         #expect(try repository.matchingIDs(query: "note alpha") == Set([contentItem.id]))
         #expect(try repository.matchingIDs(query: "invoice paid") == Set([imageItem.id]))
         #expect(try repository.matchingIDs(query: "pastepilot notes") == Set([fileItem.id]))
         #expect(try repository.matchingIDs(query: "apple terminal") == Set([appItem.id]))
+        #expect(try repository.matchingIDs(query: "customer billing") == Set([metadataItem.id]))
+        #expect(try repository.matchingIDs(query: "vip renewal") == Set([metadataItem.id]))
     }
 
     @Test

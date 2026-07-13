@@ -141,6 +141,12 @@
 "Try searching for other content or types." = "尝试搜索其他内容或类型。";
 "Always on top, kept when history is cleared" = "始终置顶，清理历史时保留";
 "Copy original" = "复制原文";
+"Edit Details" = "编辑详情";
+"Edit Details…" = "编辑详情…";
+"Title" = "标题";
+"Aliases" = "别名";
+"Note" = "备注";
+"Save" = "保存";
 "Unknown Source" = "未知来源";
 "Sensitive content hidden" = "敏感内容已隐藏";
 "Sensitive content revealed" = "敏感内容已显示";

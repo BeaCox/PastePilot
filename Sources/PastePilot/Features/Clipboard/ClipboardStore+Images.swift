@@ -114,10 +114,11 @@ extension ClipboardStore {
                 return
             }
 
-            let wasPinned = items.first {
+            let inheritedItem = items.first {
                 $0.imageDigest == processedImage.digest
-            }?.isPinned ?? false
-            let item = ClipboardItem(
+            }
+            let wasPinned = inheritedItem?.isPinned ?? false
+            var item = ClipboardItem(
                 id: id,
                 content: "Image %d × %d".localized(
                     processedImage.width,
@@ -137,6 +138,7 @@ extension ClipboardStore {
                 filePaths: originalPath.map { [$0] },
                 pasteboardRepresentations: pasteboardRepresentations
             )
+            item.inheritUserMetadata(from: inheritedItem)
             let duplicateItems = items.filter {
                 $0.imageDigest == processedImage.digest
             }

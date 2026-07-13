@@ -95,7 +95,7 @@ Current PastePilot baseline:
   PastePilot action.
 - [ ] Add CLI automation after App Intents. Consider a small `pastepilot` command
   for search, read, copy, export, and diagnostics while the app is running.
-- [ ] Add notes, aliases, and editable titles. Store user metadata separately
+- [x] Add notes, aliases, and editable titles. Store user metadata separately
   from captured content, index it in search, and keep it when duplicate content
   is moved to the top.
 - [ ] Add favorites separate from pinned ordering. Let pinned items control menu

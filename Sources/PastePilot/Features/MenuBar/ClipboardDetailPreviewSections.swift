@@ -64,6 +64,11 @@ struct ClipboardPreviewMetadata: View {
             Divider()
                 .padding(.vertical, 8)
 
+            if item.hasUserMetadata {
+                UserMetadataPreview(item: item)
+                    .padding(.bottom, 8)
+            }
+
             HStack {
                 Label {
                     Text(item.createdAt, format: .dateTime.year().month().day().hour().minute())
@@ -140,6 +145,34 @@ struct ClipboardPreviewMetadata: View {
             fromByteCount: Int64(item.imageByteCount ?? 0),
             countStyle: .file
         )
+    }
+}
+
+private struct UserMetadataPreview: View {
+    let item: ClipboardItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            if let title = item.userTitle {
+                Label(title, systemImage: "textformat")
+                    .font(.caption.weight(.medium))
+                    .lineLimit(2)
+            }
+            if let note = item.userNote {
+                Label(note, systemImage: "note.text")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+            if let aliases = item.userAliases,
+               !aliases.isEmpty {
+                Label(aliases.joined(separator: ", "), systemImage: "tag")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .textSelection(.enabled)
     }
 }
 

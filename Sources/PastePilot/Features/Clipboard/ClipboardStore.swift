@@ -295,6 +295,21 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
+    func updateUserMetadata(
+        for id: UUID,
+        title: String?,
+        note: String?,
+        aliases: [String]?
+    ) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].updateUserMetadata(
+            title: title,
+            note: note,
+            aliases: aliases
+        )
+        save()
+    }
+
     func delete(_ id: UUID) {
         if let item = items.first(where: { $0.id == id }) {
             cancelOCR(for: item.id)

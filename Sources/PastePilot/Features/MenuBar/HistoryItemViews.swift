@@ -10,6 +10,7 @@ struct CompactHistoryItem: View {
     let hoverChanged: (Bool) -> Void
     let preview: () -> Void
     let performAction: (ClipboardAction) -> Void
+    let editMetadata: () -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
     let delete: () -> Void
@@ -108,6 +109,7 @@ struct CompactHistoryItem: View {
                 }
             }
             Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized, action: togglePinned)
+            Button("Edit Details…".localized, action: editMetadata)
             Divider()
             Button("Delete".localized, role: .destructive, action: delete)
         }

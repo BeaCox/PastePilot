@@ -32,6 +32,10 @@ struct MenuBarView: View {
     @State var notice: PastePilotNotice?
     @State var needsScrollToSelection = false
     @State var showsClearConfirmation = false
+    @State var editingMetadataItemID: UUID?
+    @State var metadataTitle = ""
+    @State var metadataNote = ""
+    @State var metadataAliases = ""
     @State var interactionState = MenuBarInteractionState()
     @State var historyItemFrames: [UUID: CGRect] = [:]
     @State var previewClosesInstantly = false

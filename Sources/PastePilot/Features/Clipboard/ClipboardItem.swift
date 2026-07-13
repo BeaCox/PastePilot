@@ -73,6 +73,9 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let contentLineCount: Int?
     let contentByteCount: Int?
     var ocrText: String?
+    var userTitle: String?
+    var userNote: String?
+    var userAliases: [String]?
 
     init(
         id: UUID = UUID(),
@@ -99,7 +102,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         contentCharacterCount: Int? = nil,
         contentLineCount: Int? = nil,
         contentByteCount: Int? = nil,
-        ocrText: String? = nil
+        ocrText: String? = nil,
+        userTitle: String? = nil,
+        userNote: String? = nil,
+        userAliases: [String]? = nil
     ) {
         self.id = id
         self.content = content
@@ -128,6 +134,9 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.contentLineCount = contentLineCount
         self.contentByteCount = contentByteCount
         self.ocrText = ocrText
+        self.userTitle = Self.normalizedMetadataText(userTitle)
+        self.userNote = Self.normalizedMetadataText(userNote)
+        self.userAliases = Self.normalizedAliases(userAliases)
     }
 
     var isImage: Bool {
@@ -148,6 +157,58 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
 
     var hasExternalContent: Bool {
         contentFileName != nil
+    }
+
+    var hasUserTitle: Bool {
+        userTitle?.isEmpty == false
+    }
+
+    var hasUserNote: Bool {
+        userNote?.isEmpty == false
+    }
+
+    var hasUserAliases: Bool {
+        userAliases?.isEmpty == false
+    }
+
+    var hasUserMetadata: Bool {
+        hasUserTitle || hasUserNote || hasUserAliases
+    }
+
+    mutating func updateUserMetadata(
+        title: String?,
+        note: String?,
+        aliases: [String]?
+    ) {
+        userTitle = Self.normalizedMetadataText(title)
+        userNote = Self.normalizedMetadataText(note)
+        userAliases = Self.normalizedAliases(aliases)
+    }
+
+    mutating func inheritUserMetadata(from item: ClipboardItem?) {
+        guard let item else { return }
+        userTitle = item.userTitle
+        userNote = item.userNote
+        userAliases = item.userAliases
+    }
+
+    private static func normalizedMetadataText(_ text: String?) -> String? {
+        guard let text else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func normalizedAliases(_ aliases: [String]?) -> [String]? {
+        guard let aliases else { return nil }
+        var seen = Set<String>()
+        let normalized = aliases.compactMap { alias -> String? in
+            let trimmed = alias.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            let key = trimmed.lowercased()
+            guard seen.insert(key).inserted else { return nil }
+            return trimmed
+        }
+        return normalized.isEmpty ? nil : normalized
     }
 }
 
@@ -195,7 +256,10 @@ extension ClipboardItem {
                 character.isNewline ? count + 1 : count
             },
             contentByteCount: content.utf8.count,
-            ocrText: ocrText
+            ocrText: ocrText,
+            userTitle: userTitle,
+            userNote: userNote,
+            userAliases: userAliases
         )
     }
 }

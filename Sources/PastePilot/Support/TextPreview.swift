@@ -19,6 +19,12 @@ enum TextPreview {
         for item: ClipboardItem,
         userPatterns: [UserSensitivePattern] = []
     ) -> String {
+        if let title = item.userTitle {
+            return clippedText(from: title, maxCharacters: summaryCharacterLimit).text
+                .replacingOccurrences(of: "\n", with: " ")
+                .replacingOccurrences(of: "\r", with: " ")
+        }
+
         let snippet = clippedText(from: item.content, maxCharacters: summaryCharacterLimit)
         let visibleText = item.containsSensitiveData
             ? ContentAnalyzer.redacted(snippet.text, userPatterns: userPatterns)

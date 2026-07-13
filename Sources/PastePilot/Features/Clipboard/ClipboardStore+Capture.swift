@@ -459,7 +459,7 @@ extension ClipboardStore {
     }
 
     /// Removes any existing items matching `duplicate`, inserts `make` at the
-    /// front (preserving a previously matching item's pinned state), then trims
+    /// front (preserving a previously matching item's user state), then trims
     /// and persists. Returns the pinned state carried over from the duplicate.
     @discardableResult
     func insertCaptured(
@@ -467,10 +467,13 @@ extension ClipboardStore {
         make: (_ wasPinned: Bool) -> ClipboardItem
     ) -> Bool {
         let duplicateItems = items.filter(duplicate)
-        let wasPinned = duplicateItems.first?.isPinned ?? false
+        let inheritedItem = duplicateItems.first
+        let wasPinned = inheritedItem?.isPinned ?? false
         duplicateItems.forEach(deleteStoredResources)
         items.removeAll(where: duplicate)
-        items.insert(make(wasPinned), at: 0)
+        var item = make(wasPinned)
+        item.inheritUserMetadata(from: inheritedItem)
+        items.insert(item, at: 0)
         trimHistory(limit: settings.historyLimit)
         enforceStorageLimit()
         save()

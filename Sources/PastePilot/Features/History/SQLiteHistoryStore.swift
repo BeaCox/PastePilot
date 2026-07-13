@@ -198,9 +198,30 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 content_character_count INTEGER,
                 content_line_count INTEGER,
                 content_byte_count INTEGER,
-                ocr_text TEXT
+                ocr_text TEXT,
+                user_title TEXT,
+                user_note TEXT,
+                user_aliases_json TEXT
             )
             """)
+        try ensureColumn(
+            "user_title",
+            definition: "user_title TEXT",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "user_note",
+            definition: "user_note TEXT",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "user_aliases_json",
+            definition: "user_aliases_json TEXT",
+            in: "items",
+            db: db
+        )
         try db.execute(sql: """
             CREATE TABLE IF NOT EXISTS rich_text (
                 item_id TEXT PRIMARY KEY NOT NULL
@@ -256,7 +277,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "2",
+            "3",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -332,7 +353,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 contentCharacterCount: row["content_character_count"],
                 contentLineCount: row["content_line_count"],
                 contentByteCount: row["content_byte_count"],
-                ocrText: row["ocr_text"]
+                ocrText: row["ocr_text"],
+                userTitle: row["user_title"],
+                userNote: row["user_note"],
+                userAliases: Self.decodedAliases(from: row["user_aliases_json"])
             )
         }
     }
@@ -416,8 +440,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     image_height, image_byte_count, image_digest,
                     image_source_url, image_original_path, content_file_name,
                     content_digest, content_character_count,
-                    content_line_count, content_byte_count, ocr_text
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    content_line_count, content_byte_count, ocr_text,
+                    user_title, user_note, user_aliases_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
@@ -439,7 +464,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     content_character_count = excluded.content_character_count,
                     content_line_count = excluded.content_line_count,
                     content_byte_count = excluded.content_byte_count,
-                    ocr_text = excluded.ocr_text
+                    ocr_text = excluded.ocr_text,
+                    user_title = excluded.user_title,
+                    user_note = excluded.user_note,
+                    user_aliases_json = excluded.user_aliases_json
                 """,
             arguments: [
                 item.id.uuidString,
@@ -463,7 +491,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 item.contentCharacterCount,
                 item.contentLineCount,
                 item.contentByteCount,
-                item.ocrText
+                item.ocrText,
+                item.userTitle,
+                item.userNote,
+                Self.encodedAliases(item.userAliases)
             ]
         )
     }
@@ -563,6 +594,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             item.sourceAppName,
             item.sourceBundleIdentifier,
             item.ocrText,
+            item.userTitle,
+            item.userNote,
+            item.userAliases?.joined(separator: "\n"),
             storedItem.filePaths.joined(separator: "\n")
         ]
         .compactMap { value in
@@ -596,6 +630,21 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 """,
             arguments: [key, value]
         )
+    }
+
+    private func ensureColumn(
+        _ column: String,
+        definition: String,
+        in table: String,
+        db: Database
+    ) throws {
+        let columns = try Set(
+            Row.fetchAll(db, sql: "PRAGMA table_info(\(table))").map { row in
+                row["name"] as String
+            }
+        )
+        guard !columns.contains(column) else { return }
+        try db.execute(sql: "ALTER TABLE \(table) ADD COLUMN \(definition)")
     }
 
     private func hasSearchIndex(db: Database) throws -> Bool {
@@ -647,6 +696,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         parts.append(item.contentLineCount.map(String.init) ?? "")
         parts.append(item.contentByteCount.map(String.init) ?? "")
         parts.append(item.ocrText ?? "")
+        parts.append(item.userTitle ?? "")
+        parts.append(item.userNote ?? "")
+        parts.append(item.userAliases?.joined(separator: "\u{1F}") ?? "")
         return ContentDigest.sha256Hex(for: parts.joined(separator: "\u{1E}"))
     }
 
@@ -668,5 +720,24 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             .replacingOccurrences(of: "%", with: "\\%")
             .replacingOccurrences(of: "_", with: "\\_")
         return "%\(escaped)%"
+    }
+
+    private static func decodedAliases(from json: String?) -> [String]? {
+        guard let json,
+              let data = json.data(using: .utf8),
+              let aliases = try? JSONDecoder().decode([String].self, from: data),
+              !aliases.isEmpty else {
+            return nil
+        }
+        return aliases
+    }
+
+    private static func encodedAliases(_ aliases: [String]?) -> String? {
+        guard let aliases,
+              !aliases.isEmpty,
+              let data = try? JSONEncoder().encode(aliases) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
     }
 }

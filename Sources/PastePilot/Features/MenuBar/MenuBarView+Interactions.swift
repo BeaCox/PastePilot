@@ -187,6 +187,39 @@ extension MenuBarView {
         selectFirstItem()
     }
 
+    func beginEditingMetadata(for item: ClipboardItem) {
+        selectedID = item.id
+        metadataTitle = item.userTitle ?? ""
+        metadataNote = item.userNote ?? ""
+        metadataAliases = (item.userAliases ?? []).joined(separator: ", ")
+        editingMetadataItemID = item.id
+    }
+
+    func saveMetadataEdit() {
+        guard let id = editingMetadataItemID else { return }
+        store.updateUserMetadata(
+            for: id,
+            title: metadataTitle,
+            note: metadataNote,
+            aliases: parsedMetadataAliases
+        )
+        editingMetadataItemID = nil
+    }
+
+    func cancelMetadataEdit() {
+        editingMetadataItemID = nil
+    }
+
+    private var parsedMetadataAliases: [String] {
+        metadataAliases
+            .split { character in
+                character == "," || character == "\n"
+            }
+            .map {
+                String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+    }
+
     func shouldShowPinnedHeader(at index: Int) -> Bool {
         shouldShowPinnedHeader(at: index, in: filteredItems)
     }

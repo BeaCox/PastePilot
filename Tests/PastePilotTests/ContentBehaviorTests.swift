@@ -270,9 +270,15 @@ struct ContentBehaviorTests {
     func rowSummaryUsesOnlyAPrefix() {
         let content = "first line\n" + String(repeating: "secret", count: 1_000)
         let item = ClipboardItem(content: content, kind: .text)
+        let titledItem = ClipboardItem(
+            content: content,
+            kind: .text,
+            userTitle: "Reusable snippet\nwith title"
+        )
 
         #expect(TextPreview.summary(for: item).count <= TextPreview.summaryCharacterLimit)
         #expect(!TextPreview.summary(for: item).contains("\n"))
+        #expect(TextPreview.summary(for: titledItem) == "Reusable snippet with title")
     }
 
     @Test
@@ -312,6 +318,22 @@ struct ContentBehaviorTests {
         #expect(!ClipboardSearchQuery("has:file").matchesFilters(item))
         #expect(ClipboardSearchQuery("kind:json").isEmpty == false)
         #expect(ClipboardSearchQuery("kind:json").hasSearchTerms == false)
+    }
+
+    @Test
+    func searchQueryMatchesUserMetadataFilters() {
+        let item = ClipboardItem(
+            content: "body",
+            kind: .text,
+            userTitle: "Customer escalation",
+            userNote: "Needs billing review",
+            userAliases: ["vip", "renewal"]
+        )
+
+        #expect(ClipboardSearchQuery("has:title").matchesFilters(item))
+        #expect(ClipboardSearchQuery("has:note").matchesFilters(item))
+        #expect(ClipboardSearchQuery("has:alias").matchesFilters(item))
+        #expect(!ClipboardSearchQuery("has:ocr").matchesFilters(item))
     }
 
     @Test
@@ -755,6 +777,9 @@ struct ContentBehaviorTests {
         )
         #expect(legacyItem.sourceAppName == nil)
         #expect(legacyItem.pasteboardRepresentations == nil)
+        #expect(legacyItem.userTitle == nil)
+        #expect(legacyItem.userNote == nil)
+        #expect(legacyItem.userAliases == nil)
 
         let oldPinned = ClipboardItem(
             content: "pinned",

@@ -48,9 +48,21 @@ enum MenuBarPopoverState {
         _ item: ClipboardItem,
         query: ClipboardSearchQuery
     ) -> Bool {
-        query.matches(item.content)
+        let userMetadata = [
+            item.userTitle,
+            item.userNote,
+            item.userAliases?.joined(separator: " ")
+        ]
+            .compactMap { value in
+                guard let value, !value.isEmpty else { return nil }
+                return value
+            }
+            .joined(separator: " ")
+
+        return query.matches(item.content)
             || query.matches(item.kind.localizedTitle)
             || query.matches(item.ocrText)
+            || query.matches(userMetadata)
     }
 
     static func selectedItem(

@@ -138,6 +138,26 @@ struct MenuBarPopoverRegressionTests {
     }
 
     @Test
+    func filteringMatchesUserMetadataWithoutFullTextSearch() {
+        let item = ClipboardItem(
+            content: "ordinary body",
+            kind: .text,
+            userTitle: "Customer escalation",
+            userNote: "Billing review",
+            userAliases: ["vip"]
+        )
+        let other = ClipboardItem(content: "unrelated", kind: .text)
+
+        #expect(
+            MenuBarPopoverState.filteredItems(
+                from: [item, other],
+                query: ClipboardSearchQuery("billing vip"),
+                fullTextIDs: []
+            ).map(\.id) == [item.id]
+        )
+    }
+
+    @Test
     func pinDeleteActionsNoticesAndRenderingStayConnected() throws {
         let defaultsName = "PastePilotPopoverTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: defaultsName))
