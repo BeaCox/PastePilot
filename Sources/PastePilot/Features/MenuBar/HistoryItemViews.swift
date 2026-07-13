@@ -91,7 +91,9 @@ struct CompactHistoryItem: View {
         }
         .contextMenu {
             Button("Copy original".localized, action: copy)
-            Button("Preview".localized, action: preview)
+            if MenuBarPopoverState.shouldShowContextPreview(for: item) {
+                Button("Preview".localized, action: preview)
+            }
             if !item.fileURLs.isEmpty {
                 Button("Quick Look".localized) {
                     performAction(

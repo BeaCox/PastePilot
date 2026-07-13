@@ -158,6 +158,34 @@ struct MenuBarPopoverRegressionTests {
     }
 
     @Test
+    func contextPreviewMenuOnlyAppearsWhenInlinePreviewAddsValue() {
+        let simpleText = ClipboardItem(content: "short note", kind: .text)
+        let multiLineText = ClipboardItem(content: "first\nsecond", kind: .text)
+        let titledText = ClipboardItem(
+            content: "short note",
+            kind: .text,
+            userTitle: "Saved note"
+        )
+        let folder = ClipboardItem(
+            content: "Project",
+            kind: .file,
+            filePaths: ["/tmp/Project"]
+        )
+        let image = ClipboardItem(
+            content: "Image 10 x 10",
+            kind: .image,
+            imageFileName: "image.png",
+            filePaths: ["/tmp/image.png"]
+        )
+
+        #expect(!MenuBarPopoverState.shouldShowContextPreview(for: simpleText))
+        #expect(MenuBarPopoverState.shouldShowContextPreview(for: multiLineText))
+        #expect(MenuBarPopoverState.shouldShowContextPreview(for: titledText))
+        #expect(!MenuBarPopoverState.shouldShowContextPreview(for: folder))
+        #expect(MenuBarPopoverState.shouldShowContextPreview(for: image))
+    }
+
+    @Test
     func pinDeleteActionsNoticesAndRenderingStayConnected() throws {
         let defaultsName = "PastePilotPopoverTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: defaultsName))
