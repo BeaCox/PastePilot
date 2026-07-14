@@ -69,7 +69,8 @@ struct SettingsView: View {
             StorageSettingsPage(
                 settings: settings,
                 storageByteCount: store.localStorageByteCount(),
-                rerunOCR: store.rerunOCRForImages
+                rerunOCR: store.rerunOCRForImages,
+                rerunBarcodeDetection: store.rerunBarcodeDetectionForImages
             )
                 .tabItem {
                     Label(SettingsTab.storage.title, systemImage: SettingsTab.storage.symbol)

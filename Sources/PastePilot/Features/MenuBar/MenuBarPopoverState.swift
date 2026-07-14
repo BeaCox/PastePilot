@@ -58,11 +58,20 @@ enum MenuBarPopoverState {
                 return value
             }
             .joined(separator: " ")
+        let enrichment = [
+            item.linkMetadata?.title,
+            item.linkMetadata?.summary,
+            item.linkMetadata?.siteName,
+            item.detectedBarcodes?.map(\.payload).joined(separator: " ")
+        ]
+            .compactMap { $0 }
+            .joined(separator: " ")
 
         return query.matches(item.content)
             || query.matches(item.kind.localizedTitle)
             || query.matches(item.ocrText)
             || query.matches(userMetadata)
+            || query.matches(enrichment)
     }
 
     static func selectedItem(

@@ -159,6 +159,28 @@ extension ClipboardActionFactory {
         )
     }
 
+    static func insertingBarcodeAction(
+        for item: ClipboardItem,
+        into actions: [ClipboardAction]
+    ) -> [ClipboardAction] {
+        guard let barcodes = item.detectedBarcodes, !barcodes.isEmpty else {
+            return actions
+        }
+        let payload = barcodes.map(\.payload).joined(separator: "\n")
+        var updatedActions = actions
+        let insertionIndex = min(1, updatedActions.count)
+        updatedActions.insert(
+            ClipboardActionRegistry.copyBarcodeContent.action(
+                effect: .copy(payload),
+                title: barcodes.count == 1
+                    ? "Copy Barcode Content".localized
+                    : "Copy Barcode Contents".localized
+            ),
+            at: insertionIndex
+        )
+        return updatedActions
+    }
+
     static func deduplicated(_ actions: [ClipboardAction]) -> [ClipboardAction] {
         var seenEffects: Set<String> = []
         return actions.filter { action in

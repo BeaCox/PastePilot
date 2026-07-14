@@ -15,6 +15,8 @@ final class ClipboardStore: ObservableObject {
     let textWriteQueue: ClipboardTextWriteQueue
     let pasteboardCaptureQueue: any ClipboardCapturing
     let ocrService: any OCRService
+    let linkMetadataService: any LinkMetadataService
+    let barcodeDetectionService: any BarcodeDetectionService
     let noticePoster: any PastePilotNoticePosting
     let logger: any PastePilotLogging
     nonisolated(unsafe) var timer: Timer?
@@ -22,6 +24,10 @@ final class ClipboardStore: ObservableObject {
     var pendingCaptureChangeCount: Int?
     var ocrTasksByItemID: [UUID: Task<Void, Never>] = [:]
     var ocrTaskTokensByItemID: [UUID: UUID] = [:]
+    var linkMetadataTasksByItemID: [UUID: Task<Void, Never>] = [:]
+    var linkMetadataTaskTokensByItemID: [UUID: UUID] = [:]
+    var barcodeTasksByItemID: [UUID: Task<Void, Never>] = [:]
+    var barcodeTaskTokensByItemID: [UUID: UUID] = [:]
     var ignoredContent: String?
     var ignoreNextCopyBaselineChangeCount: Int?
     var lastPurgeCheck: Date = .distantPast
@@ -37,6 +43,8 @@ final class ClipboardStore: ObservableObject {
         pasteboardCaptureQueue: any ClipboardCapturing = ClipboardCaptureQueue(),
         textWriteQueue: ClipboardTextWriteQueue = ClipboardTextWriteQueue(),
         ocrService: any OCRService = VisionOCRService(),
+        linkMetadataService: any LinkMetadataService = URLSessionLinkMetadataService(),
+        barcodeDetectionService: any BarcodeDetectionService = VisionBarcodeDetectionService(),
         noticePoster: any PastePilotNoticePosting = NotificationCenterPastePilotNoticePoster(),
         logger: any PastePilotLogging = NSLogPastePilotLogger()
     ) {
@@ -56,6 +64,8 @@ final class ClipboardStore: ObservableObject {
         self.textWriteQueue = textWriteQueue
         self.pasteboardCaptureQueue = pasteboardCaptureQueue
         self.ocrService = ocrService
+        self.linkMetadataService = linkMetadataService
+        self.barcodeDetectionService = barcodeDetectionService
         self.noticePoster = noticePoster
         self.logger = logger
         self.lastChangeCount = pasteboard.changeCount
@@ -65,6 +75,8 @@ final class ClipboardStore: ObservableObject {
     deinit {
         timer?.invalidate()
         ocrTasksByItemID.values.forEach { $0.cancel() }
+        linkMetadataTasksByItemID.values.forEach { $0.cancel() }
+        barcodeTasksByItemID.values.forEach { $0.cancel() }
         historyWriteQueue.flush()
     }
 

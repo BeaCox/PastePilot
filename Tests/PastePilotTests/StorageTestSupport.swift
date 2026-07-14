@@ -91,6 +91,22 @@ struct DelayedStubOCRService: OCRService {
     }
 }
 
+struct StubLinkMetadataService: LinkMetadataService {
+    let result: LinkMetadata?
+
+    func metadata(for url: URL) async -> LinkMetadata? {
+        result
+    }
+}
+
+struct StubBarcodeDetectionService: BarcodeDetectionService {
+    let result: [DetectedBarcode]
+
+    func detectBarcodes(in image: CGImage) async -> [DetectedBarcode] {
+        result
+    }
+}
+
 struct SilentPastePilotLogger: PastePilotLogging {
     func log(_ message: String) {}
 }

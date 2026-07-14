@@ -240,6 +240,9 @@ extension ClipboardStore {
                 contentByteCount: processedContent.byteCount
             )
         }
+        if kind == .url, !containsSensitiveData {
+            fetchLinkMetadataIfNeeded(for: id, urlString: originalContent)
+        }
     }
 
     func captureFiles(
@@ -473,6 +476,7 @@ extension ClipboardStore {
         items.removeAll(where: duplicate)
         var item = make(wasPinned)
         item.inheritUserMetadata(from: inheritedItem)
+        item.inheritEnrichment(from: inheritedItem)
         items.insert(item, at: 0)
         trimHistory(limit: settings.historyLimit)
         enforceStorageLimit()

@@ -121,6 +121,10 @@ struct ClipboardSearchQuery: Equatable, Sendable {
                     guard item.hasUserNote else { return false }
                 case "alias", "aliases":
                     guard item.hasUserAliases else { return false }
+                case "metadata", "link":
+                    guard item.linkMetadata != nil else { return false }
+                case "barcode", "qr":
+                    guard item.hasDetectedBarcodes else { return false }
                 default:
                     return false
                 }

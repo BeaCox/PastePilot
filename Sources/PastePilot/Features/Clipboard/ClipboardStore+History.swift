@@ -39,6 +39,7 @@ extension ClipboardStore {
     func restoreBackup(from archiveURL: URL) throws -> HistoryRestoreResult {
         historyWriteQueue.flush()
         cancelAllOCRTasks()
+        cancelAllEnrichmentTasks()
         discardPendingImageSaves()
         let result = try historyRepository.restoreBackup(from: archiveURL)
         thumbnailCache.removeAllObjects()
@@ -242,6 +243,7 @@ extension ClipboardStore {
     }
 
     func deleteStoredResources(for item: ClipboardItem) {
+        cancelEnrichment(for: item.id)
         deleteImageFile(for: item)
         deleteTextFile(for: item)
     }

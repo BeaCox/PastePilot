@@ -93,6 +93,7 @@ struct StorageSettingsPage: View {
     @ObservedObject var settings: AppSettings
     let storageByteCount: Int64
     let rerunOCR: () -> Void
+    let rerunBarcodeDetection: () -> Void
 
     var body: some View {
         SettingsPane(id: SettingsTab.storage) {
@@ -150,6 +151,16 @@ struct StorageSettingsPage: View {
                 )
             }
 
+            SettingsGroup(title: "Link Metadata".localized) {
+                Toggle(
+                    "Fetch Link Titles".localized,
+                    isOn: $settings.linkMetadataFetchingEnabled
+                )
+                SettingsNote(
+                    "When enabled, copied web links are requested from their destination to fetch a title and description. This may reveal the link to that website.".localized
+                )
+            }
+
             SettingsGroup(title: "Sensitive Content".localized) {
                 SettingsRow(title: "When Detected".localized) {
                     Picker("", selection: $settings.sensitiveContentStoragePolicy) {
@@ -202,13 +213,16 @@ struct StorageSettingsPage: View {
                     .frame(width: 150)
                 }
                 SettingsRow(title: "Existing Images".localized) {
-                    Button("Re-run OCR".localized, action: rerunOCR)
-                        .disabled(
-                            OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
-                                == .off
-                        )
+                    HStack {
+                        Button("Re-run OCR".localized, action: rerunOCR)
+                            .disabled(
+                                OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
+                                    == .off
+                            )
+                        Button("Scan Barcodes".localized, action: rerunBarcodeDetection)
+                    }
                 }
-                SettingsNote("OCR runs locally on copied images and makes visible text searchable.".localized)
+                SettingsNote("OCR and barcode detection run locally on copied images and make their contents searchable.".localized)
             }
         }
     }

@@ -53,7 +53,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let kind: ContentKind
     let createdAt: Date
     var isPinned: Bool
-    let containsSensitiveData: Bool
+    var containsSensitiveData: Bool
     let sourceAppName: String?
     let sourceBundleIdentifier: String?
     let imageFileName: String?
@@ -64,6 +64,8 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let imagePerceptualHash: String?
     let imageSourceURL: String?
     let imageOriginalPath: String?
+    var linkMetadata: LinkMetadata?
+    var detectedBarcodes: [DetectedBarcode]?
     let filePaths: [String]?
     let richTextRTFBase64: String?
     let richTextHTML: String?
@@ -95,6 +97,8 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         imagePerceptualHash: String? = nil,
         imageSourceURL: String? = nil,
         imageOriginalPath: String? = nil,
+        linkMetadata: LinkMetadata? = nil,
+        detectedBarcodes: [DetectedBarcode]? = nil,
         filePaths: [String]? = nil,
         richTextRTFBase64: String? = nil,
         richTextHTML: String? = nil,
@@ -125,6 +129,8 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.imagePerceptualHash = imagePerceptualHash
         self.imageSourceURL = imageSourceURL
         self.imageOriginalPath = imageOriginalPath
+        self.linkMetadata = linkMetadata
+        self.detectedBarcodes = detectedBarcodes?.isEmpty == true ? nil : detectedBarcodes
         self.filePaths = filePaths
         self.richTextRTFBase64 = richTextRTFBase64
         self.richTextHTML = richTextHTML
@@ -178,6 +184,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         hasUserTitle || hasUserNote || hasUserAliases
     }
 
+    var hasDetectedBarcodes: Bool {
+        detectedBarcodes?.isEmpty == false
+    }
+
     mutating func updateUserMetadata(
         title: String?,
         note: String?,
@@ -193,6 +203,12 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         userTitle = item.userTitle
         userNote = item.userNote
         userAliases = item.userAliases
+    }
+
+    mutating func inheritEnrichment(from item: ClipboardItem?) {
+        guard let item else { return }
+        linkMetadata = item.linkMetadata
+        detectedBarcodes = item.detectedBarcodes
     }
 
     private static func normalizedMetadataText(_ text: String?) -> String? {
@@ -249,6 +265,8 @@ extension ClipboardItem {
             imagePerceptualHash: imagePerceptualHash,
             imageSourceURL: imageSourceURL,
             imageOriginalPath: imageOriginalPath,
+            linkMetadata: linkMetadata,
+            detectedBarcodes: detectedBarcodes,
             filePaths: filePaths,
             richTextRTFBase64: richTextRTFBase64,
             richTextHTML: richTextHTML,

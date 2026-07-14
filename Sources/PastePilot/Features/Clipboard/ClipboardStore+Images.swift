@@ -142,10 +142,12 @@ extension ClipboardStore {
                 pasteboardRepresentations: pasteboardRepresentations
             )
             item.inheritUserMetadata(from: inheritedItem)
+            item.inheritEnrichment(from: inheritedItem)
             let duplicateItems = items.filter {
                 imageIdentityMatches($0, processedImage: processedImage)
             }
             cancelOCR(for: duplicateItems)
+            duplicateItems.forEach { cancelBarcodeDetection(for: $0.id) }
             duplicateItems.forEach(deleteImageFile)
             let duplicateIDs = Set(duplicateItems.map(\.id))
             items.removeAll { duplicateIDs.contains($0.id) }
@@ -154,6 +156,7 @@ extension ClipboardStore {
             enforceStorageLimit()
             save()
             performOCR(on: ocrImage, itemID: id)
+            performBarcodeDetection(on: ocrImage, itemID: id)
         case .failure(let error):
             if let processingError = error as? ClipboardImageProcessingError {
                 switch processingError {

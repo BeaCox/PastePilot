@@ -101,7 +101,7 @@ Current PastePilot baseline:
 - [x] Add perceptual image deduplication. Keep the current SHA-256 digest for
   exact identity, and add an optional perceptual hash to collapse visually
   identical screenshots saved with different encodings.
-- [ ] Add link metadata and QR/barcode extraction. Keep network metadata strictly
+- [x] Add link metadata and QR/barcode extraction. Keep network metadata strictly
   opt-in; use local Vision barcode detection for QR codes in images.
 - [x] Improve content detection with confidence and reasons. Replace the current
   ordered detector chain with analyzers that can report scores, explanations,

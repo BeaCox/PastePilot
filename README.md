@@ -67,7 +67,7 @@ PastePilot automatically identifies 11 content types and tailors actions to each
 | **Color** | `#FF5733`, `rgb(...)`, `hsl(...)` | Normalize hex format |
 | **Markdown** | Headings, lists, links | Name conversion, string escape |
 | **Rich Text** | Formatted text from web/editors | Preserve formatting, copy as plain text, copy HTML source |
-| **Image** | Screenshots, copied images | Copy as image data, source URL, or file; copy Markdown with URL/path fallback; Quick Look, Show in Finder, OCR text search |
+| **Image** | Screenshots, copied images | Copy as image data, source URL, or file; copy Markdown with URL/path fallback; Quick Look, Show in Finder, OCR text and local QR/barcode extraction |
 | **File** | Files from Finder | Copy, Quick Look, Show in Finder |
 | **Plain Text** | Everything else | Convert to `camelCase` / `snake_case`, escape as string |
 
@@ -84,6 +84,8 @@ filters:
 | `pinned:true` | Pinned items only |
 | `has:ocr` | Images with recognized text |
 | `has:title`, `has:note`, `has:alias` | Items with user metadata |
+| `has:metadata`, `has:link` | Links with fetched metadata |
+| `has:barcode`, `has:qr` | Images with locally detected codes |
 | `"release notes"` | Exact phrase match |
 
 Right-click any history item and choose **Edit Details…** to add a title, note,
@@ -112,9 +114,20 @@ Built for the pain of copying `$ npm install` from a README and having to delete
 - Handles multi-line commands with `\` continuation
 - Parses commands inside fenced code blocks (` ```sh `, ` ```bash `, ` ```console `)
 
-### Image OCR
+### Image Analysis
 
 Copied images are automatically scanned for text using the macOS Vision framework. Recognized text is searchable in history — find a screenshot by typing any word visible in it. Supports Chinese (simplified/traditional), English, Japanese, and Korean.
+
+PastePilot also uses Vision locally to extract QR codes and common barcodes.
+Detected payloads are searchable, shown in the detail preview, and can be copied
+with one action.
+
+### Optional Link Metadata
+
+Link title and description fetching is disabled by default. When explicitly
+enabled in settings, newly copied HTTP(S) links are requested from their
+destination and the resulting metadata becomes searchable. Credential-bearing
+and non-web URLs are never requested.
 
 ### Paste as Plain Text
 
@@ -143,11 +156,11 @@ after an update, so close old DMGs and keep only the installed copy in
 - Capture can be paused persistently, and **Ignore Next Copy** skips one
   clipboard change without reading it into history
 - Clipboard data stays local and no telemetry is collected
-- Network access is limited to checking and downloading updates from GitHub Releases
+- Network access is limited to checking/downloading updates and optional, explicitly enabled link metadata requests
 - History is stored in SQLite at `~/Library/Application Support/PastePilot/history.sqlite`
 - Existing `history.json` and `history.backup.json` files are retained for migration and downgrade compatibility
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
-- Rich text, OCR results, source app metadata, and detected sensitive content may be persisted in history
+- Rich text, OCR results, locally detected barcode payloads, optional link metadata, source app metadata, and detected sensitive content may be persisted in history
 - Titles, notes, aliases, and retained pasteboard representations may be
   persisted in history for search and high-fidelity replay
 - Backup archives include the SQLite database, externalized text, and images
@@ -194,6 +207,8 @@ after an update, so close old DMGs and keep only the installed copy in
 - Sensitive-content storage policy
 - Custom sensitive-content patterns
 - OCR mode, language mode, and manual re-run for existing images
+- Local QR/barcode re-scan for existing images
+- Optional link title and description fetching (disabled by default)
 - Paste after copying
 - Menu bar icon style (PastePilot / Clipboard / Paperplane)
 - Theme mode (follow system / light / dark)

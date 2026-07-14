@@ -205,6 +205,9 @@
 "Image Size Limit" = "单张图片上限";
 "Deduplicate Similar Images" = "合并相似图片";
 "Use a local perceptual hash to merge visually identical images saved with different encodings." = "使用本地感知哈希合并视觉内容相同但编码不同的图片。";
+"Link Metadata" = "链接元数据";
+"Fetch Link Titles" = "获取链接标题";
+"When enabled, copied web links are requested from their destination to fetch a title and description. This may reveal the link to that website." = "启用后，会向复制的网页链接发起请求以获取标题和描述，这可能会让该网站知道此链接已被访问。";
 "Sensitive Content" = "敏感内容";
 "When Detected" = "识别到时";
 "Save Original" = "保存原文";
@@ -219,7 +222,12 @@
 "OCR Languages" = "OCR 语言";
 "Existing Images" = "已有图片";
 "Re-run OCR" = "重新识别 OCR";
-"OCR runs locally on copied images and makes visible text searchable." = "OCR 会在本机处理复制的图片，让图片中的可见文字可被搜索。";
+"Scan Barcodes" = "扫描条码";
+"Copy Barcode Content" = "复制条码内容";
+"Copy Barcode Contents" = "复制全部条码内容";
+"Copy locally detected QR code or barcode content" = "复制本机识别出的二维码或条码内容";
+"Detected Codes" = "识别出的条码";
+"OCR and barcode detection run locally on copied images and make their contents searchable." = "OCR 和条码识别均在本机处理复制的图片，并让识别内容可被搜索。";
 "Off" = "关闭";
 "Fast" = "快速";
 "Accurate" = "准确";

@@ -32,6 +32,7 @@ struct ClipboardAction: Identifiable {
         case fileURLs
         case richText
         case ocrText
+        case barcodePayload
         case url
     }
 
@@ -168,7 +169,9 @@ enum ClipboardActionFactory {
             if item.hasPasteboardRepresentations {
                 actions.insert(originalCopyAction(for: item), at: 0)
             }
-            return deduplicated(insertingOCRTextAction(for: item, into: actions))
+            actions = insertingOCRTextAction(for: item, into: actions)
+            actions = insertingBarcodeAction(for: item, into: actions)
+            return deduplicated(actions)
         }
 
         var actions = [

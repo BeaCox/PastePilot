@@ -218,6 +218,15 @@ struct StorageRepositoryTests {
             imagePerceptualHash: "v1-0123456789abcdef-80",
             imageSourceURL: "https://example.com/image.png",
             imageOriginalPath: "/tmp/image.png",
+            linkMetadata: LinkMetadata(
+                title: "Example title",
+                summary: "Indexed summary",
+                siteName: "Example",
+                resolvedURL: "https://example.com/final"
+            ),
+            detectedBarcodes: [
+                DetectedBarcode(payload: "barcode-search-value", symbology: "QR")
+            ],
             filePaths: ["/tmp/one.txt", "/tmp/two.txt"],
             richTextRTFBase64: Data("{\\rtf1 Round trip}".utf8).base64EncodedString(),
             richTextHTML: "<strong>Round trip</strong>",
@@ -249,6 +258,8 @@ struct StorageRepositoryTests {
 
         let loadedItem = try #require(repository.load().items.first)
         #expect(loadedItem == item)
+        #expect(try repository.matchingIDs(query: "Indexed summary") == Set([item.id]))
+        #expect(try repository.matchingIDs(query: "barcode-search-value") == Set([item.id]))
     }
 
     @Test

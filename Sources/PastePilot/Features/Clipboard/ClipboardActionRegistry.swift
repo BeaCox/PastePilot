@@ -156,6 +156,17 @@ enum ClipboardActionRegistry {
         closeBehavior: .keepInlinePreview
     )
 
+    static let copyBarcodeContent = ClipboardActionDefinition(
+        id: "copy-barcode-content",
+        title: "Copy Barcode Content".localized,
+        detail: "Copy locally detected QR code or barcode content".localized,
+        symbol: "barcode.viewfinder",
+        acceptedKinds: [.image],
+        inputSource: .barcodePayload,
+        outputEffect: .clipboardText,
+        closeBehavior: .keepInlinePreview
+    )
+
     static let quickLook = ClipboardActionDefinition(
         id: "quick-look",
         title: "Quick Look".localized,
@@ -343,6 +354,7 @@ enum ClipboardActionRegistry {
         copyImageFile,
         copyImageMarkdown,
         copyOCRText,
+        copyBarcodeContent,
         quickLook,
         revealFiles,
         formatJSON,

@@ -105,6 +105,7 @@ final class AppSettings: ObservableObject {
     static let defaultCustomSensitivePatterns = ""
     static let defaultPasteAfterCopying = false
     static let defaultPerceptualImageDeduplicationEnabled = false
+    static let defaultLinkMetadataFetchingEnabled = false
 
     private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
@@ -131,6 +132,10 @@ final class AppSettings: ObservableObject {
         static let perceptualImageDeduplicationEnabled = AppSetting(
             "perceptualImageDeduplicationEnabled",
             default: AppSettings.defaultPerceptualImageDeduplicationEnabled
+        )
+        static let linkMetadataFetchingEnabled = AppSetting(
+            "linkMetadataFetchingEnabled",
+            default: AppSettings.defaultLinkMetadataFetchingEnabled
         )
         static let storageLimitMB = AppSetting(
             "storageLimitMB",
@@ -206,6 +211,7 @@ final class AppSettings: ObservableObject {
                 imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
                 perceptualImageDeduplicationEnabled.key:
                     perceptualImageDeduplicationEnabled.defaultValue,
+                linkMetadataFetchingEnabled.key: linkMetadataFetchingEnabled.defaultValue,
                 storageLimitMB.key: storageLimitMB.defaultValue,
                 ignoredBundleIdentifiers.key: ignoredBundleIdentifiers.defaultValue,
                 hotKeyCode.key: hotKeyCode.defaultValue,
@@ -269,6 +275,10 @@ final class AppSettings: ObservableObject {
                 for: Setting.perceptualImageDeduplicationEnabled
             )
         }
+    }
+
+    @Published var linkMetadataFetchingEnabled: Bool {
+        didSet { persist(linkMetadataFetchingEnabled, for: Setting.linkMetadataFetchingEnabled) }
     }
 
     @Published var storageLimitMB: Int {
@@ -437,6 +447,10 @@ final class AppSettings: ObservableObject {
             for: Setting.perceptualImageDeduplicationEnabled,
             in: defaults
         )
+        linkMetadataFetchingEnabled = Self.bool(
+            for: Setting.linkMetadataFetchingEnabled,
+            in: defaults
+        )
         storageLimitMB = Self.supportedInteger(
             for: Setting.storageLimitMB,
             in: defaults,
@@ -536,6 +550,7 @@ final class AppSettings: ObservableObject {
         imageSizeLimitMB = Setting.imageSizeLimitMB.defaultValue
         perceptualImageDeduplicationEnabled =
             Setting.perceptualImageDeduplicationEnabled.defaultValue
+        linkMetadataFetchingEnabled = Setting.linkMetadataFetchingEnabled.defaultValue
         storageLimitMB = Setting.storageLimitMB.defaultValue
         ignoredBundleIdentifiers = Setting.ignoredBundleIdentifiers.defaultValue
         hotKeyCode = Setting.hotKeyCode.defaultValue
@@ -712,6 +727,7 @@ final class AppSettings: ObservableObject {
             perceptualImageDeduplicationEnabled,
             for: Setting.perceptualImageDeduplicationEnabled
         )
+        persist(linkMetadataFetchingEnabled, for: Setting.linkMetadataFetchingEnabled)
         persist(storageLimitMB, for: Setting.storageLimitMB)
         persist(ignoredBundleIdentifiers, for: Setting.ignoredBundleIdentifiers)
         persist(hotKeyCode, for: Setting.hotKeyCode)

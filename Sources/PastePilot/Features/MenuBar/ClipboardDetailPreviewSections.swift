@@ -69,6 +69,19 @@ struct ClipboardPreviewMetadata: View {
                     .padding(.bottom, 8)
             }
 
+            if let linkMetadata = item.linkMetadata {
+                LinkMetadataPreview(metadata: linkMetadata)
+                    .padding(.bottom, 8)
+            }
+
+            if let barcodes = item.detectedBarcodes, !barcodes.isEmpty {
+                BarcodeMetadataPreview(
+                    barcodes: barcodes,
+                    hidesContent: item.containsSensitiveData && !revealsSensitiveContent
+                )
+                    .padding(.bottom, 8)
+            }
+
             HStack {
                 Label {
                     Text(item.createdAt, format: .dateTime.year().month().day().hour().minute())
@@ -145,6 +158,56 @@ struct ClipboardPreviewMetadata: View {
             fromByteCount: Int64(item.imageByteCount ?? 0),
             countStyle: .file
         )
+    }
+}
+
+private struct LinkMetadataPreview: View {
+    let metadata: LinkMetadata
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let title = metadata.title {
+                Label(title, systemImage: "link")
+                    .font(.caption.weight(.medium))
+                    .lineLimit(2)
+            }
+            if let siteName = metadata.siteName {
+                Text(siteName)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if let summary = metadata.summary {
+                Text(summary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .textSelection(.enabled)
+    }
+}
+
+private struct BarcodeMetadataPreview: View {
+    let barcodes: [DetectedBarcode]
+    let hidesContent: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Detected Codes".localized, systemImage: "barcode.viewfinder")
+                .font(.caption.weight(.medium))
+            ForEach(barcodes, id: \.self) { barcode in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(barcode.symbology)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.tertiary)
+                    Text(hidesContent ? "Sensitive content hidden".localized : barcode.payload)
+                        .font(.caption2)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .textSelection(.enabled)
     }
 }
 

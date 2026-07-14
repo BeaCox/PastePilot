@@ -194,6 +194,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 image_perceptual_hash TEXT,
                 image_source_url TEXT,
                 image_original_path TEXT,
+                link_metadata_json TEXT,
+                detected_barcodes_json TEXT,
                 content_file_name TEXT,
                 content_digest TEXT,
                 content_character_count INTEGER,
@@ -208,6 +210,18 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         try ensureColumn(
             "image_perceptual_hash",
             definition: "image_perceptual_hash TEXT",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "link_metadata_json",
+            definition: "link_metadata_json TEXT",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "detected_barcodes_json",
+            definition: "detected_barcodes_json TEXT",
             in: "items",
             db: db
         )
@@ -284,7 +298,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "4",
+            "5",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -350,6 +364,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 imagePerceptualHash: row["image_perceptual_hash"],
                 imageSourceURL: row["image_source_url"],
                 imageOriginalPath: row["image_original_path"],
+                linkMetadata: Self.decodedJSON(from: row["link_metadata_json"]),
+                detectedBarcodes: Self.decodedJSON(
+                    from: row["detected_barcodes_json"]
+                ),
                 filePaths: filePaths.isEmpty ? nil : filePaths,
                 richTextRTFBase64: richText?["rtf_base64"],
                 richTextHTML: richText?["html"],
@@ -447,11 +465,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     source_bundle_identifier, image_file_name, image_width,
                     image_height, image_byte_count, image_digest,
                     image_perceptual_hash,
-                    image_source_url, image_original_path, content_file_name,
+                    image_source_url, image_original_path, link_metadata_json,
+                    detected_barcodes_json, content_file_name,
                     content_digest, content_character_count,
                     content_line_count, content_byte_count, ocr_text,
                     user_title, user_note, user_aliases_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
@@ -469,6 +488,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     image_perceptual_hash = excluded.image_perceptual_hash,
                     image_source_url = excluded.image_source_url,
                     image_original_path = excluded.image_original_path,
+                    link_metadata_json = excluded.link_metadata_json,
+                    detected_barcodes_json = excluded.detected_barcodes_json,
                     content_file_name = excluded.content_file_name,
                     content_digest = excluded.content_digest,
                     content_character_count = excluded.content_character_count,
@@ -497,6 +518,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 item.imagePerceptualHash,
                 item.imageSourceURL,
                 item.imageOriginalPath,
+                Self.encodedJSON(item.linkMetadata),
+                Self.encodedJSON(item.detectedBarcodes),
                 item.contentFileName,
                 item.contentDigest,
                 item.contentCharacterCount,
@@ -605,6 +628,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             item.sourceAppName,
             item.sourceBundleIdentifier,
             item.ocrText,
+            item.linkMetadata?.title,
+            item.linkMetadata?.summary,
+            item.linkMetadata?.siteName,
+            item.detectedBarcodes?.map(\.payload).joined(separator: "\n"),
             item.userTitle,
             item.userNote,
             item.userAliases?.joined(separator: "\n"),
@@ -694,6 +721,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         parts.append(item.imagePerceptualHash ?? "")
         parts.append(item.imageSourceURL ?? "")
         parts.append(item.imageOriginalPath ?? "")
+        parts.append(Self.encodedJSON(item.linkMetadata) ?? "")
+        parts.append(Self.encodedJSON(item.detectedBarcodes) ?? "")
         parts.append(storedItem.filePaths.joined(separator: "\u{1F}"))
         parts.append(storedItem.richTextRTFBase64 ?? "")
         parts.append(storedItem.richTextHTML ?? "")
@@ -748,6 +777,22 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         guard let aliases,
               !aliases.isEmpty,
               let data = try? JSONEncoder().encode(aliases) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func decodedJSON<Value: Decodable>(from json: String?) -> Value? {
+        guard let json,
+              let data = json.data(using: .utf8) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(Value.self, from: data)
+    }
+
+    private static func encodedJSON<Value: Encodable>(_ value: Value?) -> String? {
+        guard let value,
+              let data = try? JSONEncoder().encode(value) else {
             return nil
         }
         return String(data: data, encoding: .utf8)
