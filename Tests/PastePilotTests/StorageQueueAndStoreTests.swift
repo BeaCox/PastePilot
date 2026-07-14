@@ -56,11 +56,29 @@ struct StorageQueueAndStoreTests {
         #expect(processedImage.height == 2)
         #expect(processedImage.byteCount > 0)
         #expect(!processedImage.digest.isEmpty)
+        #expect(processedImage.perceptualHash?.hasPrefix("v1-") == true)
         #expect(
             FileManager.default.fileExists(
                 atPath: imageStore.path(fileName: "queued.png")
             )
         )
+    }
+
+    @Test
+    func perceptualHashComparesStructureAndAverageLuminance() {
+        #expect(
+            ImagePerceptualHash.areSimilar(
+                "v1-0000000000000000-80",
+                "v1-0000000000000003-88"
+            )
+        )
+        #expect(
+            !ImagePerceptualHash.areSimilar(
+                "v1-0000000000000000-20",
+                "v1-0000000000000000-e0"
+            )
+        )
+        #expect(!ImagePerceptualHash.areSimilar("invalid", nil))
     }
 
     @Test

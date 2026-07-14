@@ -98,7 +98,7 @@ Current PastePilot baseline:
 - [x] Add notes, aliases, and editable titles. Store user metadata separately
   from captured content, index it in search, and keep it when duplicate content
   is moved to the top.
-- [ ] Add perceptual image deduplication. Keep the current SHA-256 digest for
+- [x] Add perceptual image deduplication. Keep the current SHA-256 digest for
   exact identity, and add an optional perceptual hash to collapse visually
   identical screenshots saved with different encodings.
 - [ ] Add link metadata and QR/barcode extraction. Keep network metadata strictly

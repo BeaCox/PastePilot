@@ -846,6 +846,75 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func perceptualImageDeduplicationMergesDifferentDigestsWhenEnabled() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotPerceptualDedupeTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        defaults.removePersistentDomain(forName: defaultsName)
+        let settings = AppSettings(defaults: defaults)
+        settings.perceptualImageDeduplicationEnabled = true
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images")
+        )
+        try imageStore.save(Data("old".utf8), fileName: "old.png")
+        try imageStore.save(Data("new".utf8), fileName: "new.png")
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            settings: settings,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let oldImage = ClipboardItem(
+            content: "old image",
+            kind: .image,
+            isPinned: true,
+            imageFileName: "old.png",
+            imageWidth: 300,
+            imageHeight: 200,
+            imageDigest: "old-digest",
+            imagePerceptualHash: "v1-0000000000000000-80",
+            userTitle: "Keep this title"
+        )
+        store.items = [
+            ClipboardItem(content: "newer text", kind: .text),
+            oldImage
+        ]
+
+        store.finishSavingImage(
+            .success(ProcessedClipboardImage(
+                fileName: "new.png",
+                byteCount: 3,
+                digest: "new-digest",
+                width: 600,
+                height: 400,
+                perceptualHash: "v1-0000000000000003-88"
+            )),
+            id: UUID(),
+            source: (nil, nil),
+            remoteURL: nil,
+            originalPath: nil,
+            pasteboardChangeCount: nil,
+            ocrImage: try makeTestImage(width: 6, height: 4)
+        )
+
+        let images = store.items.filter { $0.kind == .image }
+        let mergedImage = try #require(images.first)
+        #expect(images.count == 1)
+        #expect(mergedImage.imageDigest == "new-digest")
+        #expect(mergedImage.imagePerceptualHash == "v1-0000000000000003-88")
+        #expect(mergedImage.isPinned)
+        #expect(mergedImage.userTitle == "Keep this title")
+        #expect(!FileManager.default.fileExists(atPath: imageStore.path(fileName: "old.png")))
+        #expect(FileManager.default.fileExists(atPath: imageStore.path(fileName: "new.png")))
+        store.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func clearingHistoryCancelsPendingImageSave() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

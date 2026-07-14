@@ -81,12 +81,29 @@ struct ClipboardImageStore {
     }
 }
 
-struct ProcessedClipboardImage {
+struct ProcessedClipboardImage: Sendable {
     let fileName: String
     let byteCount: Int
     let digest: String
     let width: Int
     let height: Int
+    let perceptualHash: String?
+
+    init(
+        fileName: String,
+        byteCount: Int,
+        digest: String,
+        width: Int,
+        height: Int,
+        perceptualHash: String? = nil
+    ) {
+        self.fileName = fileName
+        self.byteCount = byteCount
+        self.digest = digest
+        self.width = width
+        self.height = height
+        self.perceptualHash = perceptualHash
+    }
 }
 
 enum ClipboardImageProcessingError: Error {
@@ -127,7 +144,8 @@ final class ClipboardImageProcessingQueue: @unchecked Sendable {
                             byteCount: pngData.count,
                             digest: digest,
                             width: image.width,
-                            height: image.height
+                            height: image.height,
+                            perceptualHash: ImagePerceptualHash.signature(for: image)
                         )
                     )
                 )

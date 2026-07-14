@@ -203,6 +203,8 @@
 "30 days" = "30 天";
 "Pinned items are excluded from this limit and never auto-deleted." = "固定项目不受此限制，永远不会被自动删除。";
 "Image Size Limit" = "单张图片上限";
+"Deduplicate Similar Images" = "合并相似图片";
+"Use a local perceptual hash to merge visually identical images saved with different encodings." = "使用本地感知哈希合并视觉内容相同但编码不同的图片。";
 "Sensitive Content" = "敏感内容";
 "When Detected" = "识别到时";
 "Save Original" = "保存原文";

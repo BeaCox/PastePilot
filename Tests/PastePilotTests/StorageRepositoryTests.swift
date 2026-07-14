@@ -179,6 +179,7 @@ struct StorageRepositoryTests {
         let loadedItem = try #require(repository.load().items.first)
         #expect(loadedItem.id == id)
         #expect(loadedItem.userTitle == nil)
+        #expect(loadedItem.imagePerceptualHash == nil)
 
         let updatedItem = ClipboardItem(
             id: loadedItem.id,
@@ -214,6 +215,7 @@ struct StorageRepositoryTests {
             imageHeight: 34,
             imageByteCount: 56,
             imageDigest: String(repeating: "a", count: 64),
+            imagePerceptualHash: "v1-0123456789abcdef-80",
             imageSourceURL: "https://example.com/image.png",
             imageOriginalPath: "/tmp/image.png",
             filePaths: ["/tmp/one.txt", "/tmp/two.txt"],

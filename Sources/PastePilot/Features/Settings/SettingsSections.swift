@@ -141,6 +141,13 @@ struct StorageSettingsPage: View {
                     .labelsHidden()
                     .frame(width: 130)
                 }
+                Toggle(
+                    "Deduplicate Similar Images".localized,
+                    isOn: $settings.perceptualImageDeduplicationEnabled
+                )
+                SettingsNote(
+                    "Use a local perceptual hash to merge visually identical images saved with different encodings.".localized
+                )
             }
 
             SettingsGroup(title: "Sensitive Content".localized) {

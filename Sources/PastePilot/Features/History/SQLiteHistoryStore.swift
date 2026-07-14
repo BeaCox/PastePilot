@@ -191,6 +191,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 image_height INTEGER,
                 image_byte_count INTEGER,
                 image_digest TEXT,
+                image_perceptual_hash TEXT,
                 image_source_url TEXT,
                 image_original_path TEXT,
                 content_file_name TEXT,
@@ -204,6 +205,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 user_aliases_json TEXT
             )
             """)
+        try ensureColumn(
+            "image_perceptual_hash",
+            definition: "image_perceptual_hash TEXT",
+            in: "items",
+            db: db
+        )
         try ensureColumn(
             "user_title",
             definition: "user_title TEXT",
@@ -277,7 +284,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "3",
+            "4",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -340,6 +347,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 imageHeight: row["image_height"],
                 imageByteCount: row["image_byte_count"],
                 imageDigest: row["image_digest"],
+                imagePerceptualHash: row["image_perceptual_hash"],
                 imageSourceURL: row["image_source_url"],
                 imageOriginalPath: row["image_original_path"],
                 filePaths: filePaths.isEmpty ? nil : filePaths,
@@ -438,11 +446,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     contains_sensitive_data, source_app_name,
                     source_bundle_identifier, image_file_name, image_width,
                     image_height, image_byte_count, image_digest,
+                    image_perceptual_hash,
                     image_source_url, image_original_path, content_file_name,
                     content_digest, content_character_count,
                     content_line_count, content_byte_count, ocr_text,
                     user_title, user_note, user_aliases_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
@@ -457,6 +466,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     image_height = excluded.image_height,
                     image_byte_count = excluded.image_byte_count,
                     image_digest = excluded.image_digest,
+                    image_perceptual_hash = excluded.image_perceptual_hash,
                     image_source_url = excluded.image_source_url,
                     image_original_path = excluded.image_original_path,
                     content_file_name = excluded.content_file_name,
@@ -484,6 +494,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 item.imageHeight,
                 item.imageByteCount,
                 item.imageDigest,
+                item.imagePerceptualHash,
                 item.imageSourceURL,
                 item.imageOriginalPath,
                 item.contentFileName,
@@ -680,6 +691,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         parts.append(item.imageHeight.map(String.init) ?? "")
         parts.append(item.imageByteCount.map(String.init) ?? "")
         parts.append(item.imageDigest ?? "")
+        parts.append(item.imagePerceptualHash ?? "")
         parts.append(item.imageSourceURL ?? "")
         parts.append(item.imageOriginalPath ?? "")
         parts.append(storedItem.filePaths.joined(separator: "\u{1F}"))

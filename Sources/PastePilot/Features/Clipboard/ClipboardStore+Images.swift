@@ -102,7 +102,9 @@ extension ClipboardStore {
                 imageStore.delete(fileName: processedImage.fileName)
                 return
             }
-            guard items.first?.imageDigest != processedImage.digest else {
+            guard items.first.map({
+                !imageIdentityMatches($0, processedImage: processedImage)
+            }) ?? true else {
                 imageStore.delete(fileName: processedImage.fileName)
                 return
             }
@@ -115,7 +117,7 @@ extension ClipboardStore {
             }
 
             let inheritedItem = items.first {
-                $0.imageDigest == processedImage.digest
+                imageIdentityMatches($0, processedImage: processedImage)
             }
             let wasPinned = inheritedItem?.isPinned ?? false
             var item = ClipboardItem(
@@ -133,6 +135,7 @@ extension ClipboardStore {
                 imageHeight: processedImage.height,
                 imageByteCount: processedImage.byteCount,
                 imageDigest: processedImage.digest,
+                imagePerceptualHash: processedImage.perceptualHash,
                 imageSourceURL: remoteURL,
                 imageOriginalPath: originalPath,
                 filePaths: originalPath.map { [$0] },
@@ -140,11 +143,12 @@ extension ClipboardStore {
             )
             item.inheritUserMetadata(from: inheritedItem)
             let duplicateItems = items.filter {
-                $0.imageDigest == processedImage.digest
+                imageIdentityMatches($0, processedImage: processedImage)
             }
             cancelOCR(for: duplicateItems)
             duplicateItems.forEach(deleteImageFile)
-            items.removeAll { $0.imageDigest == processedImage.digest }
+            let duplicateIDs = Set(duplicateItems.map(\.id))
+            items.removeAll { duplicateIDs.contains($0.id) }
             items.insert(item, at: 0)
             trimHistory(limit: settings.historyLimit)
             enforceStorageLimit()
@@ -178,6 +182,34 @@ extension ClipboardStore {
                 )
             }
         }
+    }
+
+    func imageIdentityMatches(
+        _ item: ClipboardItem,
+        processedImage: ProcessedClipboardImage
+    ) -> Bool {
+        if item.imageDigest == processedImage.digest {
+            return true
+        }
+        guard settings.perceptualImageDeduplicationEnabled,
+              item.kind == .image,
+              ImagePerceptualHash.areSimilar(
+                item.imagePerceptualHash,
+                processedImage.perceptualHash
+              ),
+              let width = item.imageWidth,
+              let height = item.imageHeight,
+              width > 0,
+              height > 0,
+              processedImage.width > 0,
+              processedImage.height > 0 else {
+            return false
+        }
+        let existingAspectRatio = Double(width) / Double(height)
+        let newAspectRatio = Double(processedImage.width) / Double(processedImage.height)
+        let relativeDifference = abs(existingAspectRatio - newAspectRatio)
+            / max(existingAspectRatio, newAspectRatio)
+        return relativeDifference <= 0.02
     }
 
     func shouldDiscardImageSave(

@@ -104,6 +104,7 @@ final class AppSettings: ObservableObject {
         SensitiveContentStoragePolicy.storeOriginal.rawValue
     static let defaultCustomSensitivePatterns = ""
     static let defaultPasteAfterCopying = false
+    static let defaultPerceptualImageDeduplicationEnabled = false
 
     private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
@@ -126,6 +127,10 @@ final class AppSettings: ObservableObject {
         static let imageSizeLimitMB = AppSetting(
             "imageSizeLimitMB",
             default: AppSettings.defaultImageSizeLimitMB
+        )
+        static let perceptualImageDeduplicationEnabled = AppSetting(
+            "perceptualImageDeduplicationEnabled",
+            default: AppSettings.defaultPerceptualImageDeduplicationEnabled
         )
         static let storageLimitMB = AppSetting(
             "storageLimitMB",
@@ -199,6 +204,8 @@ final class AppSettings: ObservableObject {
                 historyLimit.key: historyLimit.defaultValue,
                 launchAtLogin.key: launchAtLogin.defaultValue,
                 imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
+                perceptualImageDeduplicationEnabled.key:
+                    perceptualImageDeduplicationEnabled.defaultValue,
                 storageLimitMB.key: storageLimitMB.defaultValue,
                 ignoredBundleIdentifiers.key: ignoredBundleIdentifiers.defaultValue,
                 hotKeyCode.key: hotKeyCode.defaultValue,
@@ -252,6 +259,15 @@ final class AppSettings: ObservableObject {
                 for: Setting.imageSizeLimitMB,
                 supportedValues: Self.supportedImageSizeLimitsMB
             ) { imageSizeLimitMB = $0 }
+        }
+    }
+
+    @Published var perceptualImageDeduplicationEnabled: Bool {
+        didSet {
+            persist(
+                perceptualImageDeduplicationEnabled,
+                for: Setting.perceptualImageDeduplicationEnabled
+            )
         }
     }
 
@@ -417,6 +433,10 @@ final class AppSettings: ObservableObject {
             in: defaults,
             supportedValues: Self.supportedImageSizeLimitsMB
         )
+        perceptualImageDeduplicationEnabled = Self.bool(
+            for: Setting.perceptualImageDeduplicationEnabled,
+            in: defaults
+        )
         storageLimitMB = Self.supportedInteger(
             for: Setting.storageLimitMB,
             in: defaults,
@@ -514,6 +534,8 @@ final class AppSettings: ObservableObject {
         historyLimit = Setting.historyLimit.defaultValue
         launchAtLogin = Setting.launchAtLogin.defaultValue
         imageSizeLimitMB = Setting.imageSizeLimitMB.defaultValue
+        perceptualImageDeduplicationEnabled =
+            Setting.perceptualImageDeduplicationEnabled.defaultValue
         storageLimitMB = Setting.storageLimitMB.defaultValue
         ignoredBundleIdentifiers = Setting.ignoredBundleIdentifiers.defaultValue
         hotKeyCode = Setting.hotKeyCode.defaultValue
@@ -686,6 +708,10 @@ final class AppSettings: ObservableObject {
         persist(historyLimit, for: Setting.historyLimit)
         persist(launchAtLogin, for: Setting.launchAtLogin)
         persist(imageSizeLimitMB, for: Setting.imageSizeLimitMB)
+        persist(
+            perceptualImageDeduplicationEnabled,
+            for: Setting.perceptualImageDeduplicationEnabled
+        )
         persist(storageLimitMB, for: Setting.storageLimitMB)
         persist(ignoredBundleIdentifiers, for: Setting.ignoredBundleIdentifiers)
         persist(hotKeyCode, for: Setting.hotKeyCode)

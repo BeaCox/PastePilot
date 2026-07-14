@@ -15,6 +15,7 @@ struct AppSettingsTests {
         #expect(settings.monitoringEnabled)
         #expect(settings.historyLimit == 100)
         #expect(settings.imageSizeLimitMB == 25)
+        #expect(!settings.perceptualImageDeduplicationEnabled)
         #expect(settings.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(settings.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
         #expect(settings.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
@@ -35,6 +36,7 @@ struct AppSettingsTests {
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
+        settings.perceptualImageDeduplicationEnabled = true
         settings.storageLimitMB = 250
         settings.hotKeyCode = 8
         settings.hotKeyModifiers = 256
@@ -59,6 +61,7 @@ struct AppSettingsTests {
         let restored = AppSettings(defaults: defaults)
         #expect(restored.historyLimit == 200)
         #expect(restored.imageSizeLimitMB == 50)
+        #expect(restored.perceptualImageDeduplicationEnabled)
         #expect(restored.storageLimitMB == 250)
         #expect(restored.hotKeyCode == 8)
         #expect(restored.hotKeyModifiers == 256)
@@ -88,6 +91,7 @@ struct AppSettingsTests {
 
         restored.reset()
         #expect(restored.historyLimit == 100)
+        #expect(!restored.perceptualImageDeduplicationEnabled)
         #expect(restored.storageLimitMB == AppSettings.defaultStorageLimitMB)
         #expect(restored.ignoredBundleIdentifiers.isEmpty)
         #expect(restored.hotKeyCode == AppSettings.defaultOpenHotKeyCode)

@@ -61,6 +61,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let imageHeight: Int?
     let imageByteCount: Int?
     let imageDigest: String?
+    let imagePerceptualHash: String?
     let imageSourceURL: String?
     let imageOriginalPath: String?
     let filePaths: [String]?
@@ -91,6 +92,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         imageHeight: Int? = nil,
         imageByteCount: Int? = nil,
         imageDigest: String? = nil,
+        imagePerceptualHash: String? = nil,
         imageSourceURL: String? = nil,
         imageOriginalPath: String? = nil,
         filePaths: [String]? = nil,
@@ -120,6 +122,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.imageHeight = imageHeight
         self.imageByteCount = imageByteCount
         self.imageDigest = imageDigest
+        self.imagePerceptualHash = imagePerceptualHash
         self.imageSourceURL = imageSourceURL
         self.imageOriginalPath = imageOriginalPath
         self.filePaths = filePaths
@@ -243,6 +246,7 @@ extension ClipboardItem {
             imageHeight: imageHeight,
             imageByteCount: imageByteCount,
             imageDigest: imageDigest,
+            imagePerceptualHash: imagePerceptualHash,
             imageSourceURL: imageSourceURL,
             imageOriginalPath: imageOriginalPath,
             filePaths: filePaths,
