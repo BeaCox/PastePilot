@@ -106,6 +106,7 @@ final class AppSettings: ObservableObject {
     static let defaultPasteAfterCopying = false
     static let defaultPerceptualImageDeduplicationEnabled = false
     static let defaultLinkMetadataFetchingEnabled = false
+    static let defaultCustomClipboardActions = "[]"
 
     private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
@@ -201,6 +202,10 @@ final class AppSettings: ObservableObject {
             "customSensitivePatterns",
             default: AppSettings.defaultCustomSensitivePatterns
         )
+        static let customClipboardActions = AppSetting(
+            "customClipboardActions",
+            default: AppSettings.defaultCustomClipboardActions
+        )
 
         static var registeredDefaults: [String: Any] {
             [
@@ -230,6 +235,8 @@ final class AppSettings: ObservableObject {
                     sensitiveContentStoragePolicy.defaultValue,
                 customSensitivePatterns.key:
                     customSensitivePatterns.defaultValue,
+                customClipboardActions.key:
+                    customClipboardActions.defaultValue,
             ]
         }
     }
@@ -425,6 +432,18 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var customClipboardActions: [CustomClipboardAction] {
+        didSet {
+            guard customClipboardActions.count <= CustomClipboardAction.maximumCount else {
+                customClipboardActions = Array(
+                    customClipboardActions.prefix(CustomClipboardAction.maximumCount)
+                )
+                return
+            }
+            persistCustomClipboardActions()
+        }
+    }
+
     @Published var hotKeyRegistrationWarning: String?
 
     init(defaults: UserDefaults = .standard) {
@@ -526,6 +545,9 @@ final class AppSettings: ObservableObject {
             for: Setting.customSensitivePatterns,
             in: defaults
         )
+        customClipboardActions = Self.decodeCustomClipboardActions(
+            Self.string(for: Setting.customClipboardActions, in: defaults)
+        )
         persistCurrentValues()
     }
 
@@ -568,6 +590,7 @@ final class AppSettings: ObservableObject {
         sensitiveContentStoragePolicy =
             Setting.sensitiveContentStoragePolicy.defaultValue
         customSensitivePatterns = Setting.customSensitivePatterns.defaultValue
+        customClipboardActions = []
     }
 
     private static func supportedInteger(
@@ -747,6 +770,28 @@ final class AppSettings: ObservableObject {
             for: Setting.sensitiveContentStoragePolicy
         )
         persist(customSensitivePatterns, for: Setting.customSensitivePatterns)
+        persistCustomClipboardActions()
+    }
+
+    private static func decodeCustomClipboardActions(
+        _ encoded: String
+    ) -> [CustomClipboardAction] {
+        guard let data = encoded.data(using: .utf8),
+              let actions = try? JSONDecoder().decode(
+                  [CustomClipboardAction].self,
+                  from: data
+              ) else {
+            return []
+        }
+        return CustomClipboardAction.normalized(actions)
+    }
+
+    private func persistCustomClipboardActions() {
+        guard let data = try? JSONEncoder().encode(customClipboardActions),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return
+        }
+        persist(encoded, for: Setting.customClipboardActions)
     }
 
     private static func bool(

@@ -87,9 +87,8 @@ Current PastePilot baseline:
 - [x] Build a declarative action registry. Move built-in actions toward a common
   model with id, title, symbol, accepted kinds, input source, output effect, and
   close behavior; use this as the path toward a plugin system.
-- [ ] Support safe custom actions before arbitrary plugins. Start with local
-  text/image transforms and template actions; gate shell execution behind clear
-  warnings, explicit opt-in, and tests.
+- [x] Support safe custom actions before arbitrary plugins. Add bounded local
+  text/image template transforms without shell, network, or file execution.
 - [ ] Add App Intents. Provide Shortcuts actions for get selected item, get item
   by index, copy item, delete item, clear unpinned history, and run a named
   PastePilot action.

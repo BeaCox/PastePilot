@@ -150,9 +150,15 @@ enum MenuBarPopoverState {
         )
     }
 
-    static func previewActions(for item: ClipboardItem) -> [ClipboardAction] {
+    static func previewActions(
+        for item: ClipboardItem,
+        customActions: [CustomClipboardAction] = []
+    ) -> [ClipboardAction] {
         Array(
-            ClipboardActionFactory.keyboardActions(for: item)
+            ClipboardActionFactory.keyboardActions(
+                for: item,
+                customActions: customActions
+            )
                 .prefix(previewActionLimit)
         )
     }

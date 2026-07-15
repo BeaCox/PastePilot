@@ -146,7 +146,10 @@ struct ClipboardActionResult: Equatable {
 }
 
 enum ClipboardActionFactory {
-    static func actions(for item: ClipboardItem) -> [ClipboardAction] {
+    static func actions(
+        for item: ClipboardItem,
+        customActions: [CustomClipboardAction] = []
+    ) -> [ClipboardAction] {
         if item.kind == .image, let fileName = item.imageFileName {
             var actions: [ClipboardAction]
             if let originalPath = item.imageOriginalPath {
@@ -171,6 +174,7 @@ enum ClipboardActionFactory {
             }
             actions = insertingOCRTextAction(for: item, into: actions)
             actions = insertingBarcodeAction(for: item, into: actions)
+            actions.append(contentsOf: generatedCustomActions(customActions, for: item))
             return deduplicated(actions)
         }
 
@@ -270,11 +274,15 @@ enum ClipboardActionFactory {
             actions.append(contentsOf: textActions(for: item.content))
         }
 
+        actions.append(contentsOf: generatedCustomActions(customActions, for: item))
         return deduplicated(actions)
     }
 
-    static func compactActions(for item: ClipboardItem) -> [ClipboardAction] {
-        let available = actions(for: item).filter {
+    static func compactActions(
+        for item: ClipboardItem,
+        customActions: [CustomClipboardAction] = []
+    ) -> [ClipboardAction] {
+        let available = actions(for: item, customActions: customActions).filter {
             $0.id != copyAction(for: item).id
         }
         return Array(available.prefix(3))
@@ -328,9 +336,34 @@ enum ClipboardActionFactory {
         )
     }
 
-    static func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {
+    static func keyboardActions(
+        for item: ClipboardItem,
+        customActions: [CustomClipboardAction] = []
+    ) -> [ClipboardAction] {
         let copy = copyAction(for: item)
-        return [copy] + actions(for: item).filter { $0.id != copy.id }
+        return [copy] + actions(for: item, customActions: customActions).filter {
+            $0.id != copy.id
+        }
+    }
+
+    private static func generatedCustomActions(
+        _ customActions: [CustomClipboardAction],
+        for item: ClipboardItem
+    ) -> [ClipboardAction] {
+        CustomClipboardAction.normalized(customActions).compactMap { customAction in
+            guard let output = customAction.renderedOutput(for: item) else { return nil }
+            return ClipboardAction(
+                id: "custom-\(customAction.id.uuidString.lowercased())",
+                title: customAction.title,
+                detail: "Run a local template transform".localized,
+                symbol: "wand.and.stars",
+                acceptedKinds: customAction.scope.acceptedKinds,
+                inputSource: .generatedContent,
+                outputEffect: .clipboardText,
+                closeBehavior: .keepInlinePreview,
+                effect: .copy(output)
+            )
+        }
     }
 
     @MainActor

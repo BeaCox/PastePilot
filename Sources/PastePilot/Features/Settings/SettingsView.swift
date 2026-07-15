@@ -5,6 +5,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case general
     case storage
     case appearance
+    case actions
     case ignored
     case advanced
 
@@ -15,6 +16,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: "General".localized
         case .storage: "Storage".localized
         case .appearance: "Appearance".localized
+        case .actions: "Actions".localized
         case .ignored: "Ignored Apps".localized
         case .advanced: "Advanced".localized
         }
@@ -25,6 +27,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: "gearshape"
         case .storage: "internaldrive"
         case .appearance: "paintpalette"
+        case .actions: "wand.and.stars"
         case .ignored: "nosign"
         case .advanced: "gearshape.2"
         }
@@ -82,6 +85,12 @@ struct SettingsView: View {
                     Label(SettingsTab.appearance.title, systemImage: SettingsTab.appearance.symbol)
                 }
                 .tag(SettingsTab.appearance)
+
+            CustomActionsSettingsPage(settings: settings)
+                .tabItem {
+                    Label(SettingsTab.actions.title, systemImage: SettingsTab.actions.symbol)
+                }
+                .tag(SettingsTab.actions)
 
             IgnoredAppsSettingsPage(settings: settings)
                 .tabItem {

@@ -377,7 +377,10 @@ extension MenuBarView {
     }
 
     func keyboardActions(for item: ClipboardItem) -> [ClipboardAction] {
-        ClipboardActionFactory.keyboardActions(for: item)
+        ClipboardActionFactory.keyboardActions(
+            for: item,
+            customActions: settings.customClipboardActions
+        )
     }
 
     func showNotice(_ notice: PastePilotNotice) {

@@ -4,6 +4,7 @@ import SwiftUI
 struct ClipboardDetailPreview: View {
     let item: ClipboardItem
     let image: NSImage?
+    let customActions: [CustomClipboardAction]
     let performAction: (ClipboardAction) -> Void
     let hoverChanged: (Bool) -> Void
     let previewSnippet: (ClipboardItem, Int, Bool) -> TextPreview.Snippet
@@ -49,7 +50,10 @@ struct ClipboardDetailPreview: View {
             .padding(.bottom, 12)
 
             ClipboardPreviewActionList(
-                actions: MenuBarPopoverState.previewActions(for: item),
+                actions: MenuBarPopoverState.previewActions(
+                    for: item,
+                    customActions: customActions
+                ),
                 performAction: performAction
             )
         }

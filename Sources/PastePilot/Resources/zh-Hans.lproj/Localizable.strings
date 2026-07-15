@@ -280,6 +280,25 @@
 "Check for Updates…" = "检查更新…";
 "Automatically Check for Updates" = "自动检查更新";
 
+/* Custom actions */
+"Local Template Actions" = "本地模板动作";
+"No Custom Actions" = "暂无自定义动作";
+"Create a local transform that copies its result to the clipboard." = "创建一个本地转换，并将结果复制到剪贴板。";
+"Add Action" = "添加动作";
+"New Action" = "新动作";
+"Action Name" = "动作名称";
+"Text Only" = "仅文本";
+"Images Only" = "仅图片";
+"All Content" = "全部内容";
+"Enable Custom Action" = "启用自定义动作";
+"Delete Custom Action" = "删除自定义动作";
+"Action Template" = "动作模板";
+"Template Reference" = "模板参考";
+"Placeholders: {{content}}, {{title}}, {{kind}}, {{sourceApp}}, {{ocr}}, {{imageURL}}, {{imagePath}}, {{filePaths}}, and {{newline}}." = "占位符：{{content}}、{{title}}、{{kind}}、{{sourceApp}}、{{ocr}}、{{imageURL}}、{{imagePath}}、{{filePaths}} 和 {{newline}}。";
+"Transforms: |uppercase, |lowercase, |trim, |urlencode, and |jsonescape. Example: {{content|trim|uppercase}}" = "转换器：|uppercase、|lowercase、|trim、|urlencode 和 |jsonescape。示例：{{content|trim|uppercase}}";
+"Custom actions only transform local data and never run shell commands, access the network, or write files." = "自定义动作仅转换本地数据，绝不会运行 Shell 命令、访问网络或写入文件。";
+"Run a local template transform" = "运行本地模板转换";
+
 /* AboutView */
 "Smart Clipboard for Developers" = "开发者的智能剪贴板";
 "Version %@" = "版本 %@";
