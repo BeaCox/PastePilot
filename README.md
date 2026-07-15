@@ -12,7 +12,8 @@ PastePilot recognizes commands, JSON, code, errors, colors, screenshots, rich
 text, and files, then suggests the next useful action from your menu bar. It
 keeps high-fidelity pasteboard data when safe, supports searchable notes and
 aliases, and includes local backup/restore. No telemetry, no cloud sync.
-Everything stays on your Mac.
+Everything stays on your Mac. Safe custom actions let you build reusable local
+text and image-metadata templates without enabling shell execution.
 
 [Download latest release](https://github.com/BeaCox/PastePilot/releases/latest) ·
 [See demo](#demo) ·
@@ -33,6 +34,9 @@ you copied and turns it into useful developer actions.
   then search clipboard history by visible text.
 - **Organize history without changing the copied content.** Add titles, notes,
   and aliases that stay searchable and survive duplicate recapture.
+- **Build your own safe transforms.** Create local template actions for text or
+  image metadata using bounded placeholders and transforms—without running
+  shell commands, accessing the network, or writing files.
 - **Handle sensitive workflows deliberately.** Pause capture, ignore the next
   copy, define custom sensitive patterns, or skip/redact sensitive matches
   before they are written to history.
@@ -104,6 +108,27 @@ data instead of only plain text:
 - Images keep cached PNG data plus source URL or original path metadata
 - Supported app-specific pasteboard formats can be replayed when safe
 
+### Safe Custom Actions
+
+Open **Preferences → Actions** to create reusable template actions. Each action
+can be enabled or disabled and limited to text, images, or all supported content
+types. Its rendered result appears alongside built-in actions and is copied to
+the clipboard when selected.
+
+Templates can use these local placeholders:
+
+- `{{content}}`, `{{title}}`, `{{kind}}`, and `{{sourceApp}}`
+- `{{ocr}}`, `{{imageURL}}`, and `{{imagePath}}` for image workflows
+- `{{filePaths}}` and `{{newline}}` for lists and multi-line output
+
+Append transforms such as `|uppercase`, `|lowercase`, `|trim`, `|urlencode`, or
+`|jsonescape`. For example, `{{content|trim|uppercase}}` trims the selected
+item and converts it to uppercase.
+
+Custom actions are intentionally bounded and local. They cannot execute shell
+commands, make network requests, or write files, and invalid or oversized
+templates are ignored.
+
 ### Command Intelligence
 
 Built for the pain of copying `$ npm install` from a README and having to delete the `$` yourself:
@@ -156,6 +181,8 @@ after an update, so close old DMGs and keep only the installed copy in
 - Capture can be paused persistently, and **Ignore Next Copy** skips one
   clipboard change without reading it into history
 - Clipboard data stays local and no telemetry is collected
+- Custom actions only render bounded local templates; they cannot execute shell
+  commands, access the network, or write files
 - Network access is limited to checking/downloading updates and optional, explicitly enabled link metadata requests
 - History is stored in SQLite at `~/Library/Application Support/PastePilot/history.sqlite`
 - Existing `history.json` and `history.backup.json` files are retained for migration and downgrade compatibility
@@ -206,6 +233,7 @@ after an update, so close old DMGs and keep only the installed copy in
 - Image size limit
 - Sensitive-content storage policy
 - Custom sensitive-content patterns
+- Safe custom template actions for text and image metadata
 - OCR mode, language mode, and manual re-run for existing images
 - Local QR/barcode re-scan for existing images
 - Optional link title and description fetching (disabled by default)
@@ -351,7 +379,8 @@ Tests use Swift Testing through a standard SwiftPM test target. The suite covers
 content analysis and transforms, action generation, settings persistence,
 history format compatibility and backup recovery, image cleanup, expiry,
 storage limits, OCR refresh, high-fidelity pasteboard replay, editable metadata,
-menu bar regression behavior, and history limits.
+custom action rendering and safety boundaries, menu bar regression behavior,
+and history limits.
 
 ## Contributing
 
