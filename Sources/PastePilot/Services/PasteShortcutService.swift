@@ -53,6 +53,10 @@ final class PasteShortcutService {
         return .pasted
     }
 
+    func waitForPendingPaste() async {
+        await pasteTask?.value
+    }
+
     nonisolated static func postCommandV() {
         guard let source = CGEventSource(stateID: .combinedSessionState),
               let keyDown = CGEvent(

@@ -20,7 +20,7 @@ struct PasteShortcutServiceTests {
         #expect(pasteShortcutCount == 0)
         await sleeper.waitForPendingCount(1)
         sleeper.resumeAll()
-        await Task.yield()
+        await service.waitForPendingPaste()
         #expect(pasteShortcutCount == 1)
     }
 
@@ -59,8 +59,7 @@ struct PasteShortcutServiceTests {
         #expect(service.paste() == .pasted)
         await sleeper.waitForPendingCount(2)
         sleeper.resumeAll()
-        await Task.yield()
-        await Task.yield()
+        await service.waitForPendingPaste()
         #expect(pasteShortcutCount == 1)
     }
 }

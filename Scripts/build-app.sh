@@ -43,7 +43,7 @@ if [ -z "$APP_INTENTS_METADATA_PROCESSOR" ]; then
   printf '%s\n' \
     'Warning: App Intents metadata will be omitted; use full Xcode for a Shortcuts-enabled app bundle.' >&2
 else
-  APP_INTENTS_TOOLCHAIN_DIR="$(xcrun --show-toolchain-path)"
+  APP_INTENTS_TOOLCHAIN_DIR="$(dirname "$(dirname "$(dirname "$(xcrun -f swiftc)")")")"
   APP_INTENTS_SDK_ROOT="$(xcrun --show-sdk-path)"
   APP_INTENTS_XCODE_BUILD_VERSION="$(xcodebuild -version | awk '/Build version/ { print $3 }')"
   APP_INTENTS_SOURCE_FILE_LIST="$BUILD_ROOT/PastePilot.appintents.sources"
