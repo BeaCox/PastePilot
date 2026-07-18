@@ -4,6 +4,35 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-19
+
+### Added
+
+- PastePilot now exposes Shortcuts actions to get the selected history item,
+  get an item by one-based index, copy or delete an item, clear unpinned
+  history, and run a named PastePilot action.
+- Shortcuts can choose from PastePilot's built-in actions and enabled safe
+  custom template actions. Item displays respect sensitive-content masking,
+  including user-defined patterns.
+- Image history can optionally use perceptual hashing to merge visually similar
+  images that have different encodings.
+- Images can be scanned locally for QR codes and common barcodes, with detected
+  payloads available in search and copy actions.
+- Link title and description metadata can be fetched for newly copied HTTP(S)
+  links after explicit opt-in; credential-bearing and non-web URLs are skipped.
+- Users can create bounded local template actions for text and image metadata
+  without granting shell, network, or file-execution access.
+
+### Changed
+
+- Release app bundles built with full Xcode now include extracted App Intents
+  metadata so PastePilot actions are discoverable in Shortcuts.
+
+### Maintenance
+
+- Added App Intents coverage for selected-item lookup, action catalog contents,
+  and item-specific action availability.
+
 ## [0.7.0] - 2026-07-13
 
 ### Added

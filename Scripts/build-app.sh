@@ -11,6 +11,7 @@ RELEASE="$BUILD_ROOT/$ARCH-apple-macosx/release"
 VERSION="${VERSION:-}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+APP_INTENTS_METADATA_PROCESSOR="$(xcrun -find appintentsmetadataprocessor 2>/dev/null || true)"
 
 if [ -z "$VERSION" ]; then
   VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
@@ -37,6 +38,25 @@ case "$BUILD_NUMBER" in
     exit 1
     ;;
 esac
+
+if [ -z "$APP_INTENTS_METADATA_PROCESSOR" ]; then
+  printf '%s\n' \
+    'Warning: App Intents metadata will be omitted; use full Xcode for a Shortcuts-enabled app bundle.' >&2
+else
+  APP_INTENTS_TOOLCHAIN_DIR="$(xcrun --show-toolchain-path)"
+  APP_INTENTS_SDK_ROOT="$(xcrun --show-sdk-path)"
+  APP_INTENTS_XCODE_BUILD_VERSION="$(xcodebuild -version | awk '/Build version/ { print $3 }')"
+  APP_INTENTS_SOURCE_FILE_LIST="$BUILD_ROOT/PastePilot.appintents.sources"
+
+  if [ -z "$APP_INTENTS_XCODE_BUILD_VERSION" ]; then
+    printf '%s\n' 'Could not determine the installed Xcode build version.' >&2
+    exit 1
+  fi
+
+  mkdir -p "$BUILD_ROOT"
+  find "$ROOT/Sources/PastePilot" -name '*.swift' -type f -print \
+    > "$APP_INTENTS_SOURCE_FILE_LIST"
+fi
 
 cd "$ROOT"
 swift build \
@@ -101,6 +121,25 @@ PLIST
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$CONTENTS/Info.plist"
+
+if [ -n "$APP_INTENTS_METADATA_PROCESSOR" ]; then
+  "$APP_INTENTS_METADATA_PROCESSOR" \
+    --toolchain-dir "$APP_INTENTS_TOOLCHAIN_DIR" \
+    --module-name PastePilot \
+    --sdk-root "$APP_INTENTS_SDK_ROOT" \
+    --xcode-version "$APP_INTENTS_XCODE_BUILD_VERSION" \
+    --platform-family macOS \
+    --deployment-target 14.0 \
+    --bundle-identifier space.beacox.PastePilot \
+    --output "$CONTENTS/Resources" \
+    --target-triple "$ARCH-apple-macosx14.0" \
+    --binary-file "$RELEASE/PastePilot" \
+    --source-file-list "$APP_INTENTS_SOURCE_FILE_LIST" \
+    --compile-time-extraction \
+    --deployment-aware-processing \
+    --validate-assistant-intents \
+    --no-app-shortcuts-localization
+fi
 
 if [ "$SIGN_IDENTITY" = "-" ]; then
   codesign --force --deep --sign - "$APP"

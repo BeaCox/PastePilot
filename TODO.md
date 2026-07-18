@@ -89,7 +89,7 @@ Current PastePilot baseline:
   close behavior; use this as the path toward a plugin system.
 - [x] Support safe custom actions before arbitrary plugins. Add bounded local
   text/image template transforms without shell, network, or file execution.
-- [ ] Add App Intents. Provide Shortcuts actions for get selected item, get item
+- [x] Add App Intents. Provide Shortcuts actions for get selected item, get item
   by index, copy item, delete item, clear unpinned history, and run a named
   PastePilot action.
 - [ ] Add CLI automation after App Intents. Consider a small `pastepilot` command

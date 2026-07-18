@@ -111,6 +111,7 @@ extension MenuBarView {
     }
 
     func handleSelectionChange() {
+        PastePilotAppIntents.setSelectedItemID(selectedID)
         if previewedItem != nil {
             previewedID = selectedID
         }

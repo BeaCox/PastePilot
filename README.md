@@ -37,6 +37,8 @@ you copied and turns it into useful developer actions.
 - **Build your own safe transforms.** Create local template actions for text or
   image metadata using bounded placeholders and transforms—without running
   shell commands, accessing the network, or writing files.
+- **Automate clipboard workflows.** Use Shortcuts to get, copy, delete, or
+  transform history items without opening the PastePilot popover.
 - **Handle sensitive workflows deliberately.** Pause capture, ignore the next
   copy, define custom sensitive patterns, or skip/redact sensitive matches
   before they are written to history.
@@ -128,6 +130,14 @@ item and converts it to uppercase.
 Custom actions are intentionally bounded and local. They cannot execute shell
 commands, make network requests, or write files, and invalid or oversized
 templates are ignored.
+
+### Shortcuts Automation
+
+PastePilot provides Shortcuts actions for getting the selected history item,
+getting an item by one-based index, copying or deleting an item, clearing
+unpinned history, and running any available built-in or enabled custom action.
+The selected-item action uses the item most recently highlighted in the menu
+bar, or the newest history item when no selection has been made.
 
 ### Command Intelligence
 

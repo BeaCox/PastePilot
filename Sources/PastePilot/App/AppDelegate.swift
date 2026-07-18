@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         configureStatusItem()
+        PastePilotShortcuts.updateAppShortcutParameters()
         registerHotKey()
         registerPopoverKeyMonitor()
         settings.launchAtLogin = SMAppService.mainApp.status == .enabled
