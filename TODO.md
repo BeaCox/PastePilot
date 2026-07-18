@@ -78,12 +78,6 @@ Current PastePilot baseline:
   Add a typed asset side table for selected pasteboard types, with strict size
   limits and cleanup, so rich text, file groups, and app-specific formats can be
   restored when safe.
-- [ ] Split saved clips from transient history. Introduce a `SavedClip` or
-  collection model for user-curated snippets, commands, URLs, and images instead
-  of overloading pinned history.
-- [ ] Add a compact library window for organization. Keep the menu bar fast, but
-  provide a larger surface for saved clips, bulk cleanup, source-app filters,
-  notes, and drag reordering.
 - [x] Build a declarative action registry. Move built-in actions toward a common
   model with id, title, symbol, accepted kinds, input source, output effect, and
   close behavior; use this as the path toward a plugin system.
