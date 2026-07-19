@@ -139,8 +139,59 @@ extension MenuBarView {
 
     func clearUnpinnedHistory() {
         store.clearUnpinned()
+        pasteStack.retain(availableIDs: Set(store.items.map(\.id)))
         closePreview()
         selectFirstItem()
+    }
+
+    func togglePasteStackItem(_ item: ClipboardItem) {
+        let wasQueued = pasteStack.contains(item.id)
+        let isQueued = pasteStack.toggle(item.id)
+        if !wasQueued, !isQueued {
+            showNotice(PastePilotNotice(
+                "Paste stack can contain up to %d items.".localized(
+                    PasteStackController.maximumItemCount
+                ),
+                style: .warning
+            ))
+        }
+    }
+
+    func startPasteStack() {
+        let itemsByID = Dictionary(uniqueKeysWithValues: store.items.map { ($0.id, $0) })
+        let queuedItems = pasteStack.itemIDs.compactMap { itemsByID[$0] }
+        pasteStack.retain(availableIDs: Set(itemsByID.keys))
+
+        let result = pasteStack.start(
+            items: queuedItems,
+            separator: settings.resolvedPasteStackSeparator,
+            copyItem: { store.copyOriginalItem($0) },
+            copySeparator: { store.copy($0) }
+        )
+        switch result {
+        case .started:
+            previewClosesInstantly = true
+            closePreview()
+            closePopover()
+        case .accessibilityRequired:
+            showAccessibilityRequired()
+            showNotice(PastePilotNotice(
+                "Paste stack needs Accessibility permission.".localized,
+                style: .warning
+            ))
+        case .empty:
+            showNotice(PastePilotNotice(
+                "Add at least one item to the paste stack.".localized,
+                style: .warning
+            ))
+        case .alreadyPasting:
+            break
+        }
+    }
+
+    func cancelPasteStack() {
+        pasteStack.cancel()
+        showNotice(PastePilotNotice("Paste stack cancelled".localized))
     }
 
     func performKeyboardCommand(_ command: PopoverKeyboardCommand) {

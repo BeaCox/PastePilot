@@ -7,6 +7,49 @@ enum PasteCloseBehavior: String, CaseIterable {
     case closePanel
 }
 
+enum PasteStackSeparator: String, CaseIterable {
+    case newline
+    case space
+    case tab
+    case commaSpace
+    case none
+    case custom
+
+    var title: String {
+        switch self {
+        case .newline:
+            "New Line".localized
+        case .space:
+            "Space".localized
+        case .tab:
+            "Tab".localized
+        case .commaSpace:
+            "Comma and Space".localized
+        case .none:
+            "None".localized
+        case .custom:
+            "Custom".localized
+        }
+    }
+
+    func value(customValue: String) -> String {
+        switch self {
+        case .newline:
+            "\n"
+        case .space:
+            " "
+        case .tab:
+            "\t"
+        case .commaSpace:
+            ", "
+        case .none:
+            ""
+        case .custom:
+            customValue
+        }
+    }
+}
+
 enum SensitiveContentStoragePolicy: String, CaseIterable {
     case storeOriginal
     case storeRedacted
@@ -104,6 +147,8 @@ final class AppSettings: ObservableObject {
         SensitiveContentStoragePolicy.storeOriginal.rawValue
     static let defaultCustomSensitivePatterns = ""
     static let defaultPasteAfterCopying = false
+    static let defaultPasteStackSeparator = PasteStackSeparator.newline.rawValue
+    static let defaultCustomPasteStackSeparator = ""
     static let defaultPerceptualImageDeduplicationEnabled = false
     static let defaultLinkMetadataFetchingEnabled = false
     static let defaultCustomClipboardActions = "[]"
@@ -178,6 +223,14 @@ final class AppSettings: ObservableObject {
             "pasteAfterCopying",
             default: AppSettings.defaultPasteAfterCopying
         )
+        static let pasteStackSeparator = AppSetting(
+            "pasteStackSeparator",
+            default: AppSettings.defaultPasteStackSeparator
+        )
+        static let customPasteStackSeparator = AppSetting(
+            "customPasteStackSeparator",
+            default: AppSettings.defaultCustomPasteStackSeparator
+        )
         static let previewAnimationEnabled = AppSetting(
             "previewAnimationEnabled",
             default: true
@@ -227,6 +280,8 @@ final class AppSettings: ObservableObject {
                 historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
                 pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
                 pasteAfterCopying.key: pasteAfterCopying.defaultValue,
+                pasteStackSeparator.key: pasteStackSeparator.defaultValue,
+                customPasteStackSeparator.key: customPasteStackSeparator.defaultValue,
                 previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
                 appearanceMode.key: appearanceMode.defaultValue,
                 ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
@@ -379,6 +434,31 @@ final class AppSettings: ObservableObject {
         didSet { persist(pasteAfterCopying, for: Setting.pasteAfterCopying) }
     }
 
+    @Published var pasteStackSeparator: String {
+        didSet {
+            persistSupportedRawValue(
+                pasteStackSeparator,
+                for: Setting.pasteStackSeparator,
+                as: PasteStackSeparator.self
+            ) { pasteStackSeparator = $0 }
+        }
+    }
+
+    @Published var customPasteStackSeparator: String {
+        didSet {
+            if customPasteStackSeparator.count > 256 {
+                customPasteStackSeparator = String(
+                    customPasteStackSeparator.prefix(256)
+                )
+                return
+            }
+            persist(
+                customPasteStackSeparator,
+                for: Setting.customPasteStackSeparator
+            )
+        }
+    }
+
     @Published var previewAnimationEnabled: Bool {
         didSet { persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled) }
     }
@@ -517,6 +597,15 @@ final class AppSettings: ObservableObject {
             for: Setting.pasteAfterCopying,
             in: defaults
         )
+        pasteStackSeparator = Self.supportedRawValue(
+            for: Setting.pasteStackSeparator,
+            in: defaults,
+            as: PasteStackSeparator.self
+        )
+        customPasteStackSeparator = String(
+            Self.string(for: Setting.customPasteStackSeparator, in: defaults)
+                .prefix(256)
+        )
         previewAnimationEnabled = Self.bool(
             for: Setting.previewAnimationEnabled,
             in: defaults
@@ -555,6 +644,11 @@ final class AppSettings: ObservableObject {
         UserSensitivePattern.patterns(from: customSensitivePatterns)
     }
 
+    var resolvedPasteStackSeparator: String {
+        (PasteStackSeparator(rawValue: pasteStackSeparator) ?? .newline)
+            .value(customValue: customPasteStackSeparator)
+    }
+
     var ignoredBundleIdentifierSet: Set<String> {
         Set(
             ignoredBundleIdentifiers
@@ -583,6 +677,8 @@ final class AppSettings: ObservableObject {
         historyTimeoutSeconds = Setting.historyTimeoutSeconds.defaultValue
         pasteCloseBehavior = Setting.pasteCloseBehavior.defaultValue
         pasteAfterCopying = Setting.pasteAfterCopying.defaultValue
+        pasteStackSeparator = Setting.pasteStackSeparator.defaultValue
+        customPasteStackSeparator = Setting.customPasteStackSeparator.defaultValue
         previewAnimationEnabled = Setting.previewAnimationEnabled.defaultValue
         appearanceMode = Setting.appearanceMode.defaultValue
         ocrRecognitionMode = Setting.ocrRecognitionMode.defaultValue
@@ -761,6 +857,8 @@ final class AppSettings: ObservableObject {
         persist(historyTimeoutSeconds, for: Setting.historyTimeoutSeconds)
         persist(pasteCloseBehavior, for: Setting.pasteCloseBehavior)
         persist(pasteAfterCopying, for: Setting.pasteAfterCopying)
+        persist(pasteStackSeparator, for: Setting.pasteStackSeparator)
+        persist(customPasteStackSeparator, for: Setting.customPasteStackSeparator)
         persist(previewAnimationEnabled, for: Setting.previewAnimationEnabled)
         persist(appearanceMode, for: Setting.appearanceMode)
         persist(ocrRecognitionMode, for: Setting.ocrRecognitionMode)

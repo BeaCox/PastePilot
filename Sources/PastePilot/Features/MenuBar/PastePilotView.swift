@@ -18,6 +18,7 @@ enum PopoverKeyboardCommand {
 struct MenuBarView: View {
     @ObservedObject var store: ClipboardStore
     @ObservedObject var settings: AppSettings
+    @ObservedObject var pasteStack: PasteStackController
     let openSettings: @MainActor () -> Void
     let openAbout: @MainActor () -> Void
     let checkForUpdates: @MainActor () -> Void

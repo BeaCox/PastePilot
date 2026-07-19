@@ -300,6 +300,10 @@ struct MenuBarPopoverRegressionTests {
         MenuBarView(
             store: store,
             settings: settings,
+            pasteStack: PasteStackController(
+                isAccessibilityGranted: { true },
+                postPasteShortcut: {}
+            ),
             openSettings: {},
             openAbout: {},
             checkForUpdates: {},

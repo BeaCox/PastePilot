@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updateController = UpdateController()
     let plainTextPasteService = PlainTextPasteService()
     let pasteShortcutService = PasteShortcutService()
+    let pasteStack = PasteStackController()
     var aboutWindow: NSWindow?
     var welcomeWindow: NSWindow?
     var popover: NSPopover?
@@ -49,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         store.stopMonitoring()
         store.cancelAllOCRTasks()
+        pasteStack.cancel()
         store.flushHistoryWrites()
         unregisterHotKeys()
         if let hotKeyHandler {

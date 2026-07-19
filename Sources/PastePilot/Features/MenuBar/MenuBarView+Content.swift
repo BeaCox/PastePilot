@@ -27,6 +27,9 @@ extension MenuBarView {
         .onChange(of: store.items.first?.id) {
             handleFirstItemChange()
         }
+        .onChange(of: store.items.map(\.id)) {
+            pasteStack.retain(availableIDs: Set(store.items.map(\.id)))
+        }
         .onChange(of: filteredItems.count) {
             handleFilteredCountChange()
         }
@@ -69,6 +72,9 @@ extension MenuBarView {
         HStack {
             Text("%d items".localized(store.items.count))
                 .foregroundStyle(.secondary)
+            if pasteStack.count > 0 || pasteStack.isPasting {
+                pasteStackMenu
+            }
             Spacer()
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 6) {
@@ -133,6 +139,42 @@ extension MenuBarView {
         }
     }
 
+    var pasteStackMenu: some View {
+        Menu {
+            if pasteStack.isPasting {
+                Text(
+                    "Pasted %d of %d".localized(
+                        pasteStack.completedItemCount,
+                        pasteStack.count
+                    )
+                )
+                Button("Cancel Paste Stack".localized, action: cancelPasteStack)
+            } else {
+                Button(
+                    "Paste %d Items in Order".localized(pasteStack.count),
+                    action: startPasteStack
+                )
+                Divider()
+                Button("Clear Paste Stack".localized) {
+                    pasteStack.clear()
+                }
+            }
+        } label: {
+            Label(
+                pasteStack.isPasting
+                    ? "Pasting %d/%d".localized(
+                        pasteStack.completedItemCount,
+                        pasteStack.count
+                    )
+                    : "%d queued".localized(pasteStack.count),
+                systemImage: "square.stack.3d.up"
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .accessibilityLabel("Paste Stack".localized)
+    }
+
     var searchBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
@@ -194,6 +236,7 @@ extension MenuBarView {
                                 userSensitivePatterns: settings.userSensitivePatterns,
                                 shortcutNumber: index < 9 ? index + 1 : nil,
                                 isSelected: selectedID == item.id,
+                                pasteStackPosition: pasteStack.position(of: item.id),
                                 select: { selectedID = item.id },
                                 hoverChanged: { hovering in
                                     handleRowHover(item, hovering: hovering)
@@ -211,6 +254,9 @@ extension MenuBarView {
                                 },
                                 togglePinned: {
                                     store.togglePinned(item.id)
+                                },
+                                togglePasteStack: {
+                                    togglePasteStackItem(item)
                                 },
                                 delete: {
                                     store.delete(item.id)

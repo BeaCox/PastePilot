@@ -30,6 +30,11 @@ struct AppSettingsTests {
         #expect(settings.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(settings.pasteAfterCopying == AppSettings.defaultPasteAfterCopying)
         #expect(
+            settings.pasteStackSeparator
+                == AppSettings.defaultPasteStackSeparator
+        )
+        #expect(settings.resolvedPasteStackSeparator == "\n")
+        #expect(
             settings.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
@@ -48,6 +53,8 @@ struct AppSettingsTests {
         settings.ocrLanguageMode = OCRLanguageMode.english.rawValue
         settings.appearanceMode = AppAppearanceMode.dark.rawValue
         settings.pasteAfterCopying = true
+        settings.pasteStackSeparator = PasteStackSeparator.custom.rawValue
+        settings.customPasteStackSeparator = " | "
         settings.sensitiveContentStoragePolicy =
             SensitiveContentStoragePolicy.storeRedacted.rawValue
         settings.customSensitivePatterns = """
@@ -74,6 +81,8 @@ struct AppSettingsTests {
         #expect(restored.ocrLanguageMode == OCRLanguageMode.english.rawValue)
         #expect(restored.appearanceMode == AppAppearanceMode.dark.rawValue)
         #expect(restored.pasteAfterCopying)
+        #expect(restored.pasteStackSeparator == PasteStackSeparator.custom.rawValue)
+        #expect(restored.resolvedPasteStackSeparator == " | ")
         #expect(
             restored.sensitiveContentStoragePolicy
                 == SensitiveContentStoragePolicy.storeRedacted.rawValue
@@ -113,6 +122,11 @@ struct AppSettingsTests {
         #expect(restored.appearanceMode == AppSettings.defaultAppearanceMode)
         #expect(restored.pasteAfterCopying == AppSettings.defaultPasteAfterCopying)
         #expect(
+            restored.pasteStackSeparator
+                == AppSettings.defaultPasteStackSeparator
+        )
+        #expect(restored.customPasteStackSeparator.isEmpty)
+        #expect(
             restored.sensitiveContentStoragePolicy
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
@@ -132,6 +146,7 @@ struct AppSettingsTests {
         defaults.set(42, forKey: "historyTimeoutSeconds")
         defaults.set("missing-icon", forKey: "menuBarIconStyle")
         defaults.set("close-everything", forKey: "pasteCloseBehavior")
+        defaults.set("vertical-rule", forKey: "pasteStackSeparator")
         defaults.set(999, forKey: "hotKeyCode")
         defaults.set(0, forKey: "hotKeyModifiers")
         defaults.set(-1, forKey: "plainTextHotKeyCode")
@@ -152,6 +167,10 @@ struct AppSettingsTests {
         )
         #expect(settings.menuBarIconStyle == MenuBarIconStyle.pastepilot.rawValue)
         #expect(settings.pasteCloseBehavior == PasteCloseBehavior.closePreview.rawValue)
+        #expect(
+            settings.pasteStackSeparator
+                == AppSettings.defaultPasteStackSeparator
+        )
         #expect(settings.hotKeyCode == AppSettings.defaultOpenHotKeyCode)
         #expect(settings.hotKeyModifiers == AppSettings.defaultOpenHotKeyModifiers)
         #expect(

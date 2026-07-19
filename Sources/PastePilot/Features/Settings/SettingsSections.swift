@@ -330,6 +330,31 @@ struct AppearanceSettingsPage: View {
                 SettingsNote("Choose what closes after you copy or transform an item.".localized)
             }
 
+            SettingsGroup(title: "Paste Stack".localized) {
+                SettingsRow(title: "Between Items".localized) {
+                    Picker("", selection: $settings.pasteStackSeparator) {
+                        ForEach(PasteStackSeparator.allCases, id: \.rawValue) { separator in
+                            Text(separator.title).tag(separator.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+                if settings.pasteStackSeparator == PasteStackSeparator.custom.rawValue {
+                    SettingsRow(title: "Custom Separator".localized) {
+                        TextField(
+                            "Separator".localized,
+                            text: $settings.customPasteStackSeparator
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 180)
+                    }
+                }
+                SettingsNote(
+                    "Selected items are pasted in queue order with this separator between them.".localized
+                )
+            }
+
             SettingsGroup {
                 SettingsRow(title: "Menu Bar Window".localized) {
                     Text("Adaptive".localized)

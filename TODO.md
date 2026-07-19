@@ -103,7 +103,7 @@ Current PastePilot baseline:
 - [ ] Add protected storage for sensitive items. Evaluate Keychain-backed
   encryption for selected records or collections, optional unlock timeout, and
   migration behavior from existing plaintext history.
-- [ ] Add sequential paste / paste stack. Support selecting multiple items and
+- [x] Add sequential paste / paste stack. Support selecting multiple items and
   pasting them in order, with configurable separators and cancellation.
 - [ ] Revisit iCloud sync with a local-first design. Define conflict handling,
   per-item redaction/encryption policy, image/text asset syncing, and opt-in UI

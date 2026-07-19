@@ -6,6 +6,7 @@ struct CompactHistoryItem: View {
     let userSensitivePatterns: [UserSensitivePattern]
     let shortcutNumber: Int?
     let isSelected: Bool
+    let pasteStackPosition: Int?
     let select: () -> Void
     let hoverChanged: (Bool) -> Void
     let preview: () -> Void
@@ -13,6 +14,7 @@ struct CompactHistoryItem: View {
     let editMetadata: () -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
+    let togglePasteStack: () -> Void
     let delete: () -> Void
     @State private var isHovering = false
 
@@ -37,7 +39,17 @@ struct CompactHistoryItem: View {
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if !showsActions, let shortcutNumber {
+                    if let pasteStackPosition {
+                        Text("#\(pasteStackPosition)")
+                            .font(.system(size: 10, design: .rounded).weight(.semibold))
+                            .foregroundStyle(.tint)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                            .accessibilityLabel(
+                                "Paste stack position %d".localized(pasteStackPosition)
+                            )
+                    } else if !showsActions, let shortcutNumber {
                         Text("⌘\(shortcutNumber)")
                             .font(.system(size: 11, design: .rounded).weight(.medium))
                             .foregroundStyle(.secondary)
@@ -57,6 +69,16 @@ struct CompactHistoryItem: View {
             .accessibilityHint("Copies the original clipboard content.".localized)
 
             if showsActions {
+                RowIconButton(
+                    symbol: pasteStackPosition == nil
+                        ? "square.stack.3d.up"
+                        : "square.stack.3d.up.fill",
+                    label: pasteStackPosition == nil
+                        ? "Add to Paste Stack".localized
+                        : "Remove from Paste Stack".localized,
+                    isActive: pasteStackPosition != nil,
+                    action: togglePasteStack
+                )
                 RowIconButton(
                     symbol: item.isPinned ? "pin.fill" : "pin",
                     label: item.isPinned ? "Unpin".localized : "Pin to Top".localized,
@@ -111,6 +133,12 @@ struct CompactHistoryItem: View {
                 }
             }
             Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized, action: togglePinned)
+            Button(
+                pasteStackPosition == nil
+                    ? "Add to Paste Stack".localized
+                    : "Remove from Paste Stack".localized,
+                action: togglePasteStack
+            )
             Button("Edit Details…".localized, action: editMetadata)
             Divider()
             Button("Delete".localized, role: .destructive, action: delete)

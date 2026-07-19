@@ -160,6 +160,7 @@ extension AppDelegate {
             rootView: MenuBarView(
                 store: store,
                 settings: settings,
+                pasteStack: pasteStack,
                 openSettings: { [weak self] in self?.showSettings() },
                 openAbout: { [weak self] in self?.showAbout() },
                 checkForUpdates: { [weak self] in
