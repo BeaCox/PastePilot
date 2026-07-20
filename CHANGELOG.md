@@ -4,6 +4,19 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-20
+
+### Added
+
+- Deleting a history item shows an "Undo" toast for a few seconds before its
+  content and image files are actually removed, instead of deleting instantly
+  and permanently.
+- A filter menu next to the search field inserts `kind:`, `pinned:`, and
+  `has:` search query tokens without needing to type the syntax.
+- The history list can show a small badge of the source app's icon on each
+  row, on by default with a toggle in Preferences.
+- Paste stack items can be reordered by dragging in a new "Reorder…" sheet.
+
 ### Changed
 
 - Moving an item into protected storage now encrypts it and immediately returns
@@ -14,12 +27,17 @@ All notable changes to PastePilot are documented in this file.
   distinguishable. Clipboard content and derived content metadata stay encrypted.
 - Clicking a locked history row now starts authentication, matching the existing
   keyboard behavior.
+- The menu bar icon now switches to a paused icon while clipboard capture is
+  disabled, instead of giving no visual indication that capture is off.
 
 ### Fixed
 
 - Protected-item writes are now committed synchronously before plaintext cleanup
   and locking, and unchanged protected payloads use stable fingerprints instead
   of being rewritten because of randomized encryption output.
+- A notice banner shown while the panel was closed (for example, after pausing
+  capture with Option-click) no longer lingers and flashes the next time the
+  panel opens.
 
 ## [0.9.0] - 2026-07-20
 

@@ -229,8 +229,12 @@ after an update, so close old DMGs and keep only the installed copy in
 - **Search** — filter history by content, type, source app, pin state, OCR text,
   titles, notes, and aliases
 - **Pin** — pinned items stay at the top and survive cleanup
-- **Paste stack** — queue multiple items and paste them into the active app in
-  the selected order
+- **Search filters** — a filter menu next to the search field inserts
+  `kind:`, `pinned:`, and `has:` query tokens
+- **Undo delete** — deleting an item shows an Undo toast for a few seconds
+  before its data is actually removed
+- **Paste stack** — queue multiple items, reorder them by dragging, and paste
+  them into the active app in the selected order
 - **Edit details** — add searchable titles, notes, and aliases from the context menu
 - **Drag & drop** — drop files or images directly into the popover
 
@@ -266,9 +270,11 @@ after an update, so close old DMGs and keep only the installed copy in
 - Optional link title and description fetching (disabled by default)
 - Paste after copying
 - Paste stack separator
-- Menu bar icon style (PastePilot / Clipboard / Paperplane)
+- Menu bar icon style (PastePilot / Clipboard / Paperplane), shown paused
+  while capture is off
 - Theme mode (follow system / light / dark)
 - Hover preview toggle
+- Show source app icon in the history list
 - Per-app ignore list with visual app picker
 - Automatic update checks with a manual **Check for Updates…** action
 - Reset to defaults
