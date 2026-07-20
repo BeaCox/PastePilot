@@ -168,6 +168,10 @@ final class AppSettings: ObservableObject {
     private enum Setting {
         static let monitoringEnabled = AppSetting("monitoringEnabled", default: true)
         static let hoverPreviewEnabled = AppSetting("hoverPreviewEnabled", default: true)
+        static let showSourceAppIconInHistory = AppSetting(
+            "showSourceAppIconInHistory",
+            default: true
+        )
         static let historyLimit = AppSetting(
             "historyLimit",
             default: AppSettings.defaultHistoryLimit
@@ -270,6 +274,7 @@ final class AppSettings: ObservableObject {
             [
                 monitoringEnabled.key: monitoringEnabled.defaultValue,
                 hoverPreviewEnabled.key: hoverPreviewEnabled.defaultValue,
+                showSourceAppIconInHistory.key: showSourceAppIconInHistory.defaultValue,
                 historyLimit.key: historyLimit.defaultValue,
                 launchAtLogin.key: launchAtLogin.defaultValue,
                 imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
@@ -312,6 +317,15 @@ final class AppSettings: ObservableObject {
 
     @Published var hoverPreviewEnabled: Bool {
         didSet { persist(hoverPreviewEnabled, for: Setting.hoverPreviewEnabled) }
+    }
+
+    @Published var showSourceAppIconInHistory: Bool {
+        didSet {
+            persist(
+                showSourceAppIconInHistory,
+                for: Setting.showSourceAppIconInHistory
+            )
+        }
     }
 
     @Published var historyLimit: Int {
@@ -549,6 +563,10 @@ final class AppSettings: ObservableObject {
         defaults.register(defaults: Setting.registeredDefaults)
         monitoringEnabled = Self.bool(for: Setting.monitoringEnabled, in: defaults)
         hoverPreviewEnabled = Self.bool(for: Setting.hoverPreviewEnabled, in: defaults)
+        showSourceAppIconInHistory = Self.bool(
+            for: Setting.showSourceAppIconInHistory,
+            in: defaults
+        )
         historyLimit = Self.supportedInteger(
             for: Setting.historyLimit,
             in: defaults,
@@ -684,6 +702,7 @@ final class AppSettings: ObservableObject {
     func reset() {
         monitoringEnabled = Setting.monitoringEnabled.defaultValue
         hoverPreviewEnabled = Setting.hoverPreviewEnabled.defaultValue
+        showSourceAppIconInHistory = Setting.showSourceAppIconInHistory.defaultValue
         historyLimit = Setting.historyLimit.defaultValue
         launchAtLogin = Setting.launchAtLogin.defaultValue
         imageSizeLimitMB = Setting.imageSizeLimitMB.defaultValue
@@ -864,6 +883,10 @@ final class AppSettings: ObservableObject {
     private func persistCurrentValues() {
         persist(monitoringEnabled, for: Setting.monitoringEnabled)
         persist(hoverPreviewEnabled, for: Setting.hoverPreviewEnabled)
+        persist(
+            showSourceAppIconInHistory,
+            for: Setting.showSourceAppIconInHistory
+        )
         persist(historyLimit, for: Setting.historyLimit)
         persist(launchAtLogin, for: Setting.launchAtLogin)
         persist(imageSizeLimitMB, for: Setting.imageSizeLimitMB)

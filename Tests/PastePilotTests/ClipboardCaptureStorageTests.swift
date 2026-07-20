@@ -260,6 +260,7 @@ struct ClipboardCaptureStorageTests {
         #expect(copyResult.message == "Copied: %@".localized("Copy Original".localized))
 
         store.delete(item.id)
+        store.flushPendingDeletions()
         #expect(
             !FileManager.default.fileExists(
                 atPath: directory

@@ -79,6 +79,11 @@ final class PasteStackController: ObservableObject {
         itemIDs.removeAll { !availableIDs.contains($0) }
     }
 
+    func move(fromOffsets: IndexSet, toOffset: Int) {
+        guard !isPasting else { return }
+        itemIDs.move(fromOffsets: fromOffsets, toOffset: toOffset)
+    }
+
     func clear() {
         guard !isPasting else { return }
         itemIDs.removeAll(keepingCapacity: false)

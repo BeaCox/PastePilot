@@ -38,6 +38,12 @@ final class ClipboardStore: ObservableObject {
     var protectedHistoryLockTask: Task<Void, Never>?
     let thumbnailCache = NSCache<NSString, NSImage>()
 
+    struct PendingDeletion {
+        let item: ClipboardItem
+        let task: Task<Void, Never>
+    }
+    var pendingDeletions: [UUID: PendingDeletion] = [:]
+
     init(
         pasteboard: NSPasteboard = .general,
         settings: AppSettings? = nil,
@@ -331,13 +337,52 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
+    static let deleteUndoGracePeriod: Duration = .seconds(5)
+
     func delete(_ id: UUID) {
-        if let item = items.first(where: { $0.id == id }) {
-            cancelOCR(for: item.id)
-            deleteStoredResources(for: item)
-        }
-        items.removeAll { $0.id == id }
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        let item = items[index]
+        cancelOCR(for: item.id)
+        cancelEnrichment(for: item.id)
+        // Mark the image digest deleted immediately (cheap, in-memory) so a
+        // still-in-flight duplicate-image save for this digest is discarded
+        // right away, even though the actual file cleanup is deferred below.
+        markDeletedImageDigest(for: item)
+        items.remove(at: index)
         save()
+        schedulePendingDeletion(of: item)
+    }
+
+    private func schedulePendingDeletion(of item: ClipboardItem) {
+        pendingDeletions[item.id]?.task.cancel()
+        let task = Task { [weak self] in
+            try? await Task.sleep(for: Self.deleteUndoGracePeriod)
+            guard !Task.isCancelled else { return }
+            self?.finalizePendingDeletion(item.id)
+        }
+        pendingDeletions[item.id] = PendingDeletion(item: item, task: task)
+    }
+
+    private func finalizePendingDeletion(_ id: UUID) {
+        guard let pending = pendingDeletions.removeValue(forKey: id) else { return }
+        pending.task.cancel()
+        deleteImageFile(for: pending.item)
+        deleteTextFile(for: pending.item)
+    }
+
+    func restoreDeletedItem(_ id: UUID) {
+        guard let pending = pendingDeletions.removeValue(forKey: id) else { return }
+        pending.task.cancel()
+        guard !items.contains(where: { $0.id == id }) else { return }
+        items.append(pending.item)
+        sortItems()
+        save()
+    }
+
+    func flushPendingDeletions() {
+        for id in Array(pendingDeletions.keys) {
+            finalizePendingDeletion(id)
+        }
     }
 
     func clearUnpinned() {

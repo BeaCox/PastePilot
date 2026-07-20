@@ -107,9 +107,6 @@ extension AppDelegate {
 
     func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = statusImage(filled: !store.items.isEmpty)
-        item.button?.image?.isTemplate = true
-        item.button?.toolTip = "PastePilot: Click for clipboard actions".localized
         item.button?.target = self
         item.button?.action = #selector(togglePopover)
         if let button = item.button {
@@ -124,27 +121,39 @@ extension AppDelegate {
             button.addSubview(dropView)
         }
         statusItem = item
+        updateStatusItemIcon()
 
-        store.$items
-            .map { !$0.isEmpty }
-            .removeDuplicates()
-            .sink { [weak self] hasItems in
-                self?.statusItem?.button?.image = self?.statusImage(filled: hasItems)
-                self?.statusItem?.button?.image?.isTemplate = true
-            }
-            .store(in: &cancellables)
+        Publishers.CombineLatest3(
+            store.$items.map { !$0.isEmpty }.removeDuplicates(),
+            settings.$menuBarIconStyle.removeDuplicates(),
+            settings.$monitoringEnabled.removeDuplicates()
+        )
+        .sink { [weak self] _, _, _ in
+            self?.updateStatusItemIcon()
+        }
+        .store(in: &cancellables)
+    }
 
-        settings.$menuBarIconStyle
-            .removeDuplicates()
-            .sink { [weak self] styleValue in
-                guard let self else { return }
-                let style = MenuBarIconStyle(rawValue: styleValue) ?? .pastepilot
-                let filled = !self.store.items.isEmpty
-                let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
-                image?.isTemplate = true
-                self.statusItem?.button?.image = image
-            }
-            .store(in: &cancellables)
+    private func updateStatusItemIcon() {
+        guard let button = statusItem?.button else { return }
+        guard settings.monitoringEnabled else {
+            let image = NSImage(
+                systemSymbolName: "pause.circle",
+                accessibilityDescription: "PastePilot"
+            )?.withSymbolConfiguration(
+                NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
+            )
+            image?.isTemplate = true
+            button.image = image
+            button.toolTip = "PastePilot: Capture paused — click for clipboard actions".localized
+            return
+        }
+        let style = MenuBarIconStyle(rawValue: settings.menuBarIconStyle) ?? .pastepilot
+        let filled = !store.items.isEmpty
+        let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
+        image?.isTemplate = true
+        button.image = image
+        button.toolTip = "PastePilot: Click for clipboard actions".localized
     }
 
     func ensurePopover() -> NSPopover {
@@ -330,12 +339,5 @@ extension AppDelegate {
         alert.messageText = title
         alert.informativeText = error.localizedDescription
         alert.runModal()
-    }
-
-    func statusImage(filled: Bool) -> NSImage? {
-        let style = MenuBarIconStyle(rawValue: settings.menuBarIconStyle) ?? .pastepilot
-        let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
-        image?.isTemplate = true
-        return image
     }
 }

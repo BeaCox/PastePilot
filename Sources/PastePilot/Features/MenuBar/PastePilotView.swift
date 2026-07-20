@@ -33,6 +33,7 @@ struct MenuBarView: View {
     @State var notice: PastePilotNotice?
     @State var needsScrollToSelection = false
     @State var showsClearConfirmation = false
+    @State var showsPasteStackReorder = false
     @State var editingMetadataItemID: UUID?
     @State var metadataTitle = ""
     @State var metadataNote = ""
@@ -66,6 +67,11 @@ struct MenuBarView: View {
             in: store.items,
             previewedID: previewedID
         )
+    }
+
+    var pasteStackItemsInOrder: [ClipboardItem] {
+        let itemsByID = Dictionary(uniqueKeysWithValues: store.items.map { ($0.id, $0) })
+        return pasteStack.itemIDs.compactMap { itemsByID[$0] }
     }
 
     var listPreferredHeight: CGFloat {

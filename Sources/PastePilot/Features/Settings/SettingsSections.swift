@@ -324,6 +324,11 @@ struct AppearanceSettingsPage: View {
                 SettingsNote("Hover briefly to see full content, source app, and metadata.".localized)
                 Toggle("Animate Preview".localized, isOn: $settings.previewAnimationEnabled)
                 SettingsNote("Fade the detail preview in and out. Switching apps always closes it instantly.".localized)
+                Toggle(
+                    "Show Source App Icon in List".localized,
+                    isOn: $settings.showSourceAppIconInHistory
+                )
+                SettingsNote("Overlay a small badge of the copying app's icon on each row.".localized)
             }
 
             SettingsGroup {

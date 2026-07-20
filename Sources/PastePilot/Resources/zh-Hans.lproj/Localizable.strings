@@ -104,6 +104,12 @@
 "Link opened" = "已打开链接";
 
 "Search clipboard history" = "搜索剪贴板历史";
+"Search Filters" = "搜索过滤器";
+"Images" = "图片";
+"JSON" = "JSON";
+"Pinned Only" = "仅显示固定项";
+"Has OCR Text" = "含 OCR 文字";
+"Sensitive" = "敏感内容";
 "Searching…" = "正在搜索…";
 "Scanning large clipboard items." = "正在扫描大段剪贴板内容。";
 "No search results" = "没有搜索结果";
@@ -118,12 +124,15 @@
 "Ignored copied item" = "已忽略复制内容";
 "Clipboard capture paused" = "剪贴板捕获已暂停";
 "Clipboard capture resumed" = "剪贴板捕获已恢复";
+"PastePilot: Capture paused — click for clipboard actions" = "PastePilot：捕获已暂停 — 点击查看剪贴板操作";
 "Clear Unpinned History?" = "清除未固定的历史记录？";
 "Pinned items will be kept. This action cannot be undone." = "固定项目会被保留，此操作无法撤销。";
 "Unpin" = "取消置顶";
 "Pin" = "置顶";
 "Pin to Top" = "固定到顶部";
 "Delete" = "删除";
+"Deleted" = "已删除";
+"Undo" = "撤销";
 "Reveal" = "显示原文";
 "Preview" = "预览";
 "Copy" = "复制";
@@ -137,6 +146,10 @@
 "Pasting %d/%d" = "正在粘贴 %d/%d";
 "Pasted %d of %d" = "已粘贴 %d/%d";
 "Paste %d Items in Order" = "按顺序粘贴 %d 项";
+"Reorder…" = "调整顺序…";
+"Reorder Paste Stack" = "调整顺序粘贴队列";
+"Drag rows to reorder." = "拖拽行以调整顺序。";
+"Done" = "完成";
 "Cancel Paste Stack" = "取消顺序粘贴";
 "Clear Paste Stack" = "清空顺序粘贴";
 "Paste stack cancelled" = "已取消顺序粘贴";
@@ -257,6 +270,8 @@
 "Hover briefly to see full content, source app, and metadata." = "鼠标停留片刻后显示完整内容、来源应用和元数据。";
 "Animate Preview" = "预览动画";
 "Fade the detail preview in and out. Switching apps always closes it instantly." = "详情预览淡入淡出。切换到其他应用时始终立即关闭。";
+"Show Source App Icon in List" = "在列表中显示来源应用图标";
+"Overlay a small badge of the copying app's icon on each row." = "在每一行角标叠加复制来源应用的图标。";
 "After Copying" = "复制后";
 "Paste After Copying" = "复制后自动粘贴";
 "After a successful copy, close the panel and press Command-V in the previous app." = "复制成功后会关闭面板，并在上一个应用中按下 Command-V。";

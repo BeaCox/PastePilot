@@ -7,12 +7,18 @@ struct PastePilotNotice: Equatable, Sendable {
         case error
     }
 
+    enum Action: Equatable, Sendable {
+        case undoDelete(UUID)
+    }
+
     let message: String
     let style: Style
+    var action: Action?
 
-    init(_ message: String, style: Style = .success) {
+    init(_ message: String, style: Style = .success, action: Action? = nil) {
         self.message = message
         self.style = style
+        self.action = action
     }
 
     var systemImage: String {

@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.stopMonitoring()
         store.cancelAllOCRTasks()
         pasteStack.cancel()
+        store.flushPendingDeletions()
         store.flushHistoryWrites()
         unregisterHotKeys()
         if let hotKeyHandler {

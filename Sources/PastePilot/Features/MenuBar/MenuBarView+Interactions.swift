@@ -7,6 +7,7 @@ extension MenuBarView {
 
     func handleAppear() {
         previewClosesInstantly = false
+        notice = nil
         selectFirstItem()
         searchFocused = true
         resize(preferredSize)
@@ -36,6 +37,21 @@ extension MenuBarView {
         scheduleFullTextSearch()
         selectFirstItem()
         resize(preferredSize)
+    }
+
+    func toggleSearchFilterToken(_ token: String) {
+        var tokens = searchText.split(separator: " ").map(String.init)
+        if let index = tokens.firstIndex(of: token) {
+            tokens.remove(at: index)
+        } else {
+            tokens.append(token)
+        }
+        searchText = tokens.joined(separator: " ")
+        searchFocused = true
+    }
+
+    func isSearchFilterTokenActive(_ token: String) -> Bool {
+        searchText.split(separator: " ").map(String.init).contains(token)
     }
 
     func scheduleFullTextSearch() {
@@ -196,6 +212,11 @@ extension MenuBarView {
         }
     }
 
+    func beginPasteStackReorder() {
+        prepareForTopLevelPresentation()
+        showsPasteStackReorder = true
+    }
+
     func cancelPasteStack() {
         pasteStack.cancel()
         showNotice(PastePilotNotice("Paste stack cancelled".localized))
@@ -242,8 +263,22 @@ extension MenuBarView {
 
     func deleteSelectedItem() {
         guard let item = selectedItem else { return }
-        store.delete(item.id)
+        deleteItem(item.id)
         selectFirstItem()
+    }
+
+    func deleteItem(_ id: UUID) {
+        store.delete(id)
+        showNotice(PastePilotNotice(
+            "Deleted".localized,
+            action: .undoDelete(id)
+        ))
+    }
+
+    func undoDelete(_ id: UUID) {
+        store.restoreDeletedItem(id)
+        interactionState.noticeTask?.cancel()
+        withAnimation { notice = nil }
     }
 
     func beginEditingMetadata(for item: ClipboardItem) {
@@ -451,8 +486,11 @@ extension MenuBarView {
     func showNotice(_ notice: PastePilotNotice) {
         interactionState.noticeTask?.cancel()
         withAnimation { self.notice = notice }
+        let duration: Duration = notice.action != nil
+            ? ClipboardStore.deleteUndoGracePeriod
+            : (notice.style == .success ? .seconds(1.3) : .seconds(2.4))
         interactionState.noticeTask = Task {
-            try? await Task.sleep(for: notice.style == .success ? .seconds(1.3) : .seconds(2.4))
+            try? await Task.sleep(for: duration)
             guard !Task.isCancelled else { return }
             withAnimation { self.notice = nil }
         }

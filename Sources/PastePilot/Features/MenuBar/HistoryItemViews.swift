@@ -4,6 +4,7 @@ struct CompactHistoryItem: View {
     let item: ClipboardItem
     let image: NSImage?
     let userSensitivePatterns: [UserSensitivePattern]
+    let showSourceAppIcon: Bool
     let shortcutNumber: Int?
     let isSelected: Bool
     let pasteStackPosition: Int?
@@ -21,18 +22,31 @@ struct CompactHistoryItem: View {
         HStack(spacing: 3) {
             Button(action: copy) {
                 HStack(spacing: 7) {
-                    if item.isProtected {
-                        ProtectedContentBadge(isLocked: !item.isProtectedContentAvailable)
-                    } else if item.containsSensitiveData {
-                        SensitiveContentBadge(size: 22)
-                    } else if let image {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 22, height: 22)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
-                    } else {
-                        ContentKindBadge(kind: item.kind, size: 22)
+                    Group {
+                        if item.isProtected {
+                            ProtectedContentBadge(isLocked: !item.isProtectedContentAvailable)
+                        } else if item.containsSensitiveData {
+                            SensitiveContentBadge(size: 22)
+                        } else if let image {
+                            Image(nsImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 22, height: 22)
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                        } else {
+                            ContentKindBadge(kind: item.kind, size: 22)
+                        }
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if showSourceAppIcon, let sourceAppIcon {
+                            Image(nsImage: sourceAppIcon)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 11, height: 11)
+                                .clipShape(Circle())
+                                .overlay(Circle().strokeBorder(.background, lineWidth: 1.5))
+                                .offset(x: 3, y: 3)
+                        }
                     }
 
                     Text(summary)
@@ -128,6 +142,13 @@ struct CompactHistoryItem: View {
         return TextPreview.summary(
             for: item,
             userPatterns: userSensitivePatterns
+        )
+    }
+
+    private var sourceAppIcon: NSImage? {
+        guard let bundleIdentifier = item.sourceBundleIdentifier else { return nil }
+        return PreviewRenderCache.shared.applicationIcon(
+            forBundleIdentifier: bundleIdentifier
         )
     }
 

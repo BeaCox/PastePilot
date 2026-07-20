@@ -51,6 +51,15 @@ extension MenuBarView {
                 cancel: cancelMetadataEdit
             )
         }
+        .sheet(isPresented: $showsPasteStackReorder) {
+            PasteStackReorderView(
+                items: pasteStackItemsInOrder,
+                userSensitivePatterns: settings.userSensitivePatterns,
+                move: pasteStack.move,
+                remove: togglePasteStackItem,
+                done: { showsPasteStackReorder = false }
+            )
+        }
     }
 
     var notificationHandlingPanel: some View {
@@ -168,6 +177,11 @@ extension MenuBarView {
                     "Paste %d Items in Order".localized(pasteStack.count),
                     action: startPasteStack
                 )
+                if pasteStack.count > 1 {
+                    Button("Reorder…".localized) {
+                        beginPasteStackReorder()
+                    }
+                }
                 Divider()
                 Button("Clear Paste Stack".localized) {
                     pasteStack.clear()
@@ -211,9 +225,44 @@ extension MenuBarView {
                     .foregroundStyle(.tertiary)
                     .accessibilityLabel("Clear Search".localized)
                 }
+            searchFilterMenu
         }
         .padding(.horizontal, 12)
         .frame(height: 42)
+    }
+
+    var searchFilterMenu: some View {
+        Menu {
+            ForEach(searchFilterShortcuts, id: \.token) { shortcut in
+                Button {
+                    toggleSearchFilterToken(shortcut.token)
+                } label: {
+                    if isSearchFilterTokenActive(shortcut.token) {
+                        Label(shortcut.title, systemImage: "checkmark")
+                    } else {
+                        Text(shortcut.title)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .foregroundStyle(.secondary)
+        .help("Search Filters".localized)
+        .accessibilityLabel("Search Filters".localized)
+    }
+
+    private var searchFilterShortcuts: [(title: String, token: String)] {
+        [
+            ("Images".localized, "kind:image"),
+            ("Files".localized, "kind:file"),
+            ("JSON".localized, "kind:json"),
+            ("Pinned Only".localized, "pinned:true"),
+            ("Has OCR Text".localized, "has:ocr"),
+            ("Sensitive".localized, "has:sensitive")
+        ]
     }
 
     @ViewBuilder
@@ -248,6 +297,7 @@ extension MenuBarView {
                                 item: item,
                                 image: store.thumbnail(for: item),
                                 userSensitivePatterns: settings.userSensitivePatterns,
+                                showSourceAppIcon: settings.showSourceAppIconInHistory,
                                 shortcutNumber: index < 9 ? index + 1 : nil,
                                 isSelected: selectedID == item.id,
                                 pasteStackPosition: pasteStack.position(of: item.id),
@@ -286,7 +336,7 @@ extension MenuBarView {
                                     togglePasteStackItem(item)
                                 },
                                 delete: {
-                                    store.delete(item.id)
+                                    deleteItem(item.id)
                                     selectFirstItem()
                                 }
                             )
@@ -321,15 +371,23 @@ extension MenuBarView {
             }
             .overlay(alignment: .bottom) {
                 if let notice {
-                    Label(notice.message, systemImage: notice.systemImage)
-                        .font(.caption)
-                        .foregroundStyle(noticeForegroundStyle(notice.style))
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 7)
-                        .background(.regularMaterial, in: Capsule())
-                        .shadow(radius: 6, y: 2)
-                        .padding(.bottom, 8)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    HStack(spacing: 8) {
+                        Label(notice.message, systemImage: notice.systemImage)
+                            .foregroundStyle(noticeForegroundStyle(notice.style))
+                        if case let .undoDelete(id) = notice.action {
+                            Button("Undo".localized) {
+                                undoDelete(id)
+                            }
+                            .buttonStyle(.link)
+                        }
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(radius: 6, y: 2)
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .background(
