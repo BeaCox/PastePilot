@@ -9,8 +9,6 @@ struct CompactHistoryItem: View {
     let pasteStackPosition: Int?
     let select: () -> Void
     let hoverChanged: (Bool) -> Void
-    let preview: () -> Void
-    let performAction: (ClipboardAction) -> Void
     let editMetadata: () -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
@@ -69,8 +67,11 @@ struct CompactHistoryItem: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(item.kind.localizedTitle), \(summary)")
-            .accessibilityHint("Copies the original clipboard content.".localized)
-            .disabled(item.protectionState == .locked)
+            .accessibilityHint(
+                item.protectionState == .locked
+                    ? "Unlocks protected content.".localized
+                    : "Copies the original clipboard content.".localized
+            )
 
             if showsActions {
                 RowIconButton(
@@ -116,49 +117,14 @@ struct CompactHistoryItem: View {
             hoverChanged(hovering)
         }
         .contextMenu {
-            Button("Copy original".localized, action: copy)
-                .disabled(item.protectionState == .locked)
-            if MenuBarPopoverState.shouldShowContextPreview(for: item) {
-                Button("Preview".localized, action: preview)
-            }
-            if !item.fileURLs.isEmpty {
-                Button("Quick Look".localized) {
-                    performAction(
-                        ClipboardActionRegistry.quickLook.action(
-                            effect: .quickLook(item.fileURLs)
-                        )
-                    )
-                }
-                Button("Show in Finder".localized) {
-                    performAction(
-                        ClipboardActionRegistry.revealFiles.action(
-                            effect: .revealFiles(item.fileURLs)
-                        )
-                    )
-                }
-            }
-            Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized, action: togglePinned)
+            Button("Edit Details…".localized, action: editMetadata)
             if item.kind != .image && item.kind != .file {
                 Button(protectionActionTitle, action: toggleProtection)
             }
-            Button(
-                pasteStackPosition == nil
-                    ? "Add to Paste Stack".localized
-                    : "Remove from Paste Stack".localized,
-                action: togglePasteStack
-            )
-            if item.protectionState != .locked {
-                Button("Edit Details…".localized, action: editMetadata)
-            }
-            Divider()
-            Button("Delete".localized, role: .destructive, action: delete)
         }
     }
 
     private var summary: String {
-        if item.protectionState == .locked {
-            return "Protected item".localized
-        }
         return TextPreview.summary(
             for: item,
             userPatterns: userSensitivePatterns

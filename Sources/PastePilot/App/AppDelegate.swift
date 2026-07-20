@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         PastePilotShortcuts.updateAppShortcutParameters()
         registerHotKey()
         registerPopoverKeyMonitor()
+        configureProtectedHistoryLifecycle()
         settings.launchAtLogin = SMAppService.mainApp.status == .enabled
         configureSettingsObservers()
         updateController.start()
@@ -69,6 +70,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // When focus moves to another app, dismiss the panel and any open
         // detail preview together so nothing is left dangling.
         Self.post(.keyboard(.dismissAll))
+    }
+
+    private func configureProtectedHistoryLifecycle() {
+        let workspaceNotifications = NSWorkspace.shared.notificationCenter
+        for name in [
+            NSWorkspace.willSleepNotification,
+            NSWorkspace.sessionDidResignActiveNotification,
+        ] {
+            workspaceNotifications.publisher(for: name)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    self?.store.lockProtectedHistory(postsNotice: false)
+                }
+                .store(in: &cancellables)
+        }
     }
 
 }

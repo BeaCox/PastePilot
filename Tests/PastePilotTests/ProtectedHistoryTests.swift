@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import GRDB
 import Testing
 @testable import PastePilot
 
@@ -40,7 +41,7 @@ struct ProtectedHistoryTests {
     }
 
     @Test
-    func lockedItemsDoNotExposeClipboardActionsOrPreview() {
+    func lockedItemsDoNotExposeClipboardActions() {
         let item = ClipboardItem(
             content: "Protected item",
             kind: .text,
@@ -49,7 +50,6 @@ struct ProtectedHistoryTests {
 
         #expect(ClipboardActionFactory.actions(for: item).isEmpty)
         #expect(ClipboardActionFactory.keyboardActions(for: item).isEmpty)
-        #expect(!MenuBarPopoverState.shouldShowContextPreview(for: item))
         if case let .copyItem(id) = ClipboardActionFactory.copyAction(for: item).effect {
             #expect(id == item.id)
         } else {
@@ -87,9 +87,20 @@ struct ProtectedHistoryTests {
         #expect(locked.id == original.id)
         #expect(locked.protectionState == .locked)
         #expect(locked.content == "Protected item".localized)
-        #expect(locked.userTitle == nil)
+        #expect(locked.userTitle == original.userTitle)
+        #expect(locked.userNote == original.userNote)
+        #expect(locked.userAliases == original.userAliases)
+        #expect(
+            try repository.matchingIDs(query: "production token") == [original.id]
+        )
+        #expect(try repository.matchingIDs(query: "protected-secret-417").isEmpty)
 
         locked.isPinned = true
+        locked.updateUserMetadata(
+            title: "Rotated production token",
+            note: "Visible organizational note",
+            aliases: ["rotated", "prod"]
+        )
         try repository.save([locked])
 
         try vault.unlock(timeout: 60)
@@ -97,11 +108,101 @@ struct ProtectedHistoryTests {
         #expect(restored.id == original.id)
         #expect(restored.content == original.content)
         #expect(restored.richTextHTML == original.richTextHTML)
-        #expect(restored.userTitle == original.userTitle)
-        #expect(restored.userNote == original.userNote)
-        #expect(restored.userAliases == original.userAliases)
+        #expect(restored.userTitle == "Rotated production token")
+        #expect(restored.userNote == "Visible organizational note")
+        #expect(restored.userAliases == ["rotated", "prod"])
         #expect(restored.isPinned)
         #expect(restored.protectionState == .unlocked)
+    }
+
+    @Test
+    func legacyEncryptedMetadataMigratesWithoutLossOnFirstUnlock() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let vault = ProtectedHistoryVault(
+            keyStore: FixedProtectedHistoryKeyStore()
+        )
+        try vault.unlock(timeout: 60)
+        let repository = HistoryRepository(
+            dataDirectoryURL: directory,
+            protectedHistoryVault: vault
+        )
+        let original = ClipboardItem(
+            content: "legacy-protected-secret-2257",
+            kind: .text,
+            userTitle: "Legacy production key",
+            userNote: "Migrated visible note",
+            userAliases: ["legacy", "production"]
+        ).preparedForProtection(content: "legacy-protected-secret-2257")
+        try repository.save([original])
+
+        let database = try DatabaseQueue(
+            path: directory.appendingPathComponent("history.sqlite").path
+        )
+        try database.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE items SET
+                        user_title = NULL, user_note = NULL,
+                        user_aliases_json = NULL, protected_metadata_version = 0
+                    WHERE id = ?
+                    """,
+                arguments: [original.id.uuidString]
+            )
+            try db.execute(
+                sql: "DELETE FROM search_index WHERE item_id = ?",
+                arguments: [original.id.uuidString]
+            )
+        }
+
+        let migrated = try #require(repository.load().items.first)
+        #expect(migrated.userTitle == original.userTitle)
+        #expect(migrated.userNote == original.userNote)
+        #expect(migrated.userAliases == original.userAliases)
+        #expect(
+            try repository.matchingIDs(query: "legacy production") == [original.id]
+        )
+
+        vault.lockVault()
+        let locked = try #require(repository.load().items.first)
+        #expect(locked.protectionState == .locked)
+        #expect(locked.userTitle == original.userTitle)
+        #expect(locked.userNote == original.userNote)
+        #expect(locked.userAliases == original.userAliases)
+    }
+
+    @Test
+    func clearingVisibleMetadataWhileLockedDoesNotRestoreEncryptedCopies() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let vault = ProtectedHistoryVault(
+            keyStore: FixedProtectedHistoryKeyStore()
+        )
+        try vault.unlock(timeout: 60)
+        let repository = HistoryRepository(
+            dataDirectoryURL: directory,
+            protectedHistoryVault: vault
+        )
+        let original = ClipboardItem(
+            content: "clear-metadata-secret-7742",
+            kind: .text,
+            userTitle: "Temporary title",
+            userNote: "Temporary note",
+            userAliases: ["temporary"]
+        ).preparedForProtection(content: "clear-metadata-secret-7742")
+        try repository.save([original])
+
+        vault.lockVault()
+        var locked = try #require(repository.load().items.first)
+        locked.updateUserMetadata(title: nil, note: nil, aliases: nil)
+        try repository.save([locked])
+
+        try vault.unlock(timeout: 60)
+        let restored = try #require(repository.load().items.first)
+        #expect(restored.content == original.content)
+        #expect(restored.userTitle == nil)
+        #expect(restored.userNote == nil)
+        #expect(restored.userAliases == nil)
     }
 
     @Test
@@ -128,7 +229,7 @@ struct ProtectedHistoryTests {
                     data: Data(secret.utf8)
                 )
             ],
-            userNote: secret
+            userNote: "Visible migration label"
         )
 
         try repository.save([plaintext])
@@ -149,6 +250,67 @@ struct ProtectedHistoryTests {
             let data = try Data(contentsOf: file)
             #expect(data.range(of: secretData) == nil)
         }
+    }
+
+    @Test
+    func lockedSummaryUsesVisibleMetadataWithoutExposingContent() {
+        let titled = ClipboardItem(
+            content: "Protected item",
+            kind: .text,
+            userTitle: "Production credential",
+            userNote: "Used by deployment",
+            protectionState: .locked
+        )
+        let noted = ClipboardItem(
+            content: "Protected item",
+            kind: .text,
+            userNote: "Finance recovery code",
+            protectionState: .locked
+        )
+        let unlabeled = ClipboardItem(
+            content: "Protected item",
+            kind: .text,
+            protectionState: .locked
+        )
+
+        #expect(TextPreview.summary(for: titled) == "Production credential")
+        #expect(TextPreview.summary(for: noted) == "Finance recovery code")
+        #expect(TextPreview.summary(for: unlabeled) == "Protected item".localized)
+    }
+
+    @Test @MainActor
+    func movingItemToProtectedStorageLocksItImmediately() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let vault = ProtectedHistoryVault(
+            keyStore: FixedProtectedHistoryKeyStore()
+        )
+        try vault.unlock(timeout: 60)
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(name: .init("ProtectedHistoryImmediateLockTests")),
+            settings: AppSettings(defaults: defaults),
+            dataDirectoryURL: directory,
+            protectedHistoryVault: vault,
+            logger: SilentPastePilotLogger()
+        )
+        let item = ClipboardItem(
+            content: "credential-value-9081",
+            kind: .text,
+            userTitle: "Deployment credential",
+            userNote: "Visible label"
+        )
+        store.items = [item]
+
+        #expect(await store.protect(item.id))
+        #expect(!vault.isUnlocked)
+        let locked = try #require(store.items.first)
+        #expect(locked.protectionState == .locked)
+        #expect(locked.content == "Protected item".localized)
+        #expect(locked.userTitle == "Deployment credential")
+        #expect(locked.userNote == "Visible label")
     }
 
     @Test @MainActor

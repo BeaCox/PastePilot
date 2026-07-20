@@ -4,6 +4,23 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Moving an item into protected storage now encrypts it and immediately returns
+  protected history to the locked state. Protected history also locks when the
+  Mac sleeps or the login session becomes inactive.
+- Protected items now keep their user-authored title, note, and aliases visible,
+  editable, and searchable while locked, so otherwise concealed records remain
+  distinguishable. Clipboard content and derived content metadata stay encrypted.
+- Clicking a locked history row now starts authentication, matching the existing
+  keyboard behavior.
+
+### Fixed
+
+- Protected-item writes are now committed synchronously before plaintext cleanup
+  and locking, and unchanged protected payloads use stable fingerprints instead
+  of being rewritten because of randomized encryption output.
+
 ## [0.9.0] - 2026-07-20
 
 ### Added
@@ -15,8 +32,9 @@ All notable changes to PastePilot are documented in this file.
   protected storage. The encryption key is kept in the macOS Keychain,
   unlocking uses system authentication, and records lock again after a
   configurable timeout.
-- Locked protected items expose neither their content nor metadata to history
-  search, previews, clipboard actions, or plaintext external storage.
+- Locked protected items expose neither their clipboard content nor derived
+  content metadata to previews, clipboard actions, search, or plaintext external
+  storage. User-authored labels are intentionally visible for identification.
 
 ### Changed
 

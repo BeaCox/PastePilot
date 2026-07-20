@@ -46,7 +46,8 @@ you copied and turns it into useful developer actions.
   before they are written to history.
 - **Encrypt selected records.** Move text-based items into protected storage
   backed by a key in the macOS Keychain, with system authentication and an
-  automatic lock timeout.
+  automatic lock timeout. Protected items lock as soon as they are moved;
+  user titles, notes, and aliases remain visible so locked items stay identifiable.
 - **Keep clipboard data local.** No plugins, no telemetry, and no cloud sync.
 
 ## Demo
@@ -199,9 +200,11 @@ after an update, so close old DMGs and keep only the installed copy in
 - Custom actions only render bounded local templates; they cannot execute shell
   commands, access the network, or write files
 - Selected text-based records can be encrypted with AES-GCM. The encryption key
-  is stored in the macOS Keychain; protected content and metadata are omitted
-  from SQLite search data, and unlocking requires system authentication
-- Protected records lock automatically after the configured timeout. Their
+  is stored in the macOS Keychain; protected clipboard content is omitted from
+  SQLite search data, and unlocking requires system authentication. User titles,
+  notes, and aliases are visible metadata and remain searchable while locked
+- Protected records lock immediately when moved, after the configured unlock
+  timeout, and when the Mac sleeps or the login session becomes inactive. Their
   encrypted backup data can only be opened on a Mac that has the matching
   PastePilot Keychain key
 - Network access is limited to checking/downloading updates and optional, explicitly enabled link metadata requests

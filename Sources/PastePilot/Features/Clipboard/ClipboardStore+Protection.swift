@@ -33,14 +33,15 @@ extension ClipboardStore {
         }
     }
 
-    func lockProtectedHistory() {
-        guard hasProtectedItems else { return }
+    func lockProtectedHistory(postsNotice: Bool = true) {
         historyWriteQueue.flush()
         protectedHistoryVault.lockVault()
         reloadItemsForProtectionState()
         protectedHistoryLockTask?.cancel()
         protectedHistoryLockTask = nil
-        noticePoster.post(PastePilotNotice("Protected history locked".localized))
+        if postsNotice {
+            noticePoster.post(PastePilotNotice("Protected history locked".localized))
+        }
     }
 
     @discardableResult
@@ -50,26 +51,43 @@ extension ClipboardStore {
               let fullContent = content(for: original) else {
             return false
         }
+        let wasUnlocked = protectedHistoryVault.isUnlocked
         do {
             if !protectedHistoryVault.isUnlocked {
                 try await authenticateAndUnlockProtectedHistory()
-            } else {
-                scheduleProtectedHistoryLock()
             }
             guard let index = items.firstIndex(where: { $0.id == id }) else {
+                if !wasUnlocked {
+                    lockProtectedHistory(postsNotice: false)
+                }
                 return false
             }
-            items[index] = original.preparedForProtection(content: fullContent)
-            save()
             historyWriteQueue.flush()
+            items[index] = original.preparedForProtection(content: fullContent)
+            do {
+                try historyRepository.save(items)
+            } catch {
+                items[index] = original
+                throw error
+            }
             deleteTextFile(for: original)
-            try historyRepository.securelyCompactDatabase()
+            do {
+                try historyRepository.securelyCompactDatabase()
+            } catch {
+                logger.log(
+                    "PastePilot protected an item but could not compact old database pages: \(error)"
+                )
+            }
+            lockProtectedHistory(postsNotice: false)
             noticePoster.post(PastePilotNotice(
-                "Item moved to protected storage".localized,
+                "Item protected and locked".localized,
                 style: .success
             ))
             return true
         } catch {
+            if !wasUnlocked, protectedHistoryVault.isUnlocked {
+                lockProtectedHistory(postsNotice: false)
+            }
             logger.log("PastePilot could not protect history item: \(error)")
             noticePoster.post(PastePilotNotice(
                 "Item could not be protected".localized,

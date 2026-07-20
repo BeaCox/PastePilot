@@ -203,7 +203,7 @@ struct StorageSettingsPage: View {
                     .labelsHidden()
                     .frame(width: 150)
                 }
-                SettingsNote("Protected text records are encrypted with a key stored in your Mac Keychain and are excluded from search while locked.".localized)
+                SettingsNote("Protected content is encrypted with a key stored in your Mac Keychain. Titles, notes, and aliases remain visible and searchable while locked so you can identify items.".localized)
             }
 
             SettingsGroup(title: "Image Text Recognition".localized) {

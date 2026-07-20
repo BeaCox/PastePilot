@@ -162,25 +162,4 @@ enum MenuBarPopoverState {
                 .prefix(previewActionLimit)
         )
     }
-
-    static func shouldShowContextPreview(for item: ClipboardItem) -> Bool {
-        guard item.protectionState != .locked else { return false }
-        if item.kind == .file {
-            return false
-        }
-        if item.kind != .text {
-            return true
-        }
-        return item.hasExternalContent
-            || item.containsSensitiveData
-            || item.hasUserMetadata
-            || (item.contentCharacterCount ?? item.content.count) > TextPreview.summaryCharacterLimit
-            || (item.contentLineCount ?? Self.lineCount(for: item.content)) > 1
-    }
-
-    private static func lineCount(for text: String) -> Int {
-        text.reduce(1) { count, character in
-            character.isNewline ? count + 1 : count
-        }
-    }
 }

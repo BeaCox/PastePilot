@@ -255,16 +255,17 @@ extension MenuBarView {
                                 hoverChanged: { hovering in
                                     handleRowHover(item, hovering: hovering)
                                 },
-                                preview: {
-                                    selectedID = item.id
-                                    previewedID = item.id
-                                },
-                                performAction: performAction,
                                 editMetadata: {
                                     beginEditingMetadata(for: item)
                                 },
                                 copy: {
-                                    performAction(ClipboardActionFactory.copyAction(for: item))
+                                    if item.protectionState == .locked {
+                                        Task { await store.unlockProtectedHistory() }
+                                    } else {
+                                        performAction(
+                                            ClipboardActionFactory.copyAction(for: item)
+                                        )
+                                    }
                                 },
                                 togglePinned: {
                                     store.togglePinned(item.id)
@@ -408,6 +409,16 @@ private struct ClipboardMetadataEditor: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 14) {
+                if item?.isProtected == true {
+                    Label(
+                        "Titles, notes, and aliases stay visible and searchable while protected. Keep secrets in the content itself.".localized,
+                        systemImage: "info.circle"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
                 MetadataEditorField(title: "Title".localized, symbol: "textformat") {
                     TextField("Title".localized, text: $title)
                         .metadataEditorControl()

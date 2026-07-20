@@ -19,6 +19,9 @@ enum TextPreview {
         for item: ClipboardItem,
         userPatterns: [UserSensitivePattern] = []
     ) -> String {
+        if item.protectionState == .locked {
+            return protectedSummary(for: item)
+        }
         if let title = item.userTitle {
             return clippedText(from: title, maxCharacters: summaryCharacterLimit).text
                 .replacingOccurrences(of: "\n", with: " ")
@@ -30,6 +33,24 @@ enum TextPreview {
             ? ContentAnalyzer.redacted(snippet.text, userPatterns: userPatterns)
             : snippet.text
         return visibleText
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+    }
+
+    static func protectedSummary(for item: ClipboardItem) -> String {
+        let visibleLabel = [
+            item.userTitle,
+            item.userNote,
+            item.userAliases?.joined(separator: ", "),
+        ].compactMap { value in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }.first ?? "Protected item".localized
+
+        return clippedText(
+            from: visibleLabel,
+            maxCharacters: summaryCharacterLimit
+        ).text
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
     }

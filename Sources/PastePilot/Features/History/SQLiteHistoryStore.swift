@@ -19,6 +19,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         let richTextHTML: String?
         let pasteboardRepresentations: [ClipboardPasteboardRepresentation]
         let protectedPayload: Data?
+        let protectedPayloadDigest: String?
     }
 
     private let dataDirectoryURL: URL
@@ -71,7 +72,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             }
         }
 
-        let items = try dbQueue.read { db in
+        let items = try dbQueue.write { db in
             try loadItems(db: db)
         }
         let source: HistoryRepository.LoadSource
@@ -219,7 +220,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 user_note TEXT,
                 user_aliases_json TEXT,
                 is_protected INTEGER NOT NULL DEFAULT 0,
-                protected_payload BLOB
+                protected_payload BLOB,
+                protected_metadata_version INTEGER NOT NULL DEFAULT 0
             )
             """)
         try ensureColumn(
@@ -267,6 +269,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         try ensureColumn(
             "protected_payload",
             definition: "protected_payload BLOB",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "protected_metadata_version",
+            definition: "protected_metadata_version INTEGER NOT NULL DEFAULT 0",
             in: "items",
             db: db
         )
@@ -325,7 +333,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "6",
+            "7",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -347,6 +355,36 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                    var item = try? JSONDecoder().decode(ClipboardItem.self, from: plaintext) {
                     item.protectionState = .unlocked
                     item.isPinned = (row["is_pinned"] as Int) != 0
+                    let metadataVersion = row["protected_metadata_version"] as Int? ?? 0
+                    if metadataVersion > 0 {
+                        item.userTitle = row["user_title"]
+                        item.userNote = row["user_note"]
+                        item.userAliases = Self.decodedAliases(
+                            from: row["user_aliases_json"]
+                        )
+                    } else {
+                        // Schema v6 kept these labels only inside the encrypted
+                        // payload. Promote them on the first successful unlock.
+                        try db.execute(
+                            sql: """
+                                UPDATE items SET
+                                    user_title = ?, user_note = ?,
+                                    user_aliases_json = ?, protected_metadata_version = 1
+                                WHERE id = ?
+                                """,
+                            arguments: [
+                                item.userTitle,
+                                item.userNote,
+                                Self.encodedAliases(item.userAliases),
+                                id.uuidString,
+                            ]
+                        )
+                        try replaceSearchIndexEntry(
+                            itemID: id,
+                            body: Self.protectedMetadataSearchBody(for: item),
+                            db: db
+                        )
+                    }
                     return item
                 }
                 return ClipboardItem(
@@ -356,6 +394,11 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     createdAt: Date(timeIntervalSince1970: row["created_at"]),
                     isPinned: (row["is_pinned"] as Int) != 0,
                     containsSensitiveData: true,
+                    userTitle: row["user_title"],
+                    userNote: row["user_note"],
+                    userAliases: Self.decodedAliases(
+                        from: row["user_aliases_json"]
+                    ),
                     protectionState: .locked
                 )
             }
@@ -436,12 +479,14 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private func save(_ items: [ClipboardItem], db: Database) throws {
         let storedItems = try items.map { item in
             let protectedPayload: Data?
+            let protectedPayloadDigest: String?
             if item.protectionState == .unlocked {
-                protectedPayload = try protectedHistoryVault.encrypt(
-                    JSONEncoder().encode(item)
-                )
+                let encodedItem = try Self.encodedProtectedPayload(item)
+                protectedPayload = try protectedHistoryVault.encrypt(encodedItem)
+                protectedPayloadDigest = ContentDigest.sha256Hex(for: encodedItem)
             } else {
                 protectedPayload = nil
+                protectedPayloadDigest = nil
             }
             return StoredItem(
                 item: item,
@@ -451,7 +496,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 pasteboardRepresentations: item.isProtected
                     ? []
                     : item.pasteboardRepresentations ?? [],
-                protectedPayload: protectedPayload
+                protectedPayload: protectedPayload,
+                protectedPayloadDigest: protectedPayloadDigest
             )
         }
         let existingFingerprints = try Dictionary(
@@ -474,20 +520,35 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             let item = storedItem.item
             let itemID = item.id.uuidString
             if item.protectionState == .locked {
+                let existingMetadataVersion = try Int.fetchOne(
+                    db,
+                    sql: """
+                        SELECT protected_metadata_version FROM items WHERE id = ?
+                        """,
+                    arguments: [itemID]
+                ) ?? 0
+                let metadataVersion = existingMetadataVersion > 0 || item.hasUserMetadata
+                    ? 1
+                    : 0
                 try db.execute(
-                    sql: "UPDATE items SET is_pinned = ?, created_at = ? WHERE id = ?",
+                    sql: """
+                        UPDATE items SET
+                            is_pinned = ?, created_at = ?, user_title = ?,
+                            user_note = ?, user_aliases_json = ?,
+                            protected_metadata_version = ?
+                        WHERE id = ?
+                        """,
                     arguments: [
                         item.isPinned ? 1 : 0,
                         item.createdAt.timeIntervalSince1970,
+                        item.userTitle,
+                        item.userNote,
+                        Self.encodedAliases(item.userAliases),
+                        metadataVersion,
                         itemID,
                     ]
                 )
-                if try hasSearchIndex(db: db) {
-                    try db.execute(
-                        sql: "DELETE FROM search_index WHERE item_id = ?",
-                        arguments: [itemID]
-                    )
-                }
+                try refreshSearchIndex(for: storedItem, db: db)
                 continue
             }
             let fingerprint = Self.fingerprint(for: storedItem)
@@ -545,8 +606,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     content_digest, content_character_count,
                     content_line_count, content_byte_count, ocr_text,
                     user_title, user_note, user_aliases_json,
-                    is_protected, protected_payload
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    is_protected, protected_payload, protected_metadata_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
@@ -576,7 +637,8 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     user_note = excluded.user_note,
                     user_aliases_json = excluded.user_aliases_json,
                     is_protected = excluded.is_protected,
-                    protected_payload = excluded.protected_payload
+                    protected_payload = excluded.protected_payload,
+                    protected_metadata_version = excluded.protected_metadata_version
                 """,
             arguments: [
                 item.id.uuidString,
@@ -604,11 +666,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 protected ? nil : item.contentLineCount,
                 protected ? nil : item.contentByteCount,
                 protected ? nil : item.ocrText,
-                protected ? nil : item.userTitle,
-                protected ? nil : item.userNote,
-                protected ? nil : Self.encodedAliases(item.userAliases),
+                item.userTitle,
+                item.userNote,
+                Self.encodedAliases(item.userAliases),
                 protected ? 1 : 0,
-                storedItem.protectedPayload
+                storedItem.protectedPayload,
+                protected ? 1 : 0
             ]
         )
     }
@@ -677,21 +740,36 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         for storedItem: StoredItem,
         db: Database
     ) throws {
+        try replaceSearchIndexEntry(
+            itemID: storedItem.item.id,
+            body: searchBody(for: storedItem),
+            db: db
+        )
+    }
+
+    private func replaceSearchIndexEntry(
+        itemID: UUID,
+        body: String,
+        db: Database
+    ) throws {
         guard try hasSearchIndex(db: db) else { return }
-        let id = storedItem.item.id.uuidString
+        let id = itemID.uuidString
         try db.execute(
             sql: "DELETE FROM search_index WHERE item_id = ?",
             arguments: [id]
         )
-        guard !storedItem.item.isProtected else { return }
         try db.execute(
             sql: "INSERT INTO search_index (item_id, body) VALUES (?, ?)",
-            arguments: [id, searchBody(for: storedItem)]
+            arguments: [id, body]
         )
     }
 
     private func searchBody(for storedItem: StoredItem) -> String {
         let item = storedItem.item
+        if item.isProtected {
+            return Self.protectedMetadataSearchBody(for: item)
+        }
+
         let primaryContent: String
         if let fileName = item.contentFileName,
            let externalContent = try? String(
@@ -717,6 +795,20 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             item.userNote,
             item.userAliases?.joined(separator: "\n"),
             storedItem.filePaths.joined(separator: "\n")
+        ]
+        .compactMap { value in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
+        .joined(separator: "\n")
+    }
+
+    private static func protectedMetadataSearchBody(for item: ClipboardItem) -> String {
+        [
+            item.kind.rawValue,
+            item.userTitle,
+            item.userNote,
+            item.userAliases?.joined(separator: "\n"),
         ]
         .compactMap { value in
             guard let value, !value.isEmpty else { return nil }
@@ -785,15 +877,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private static func fingerprint(for storedItem: StoredItem) -> String {
         let item = storedItem.item
         if item.isProtected {
-            let encryptedDigest = storedItem.protectedPayload.map {
-                ContentDigest.sha256Hex(for: $0)
-            } ?? "locked"
             return ContentDigest.sha256Hex(
                 for: [
                     item.id.uuidString,
                     item.kind.rawValue,
                     item.isPinned ? "1" : "0",
-                    encryptedDigest,
+                    storedItem.protectedPayloadDigest ?? "locked",
                 ].joined(separator: "\u{1E}")
             )
         }
@@ -874,6 +963,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             return nil
         }
         return String(data: data, encoding: .utf8)
+    }
+
+    private static func encodedProtectedPayload(_ item: ClipboardItem) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(item)
     }
 
     private static func decodedJSON<Value: Decodable>(from json: String?) -> Value? {
