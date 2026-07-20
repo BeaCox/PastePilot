@@ -4,6 +4,17 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Unlocked protected rows now expose a direct lock button and a matching
+  context-menu action, so protected history can be locked immediately.
+
+### Fixed
+
+- Protected-history unlock now reuses the successful system-authentication
+  context for the Keychain read, avoiding a second authentication flow after
+  Touch ID or the login password succeeds.
+
 ## [0.10.0] - 2026-07-20
 
 ### Added

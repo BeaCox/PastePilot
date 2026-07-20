@@ -14,6 +14,7 @@ struct CompactHistoryItem: View {
     let copy: () -> Void
     let togglePinned: () -> Void
     let toggleProtection: () -> Void
+    let lockProtectedItems: () -> Void
     let togglePasteStack: () -> Void
     let delete: () -> Void
     @State private var isHovering = false
@@ -88,6 +89,13 @@ struct CompactHistoryItem: View {
             )
 
             if showsActions {
+                if item.protectionState == .unlocked {
+                    RowIconButton(
+                        symbol: "lock",
+                        label: "Lock Protected Items".localized,
+                        action: lockProtectedItems
+                    )
+                }
                 RowIconButton(
                     symbol: pasteStackPosition == nil
                         ? "square.stack.3d.up"
@@ -133,6 +141,9 @@ struct CompactHistoryItem: View {
         .contextMenu {
             Button("Edit Details…".localized, action: editMetadata)
             if item.kind != .image && item.kind != .file {
+                if item.protectionState == .unlocked {
+                    Button("Lock Protected Items".localized, action: lockProtectedItems)
+                }
                 Button(protectionActionTitle, action: toggleProtection)
             }
         }

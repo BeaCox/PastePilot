@@ -24,21 +24,24 @@ enum ProtectedHistoryError: LocalizedError {
 }
 
 protocol ProtectedHistoryKeyStoring: Sendable {
-    func loadOrCreateKey() throws -> Data
+    func loadOrCreateKey(authenticationContext: LAContext?) throws -> Data
 }
 
 struct KeychainProtectedHistoryKeyStore: ProtectedHistoryKeyStoring {
     private let service = "com.beacox.PastePilot.protected-history"
     private let account = "encryption-key-v1"
 
-    func loadOrCreateKey() throws -> Data {
-        let lookup: [String: Any] = [
+    func loadOrCreateKey(authenticationContext: LAContext?) throws -> Data {
+        var lookup: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
+        if let authenticationContext {
+            lookup[kSecUseAuthenticationContext as String] = authenticationContext
+        }
         var result: CFTypeRef?
         let status = SecItemCopyMatching(lookup as CFDictionary, &result)
         if status == errSecSuccess {
@@ -67,7 +70,7 @@ struct KeychainProtectedHistoryKeyStore: ProtectedHistoryKeyStoring {
         ]
         let addStatus = SecItemAdd(addition as CFDictionary, nil)
         if addStatus == errSecDuplicateItem {
-            return try loadOrCreateKey()
+            return try loadOrCreateKey(authenticationContext: authenticationContext)
         }
         guard addStatus == errSecSuccess else {
             throw ProtectedHistoryError.keychain(addStatus)
@@ -93,8 +96,13 @@ final class ProtectedHistoryVault: @unchecked Sendable {
         }
     }
 
-    func unlock(timeout: TimeInterval) throws {
-        let key = try keyStore.loadOrCreateKey()
+    func unlock(
+        timeout: TimeInterval,
+        authenticationContext: LAContext? = nil
+    ) throws {
+        let key = try keyStore.loadOrCreateKey(
+            authenticationContext: authenticationContext
+        )
         guard key.count == 32 else { throw ProtectedHistoryError.invalidPayload }
         lock.withLock {
             keyData = key
@@ -144,11 +152,11 @@ final class ProtectedHistoryVault: @unchecked Sendable {
 }
 
 protocol ProtectedHistoryAuthenticating: Sendable {
-    func authenticate() async throws
+    func authenticate() async throws -> LAContext
 }
 
 struct ProtectedHistoryAuthenticator: ProtectedHistoryAuthenticating {
-    func authenticate() async throws {
+    func authenticate() async throws -> LAContext {
         let context = LAContext()
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
@@ -158,5 +166,6 @@ struct ProtectedHistoryAuthenticator: ProtectedHistoryAuthenticating {
             .deviceOwnerAuthentication,
             localizedReason: "Unlock protected PastePilot history".localized
         )
+        return context
     }
 }

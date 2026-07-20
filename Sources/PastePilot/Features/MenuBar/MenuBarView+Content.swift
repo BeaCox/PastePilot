@@ -332,6 +332,9 @@ extension MenuBarView {
                                         }
                                     }
                                 },
+                                lockProtectedItems: {
+                                    store.lockProtectedHistory()
+                                },
                                 togglePasteStack: {
                                     togglePasteStackItem(item)
                                 },

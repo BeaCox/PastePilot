@@ -140,8 +140,11 @@ extension ClipboardStore {
         let vault = protectedHistoryVault
         let timeout = TimeInterval(settings.protectedHistoryUnlockTimeoutSeconds)
         let task = Task {
-            try await authenticator.authenticate()
-            try vault.unlock(timeout: timeout)
+            let authenticationContext = try await authenticator.authenticate()
+            try vault.unlock(
+                timeout: timeout,
+                authenticationContext: authenticationContext
+            )
         }
         protectedHistoryAuthenticationTask = task
         defer { protectedHistoryAuthenticationTask = nil }

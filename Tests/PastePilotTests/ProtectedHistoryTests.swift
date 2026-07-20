@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import GRDB
+import LocalAuthentication
 import Testing
 @testable import PastePilot
 
@@ -11,20 +12,44 @@ private struct FixedProtectedHistoryKeyStore: ProtectedHistoryKeyStoring {
         key = Data(repeating: byte, count: 32)
     }
 
-    func loadOrCreateKey() throws -> Data {
+    func loadOrCreateKey(authenticationContext: LAContext?) throws -> Data {
         key
+    }
+}
+
+private final class RecordingProtectedHistoryKeyStore: @unchecked Sendable,
+    ProtectedHistoryKeyStoring {
+    private let lock = NSLock()
+    private let key = Data(repeating: 0xB4, count: 32)
+    private var contexts: [LAContext?] = []
+
+    func loadOrCreateKey(authenticationContext: LAContext?) throws -> Data {
+        lock.withLock {
+            contexts.append(authenticationContext)
+        }
+        return key
+    }
+
+    var loadCount: Int {
+        lock.withLock { contexts.count }
+    }
+
+    var latestContext: LAContext? {
+        lock.withLock { contexts.last ?? nil }
     }
 }
 
 private actor ControlledProtectedHistoryAuthenticator: ProtectedHistoryAuthenticating {
     private var continuations: [CheckedContinuation<Void, Never>] = []
     private(set) var authenticationCount = 0
+    nonisolated let context = LAContext()
 
-    func authenticate() async throws {
+    func authenticate() async throws -> LAContext {
         authenticationCount += 1
         await withCheckedContinuation { continuation in
             continuations.append(continuation)
         }
+        return context
     }
 
     func waitUntilAuthenticationStarts() async {
@@ -329,9 +354,10 @@ struct ProtectedHistoryTests {
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let authenticator = ControlledProtectedHistoryAuthenticator()
+        let keyStore = RecordingProtectedHistoryKeyStore()
         let noticePoster = CapturingNoticePoster()
         let vault = ProtectedHistoryVault(
-            keyStore: FixedProtectedHistoryKeyStore()
+            keyStore: keyStore
         )
         let store = ClipboardStore(
             pasteboard: NSPasteboard(name: .init("ProtectedHistoryUnlockTests")),
@@ -354,10 +380,50 @@ struct ProtectedHistoryTests {
         #expect(await store.unlockProtectedHistory())
         let authenticationCount = await authenticator.authenticationCount
         #expect(authenticationCount == 1)
+        #expect(keyStore.loadCount == 1)
+        #expect(keyStore.latestContext === authenticator.context)
         #expect(
             noticePoster.notices.filter {
                 $0.message == "Protected history unlocked".localized
             }.count == 1
+        )
+    }
+
+    @Test @MainActor
+    func unlockedProtectedItemsCanBeLockedManually() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let noticePoster = CapturingNoticePoster()
+        let vault = ProtectedHistoryVault(
+            keyStore: FixedProtectedHistoryKeyStore()
+        )
+        try vault.unlock(timeout: 60)
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(name: .init("ProtectedHistoryManualLockTests")),
+            settings: AppSettings(defaults: defaults),
+            dataDirectoryURL: directory,
+            protectedHistoryVault: vault,
+            noticePoster: noticePoster,
+            logger: SilentPastePilotLogger()
+        )
+        let content = "manually-locked-secret-551"
+        let protectedItem = ClipboardItem(content: content, kind: .text)
+            .preparedForProtection(content: content)
+        try store.historyRepository.save([protectedItem])
+        store.items = store.historyRepository.load().items
+
+        store.lockProtectedHistory()
+
+        #expect(!vault.isUnlocked)
+        let lockedItem = try #require(store.items.first)
+        #expect(lockedItem.protectionState == .locked)
+        #expect(lockedItem.content == "Protected item".localized)
+        #expect(
+            noticePoster.notices.last?.message
+                == "Protected history locked".localized
         )
     }
 
