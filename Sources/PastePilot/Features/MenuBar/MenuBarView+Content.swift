@@ -43,6 +43,7 @@ extension MenuBarView {
         }
         .sheet(isPresented: metadataEditorPresented) {
             ClipboardMetadataEditor(
+                item: editingMetadataItem,
                 title: $metadataTitle,
                 note: $metadataNote,
                 aliases: $metadataAliases,
@@ -383,9 +384,15 @@ extension MenuBarView {
             }
         )
     }
+
+    private var editingMetadataItem: ClipboardItem? {
+        guard let editingMetadataItemID else { return nil }
+        return store.items.first { $0.id == editingMetadataItemID }
+    }
 }
 
 private struct ClipboardMetadataEditor: View {
+    let item: ClipboardItem?
     @Binding var title: String
     @Binding var note: String
     @Binding var aliases: String
@@ -393,46 +400,138 @@ private struct ClipboardMetadataEditor: View {
     let cancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Edit Details".localized)
-                .font(.headline)
+        VStack(spacing: 0) {
+            editorHeader
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Title".localized)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("Title".localized, text: $title)
-                    .textFieldStyle(.roundedBorder)
+            Divider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                MetadataEditorField(title: "Title".localized, symbol: "textformat") {
+                    TextField("Title".localized, text: $title)
+                        .metadataEditorControl()
+                }
+
+                MetadataEditorField(title: "Aliases".localized, symbol: "tag") {
+                    TextField("Aliases".localized, text: $aliases)
+                        .metadataEditorControl()
+                }
+
+                MetadataEditorField(title: "Note".localized, symbol: "note.text") {
+                    TextEditor(text: $note)
+                        .font(.body)
+                        .frame(minHeight: 92)
+                        .scrollContentBackground(.hidden)
+                        .padding(5)
+                        .background(
+                            Color.primary.opacity(0.035),
+                            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(.quaternary, lineWidth: 0.5)
+                        }
+                }
             }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Aliases".localized)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextField("Aliases".localized, text: $aliases)
-                    .textFieldStyle(.roundedBorder)
+            .padding(14)
+            .background(
+                .quaternary.opacity(0.4),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.quaternary, lineWidth: 0.5)
             }
+            .padding(18)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Note".localized)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextEditor(text: $note)
-                    .font(.body)
-                    .frame(minHeight: 90)
-                    .scrollContentBackground(.hidden)
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
-            }
+            Divider()
 
-            HStack {
+            HStack(spacing: 8) {
                 Spacer()
                 Button("Cancel".localized, action: cancel)
                     .keyboardShortcut(.cancelAction)
                 Button("Save".localized, action: save)
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
+            .controlSize(.regular)
+            .padding(.horizontal, 18)
+            .frame(height: 52)
         }
-        .padding(18)
-        .frame(width: 360)
+        .frame(width: MenuBarPopoverState.preferredWidth)
+    }
+
+    private var editorHeader: some View {
+        HStack(spacing: 10) {
+            if let item {
+                ContentKindBadge(kind: item.kind, size: 32)
+            } else {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Edit Details".localized)
+                    .font(.headline)
+
+                if let item {
+                    HStack(spacing: 4) {
+                        Text(item.sourceAppName ?? "Unknown Source".localized)
+                        Text("·")
+                        Text(item.kind.localizedTitle)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            if let item {
+                Label {
+                    Text(item.createdAt, style: .relative)
+                } icon: {
+                    Image(systemName: "clock")
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
+private struct MetadataEditorField<Content: View>: View {
+    let title: String
+    let symbol: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: symbol)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            content
+        }
+    }
+}
+
+private extension View {
+    func metadataEditorControl() -> some View {
+        textFieldStyle(.plain)
+            .padding(.horizontal, 9)
+            .frame(height: 30)
+            .background(
+                Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(.quaternary, lineWidth: 0.5)
+            }
     }
 }
