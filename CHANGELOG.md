@@ -4,6 +4,8 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-07-21
+
 ### Added
 
 - Unlocked protected rows now expose a direct lock button and a matching
