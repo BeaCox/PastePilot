@@ -34,6 +34,8 @@ you copied and turns it into useful developer actions.
   then search clipboard history by visible text.
 - **Organize history without changing the copied content.** Add titles, notes,
   and aliases that stay searchable and survive duplicate recapture.
+- **Paste several fragments in one pass.** Queue up to 50 history items, choose
+  the separator between them, and paste the stack into the active app in order.
 - **Build your own safe transforms.** Create local template actions for text or
   image metadata using bounded placeholders and transforms—without running
   shell commands, accessing the network, or writing files.
@@ -224,6 +226,8 @@ after an update, so close old DMGs and keep only the installed copy in
 - **Search** — filter history by content, type, source app, pin state, OCR text,
   titles, notes, and aliases
 - **Pin** — pinned items stay at the top and survive cleanup
+- **Paste stack** — queue multiple items and paste them into the active app in
+  the selected order
 - **Edit details** — add searchable titles, notes, and aliases from the context menu
 - **Drag & drop** — drop files or images directly into the popover
 
@@ -252,11 +256,13 @@ after an update, so close old DMGs and keep only the installed copy in
 - Image size limit
 - Sensitive-content storage policy
 - Custom sensitive-content patterns
+- Protected-history unlock timeout
 - Safe custom template actions for text and image metadata
 - OCR mode, language mode, and manual re-run for existing images
 - Local QR/barcode re-scan for existing images
 - Optional link title and description fetching (disabled by default)
 - Paste after copying
+- Paste stack separator
 - Menu bar icon style (PastePilot / Clipboard / Paperplane)
 - Theme mode (follow system / light / dark)
 - Hover preview toggle

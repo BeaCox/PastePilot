@@ -4,6 +4,32 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-20
+
+### Added
+
+- Clipboard items can be queued into a paste stack and pasted into the active
+  app in queue order, with progress, cancellation, a 50-item limit, and
+  configurable newline, space, tab, comma, or custom separators.
+- Selected text-based history items can be moved into AES-GCM encrypted
+  protected storage. The encryption key is kept in the macOS Keychain,
+  unlocking uses system authentication, and records lock again after a
+  configurable timeout.
+- Locked protected items expose neither their content nor metadata to history
+  search, previews, clipboard actions, or plaintext external storage.
+
+### Changed
+
+- The clipboard metadata editor now matches the menu bar panel's visual
+  language, including content-kind context, source information, grouped fields,
+  and a distinct action footer.
+
+### Maintenance
+
+- Added coverage for paste stack ordering, separators, cancellation, limits,
+  protected-history encryption, locked-state behavior, persistence, and
+  settings validation.
+
 ## [0.8.0] - 2026-07-19
 
 ### Added
