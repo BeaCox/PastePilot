@@ -21,6 +21,8 @@ struct ClipboardDetailPreview: View {
                         FileListPreview(urls: item.fileURLs)
                             .frame(minHeight: 60, maxHeight: 220)
                     } else if item.kind == .richText,
+                              (!item.requiresSensitiveContentReveal
+                                  || revealsSensitiveContent),
                               !TextPreview.shouldUsePlainTextFallback(forRichText: item) {
                         RichTextPreview(item: item)
                             .frame(minHeight: 80, maxHeight: 180)
@@ -129,7 +131,7 @@ private struct PlainTextPreview: View {
     private var renderedPreview: (content: AttributedString, isTruncated: Bool) {
         if item.kind == .json,
            !item.hasExternalContent,
-           (!item.containsSensitiveData || revealsSensitiveContent),
+           (!item.requiresSensitiveContentReveal || revealsSensitiveContent),
            TextPreview.canFormatJSON(item.content),
            let formatted = ContentTransformer.formatJSON(item.content) {
             let snippet = TextPreview.clippedText(

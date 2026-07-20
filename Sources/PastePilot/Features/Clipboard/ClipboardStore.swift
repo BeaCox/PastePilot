@@ -18,6 +18,7 @@ final class ClipboardStore: ObservableObject {
     let ocrService: any OCRService
     let linkMetadataService: any LinkMetadataService
     let barcodeDetectionService: any BarcodeDetectionService
+    let protectedHistoryAuthenticator: any ProtectedHistoryAuthenticating
     let noticePoster: any PastePilotNoticePosting
     let logger: any PastePilotLogging
     nonisolated(unsafe) var timer: Timer?
@@ -36,6 +37,7 @@ final class ClipboardStore: ObservableObject {
     var discardAllImageSavesBeforeGeneration = 0
     var deletedImageDigestGenerations: [String: Int] = [:]
     var protectedHistoryLockTask: Task<Void, Never>?
+    var protectedHistoryAuthenticationTask: Task<Void, Error>?
     let thumbnailCache = NSCache<NSString, NSImage>()
 
     struct PendingDeletion {
@@ -54,6 +56,7 @@ final class ClipboardStore: ObservableObject {
         linkMetadataService: any LinkMetadataService = URLSessionLinkMetadataService(),
         barcodeDetectionService: any BarcodeDetectionService = VisionBarcodeDetectionService(),
         protectedHistoryVault: ProtectedHistoryVault = ProtectedHistoryVault(),
+        protectedHistoryAuthenticator: any ProtectedHistoryAuthenticating = ProtectedHistoryAuthenticator(),
         noticePoster: any PastePilotNoticePosting = NotificationCenterPastePilotNoticePoster(),
         logger: any PastePilotLogging = NSLogPastePilotLogger()
     ) {
@@ -79,6 +82,7 @@ final class ClipboardStore: ObservableObject {
         self.ocrService = ocrService
         self.linkMetadataService = linkMetadataService
         self.barcodeDetectionService = barcodeDetectionService
+        self.protectedHistoryAuthenticator = protectedHistoryAuthenticator
         self.noticePoster = noticePoster
         self.logger = logger
         self.lastChangeCount = pasteboard.changeCount
@@ -91,6 +95,7 @@ final class ClipboardStore: ObservableObject {
         linkMetadataTasksByItemID.values.forEach { $0.cancel() }
         barcodeTasksByItemID.values.forEach { $0.cancel() }
         protectedHistoryLockTask?.cancel()
+        protectedHistoryAuthenticationTask?.cancel()
         historyWriteQueue.flush()
     }
 
@@ -267,7 +272,7 @@ final class ClipboardStore: ObservableObject {
         }
 
         let isTruncated = (item.contentCharacterCount ?? prefix.count) > prefix.count
-        guard item.containsSensitiveData && !revealsSensitiveContent else {
+        guard item.requiresSensitiveContentReveal && !revealsSensitiveContent else {
             return TextPreview.Snippet(text: prefix, isTruncated: isTruncated)
         }
         return TextPreview.Snippet(

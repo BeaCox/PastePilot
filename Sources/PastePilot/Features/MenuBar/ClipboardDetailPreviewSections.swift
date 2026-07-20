@@ -77,7 +77,8 @@ struct ClipboardPreviewMetadata: View {
             if let barcodes = item.detectedBarcodes, !barcodes.isEmpty {
                 BarcodeMetadataPreview(
                     barcodes: barcodes,
-                    hidesContent: item.containsSensitiveData && !revealsSensitiveContent
+                    hidesContent: item.requiresSensitiveContentReveal
+                        && !revealsSensitiveContent
                 )
                     .padding(.bottom, 8)
             }
@@ -102,7 +103,7 @@ struct ClipboardPreviewMetadata: View {
             .font(.caption2)
             .foregroundStyle(.tertiary)
 
-            if item.containsSensitiveData {
+            if item.requiresSensitiveContentReveal {
                 HStack {
                     Label(
                         revealsSensitiveContent

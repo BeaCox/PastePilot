@@ -204,6 +204,10 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         protectionState == .unlocked
     }
 
+    var requiresSensitiveContentReveal: Bool {
+        containsSensitiveData && !isProtected
+    }
+
     mutating func updateUserMetadata(
         title: String?,
         note: String?,

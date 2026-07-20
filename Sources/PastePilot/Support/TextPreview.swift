@@ -64,7 +64,7 @@ enum TextPreview {
         let snippet = clippedText(from: item.content, maxCharacters: maxCharacters)
         let isTruncated = snippet.isTruncated
             || (item.contentCharacterCount ?? snippet.text.count) > snippet.text.count
-        guard item.containsSensitiveData && !revealsSensitiveContent else {
+        guard item.requiresSensitiveContentReveal && !revealsSensitiveContent else {
             return Snippet(text: snippet.text, isTruncated: isTruncated)
         }
         return Snippet(

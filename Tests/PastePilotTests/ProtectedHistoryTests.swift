@@ -16,6 +16,30 @@ private struct FixedProtectedHistoryKeyStore: ProtectedHistoryKeyStoring {
     }
 }
 
+private actor ControlledProtectedHistoryAuthenticator: ProtectedHistoryAuthenticating {
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+    private(set) var authenticationCount = 0
+
+    func authenticate() async throws {
+        authenticationCount += 1
+        await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+        }
+    }
+
+    func waitUntilAuthenticationStarts() async {
+        while authenticationCount == 0 {
+            await Task.yield()
+        }
+    }
+
+    func succeed() {
+        let pendingContinuations = continuations
+        continuations.removeAll(keepingCapacity: false)
+        pendingContinuations.forEach { $0.resume() }
+    }
+}
+
 @Suite
 struct ProtectedHistoryTests {
     @Test
@@ -276,6 +300,65 @@ struct ProtectedHistoryTests {
         #expect(TextPreview.summary(for: titled) == "Production credential")
         #expect(TextPreview.summary(for: noted) == "Finance recovery code")
         #expect(TextPreview.summary(for: unlabeled) == "Protected item".localized)
+    }
+
+    @Test
+    func unlockedProtectedSensitiveContentDoesNotRequireSeparateReveal() {
+        let content = "api-token=protected-secret-417"
+        let item = ClipboardItem(
+            content: content,
+            kind: .text,
+            containsSensitiveData: true,
+            protectionState: .unlocked
+        )
+
+        #expect(!item.requiresSensitiveContentReveal)
+        #expect(
+            TextPreview.detailSnippet(
+                for: item,
+                revealsSensitiveContent: false
+            ).text == content
+        )
+    }
+
+    @Test @MainActor
+    func concurrentUnlockRequestsShareOneAuthentication() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let authenticator = ControlledProtectedHistoryAuthenticator()
+        let noticePoster = CapturingNoticePoster()
+        let vault = ProtectedHistoryVault(
+            keyStore: FixedProtectedHistoryKeyStore()
+        )
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(name: .init("ProtectedHistoryUnlockTests")),
+            settings: AppSettings(defaults: defaults),
+            dataDirectoryURL: directory,
+            protectedHistoryVault: vault,
+            protectedHistoryAuthenticator: authenticator,
+            noticePoster: noticePoster,
+            logger: SilentPastePilotLogger()
+        )
+
+        let firstRequest = Task { await store.unlockProtectedHistory() }
+        await authenticator.waitUntilAuthenticationStarts()
+        let secondRequest = Task { await store.unlockProtectedHistory() }
+        await Task.yield()
+        await authenticator.succeed()
+
+        #expect(await firstRequest.value)
+        #expect(await secondRequest.value)
+        #expect(await store.unlockProtectedHistory())
+        let authenticationCount = await authenticator.authenticationCount
+        #expect(authenticationCount == 1)
+        #expect(
+            noticePoster.notices.filter {
+                $0.message == "Protected history unlocked".localized
+            }.count == 1
+        )
     }
 
     @Test @MainActor

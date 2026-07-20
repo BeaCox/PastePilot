@@ -143,7 +143,11 @@ final class ProtectedHistoryVault: @unchecked Sendable {
     }
 }
 
-struct ProtectedHistoryAuthenticator {
+protocol ProtectedHistoryAuthenticating: Sendable {
+    func authenticate() async throws
+}
+
+struct ProtectedHistoryAuthenticator: ProtectedHistoryAuthenticating {
     func authenticate() async throws {
         let context = LAContext()
         var error: NSError?

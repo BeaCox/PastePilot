@@ -16,12 +16,14 @@ extension ClipboardStore {
     @discardableResult
     func unlockProtectedHistory() async -> Bool {
         do {
-            try await authenticateAndUnlockProtectedHistory()
+            let performedAuthentication = try await ensureProtectedHistoryUnlocked()
             reloadItemsForProtectionState()
-            noticePoster.post(PastePilotNotice(
-                "Protected history unlocked".localized,
-                style: .success
-            ))
+            if performedAuthentication {
+                noticePoster.post(PastePilotNotice(
+                    "Protected history unlocked".localized,
+                    style: .success
+                ))
+            }
             return true
         } catch {
             logger.log("PastePilot could not unlock protected history: \(error)")
@@ -39,6 +41,8 @@ extension ClipboardStore {
         reloadItemsForProtectionState()
         protectedHistoryLockTask?.cancel()
         protectedHistoryLockTask = nil
+        protectedHistoryAuthenticationTask?.cancel()
+        protectedHistoryAuthenticationTask = nil
         if postsNotice {
             noticePoster.post(PastePilotNotice("Protected history locked".localized))
         }
@@ -54,7 +58,7 @@ extension ClipboardStore {
         let wasUnlocked = protectedHistoryVault.isUnlocked
         do {
             if !protectedHistoryVault.isUnlocked {
-                try await authenticateAndUnlockProtectedHistory()
+                _ = try await ensureProtectedHistoryUnlocked()
             }
             guard let index = items.firstIndex(where: { $0.id == id }) else {
                 if !wasUnlocked {
@@ -121,12 +125,29 @@ extension ClipboardStore {
         return true
     }
 
-    private func authenticateAndUnlockProtectedHistory() async throws {
-        try await ProtectedHistoryAuthenticator().authenticate()
-        try protectedHistoryVault.unlock(
-            timeout: TimeInterval(settings.protectedHistoryUnlockTimeoutSeconds)
-        )
+    private func ensureProtectedHistoryUnlocked() async throws -> Bool {
+        if protectedHistoryVault.isUnlocked {
+            scheduleProtectedHistoryLock()
+            return false
+        }
+        if let protectedHistoryAuthenticationTask {
+            try await protectedHistoryAuthenticationTask.value
+            scheduleProtectedHistoryLock()
+            return false
+        }
+
+        let authenticator = protectedHistoryAuthenticator
+        let vault = protectedHistoryVault
+        let timeout = TimeInterval(settings.protectedHistoryUnlockTimeoutSeconds)
+        let task = Task {
+            try await authenticator.authenticate()
+            try vault.unlock(timeout: timeout)
+        }
+        protectedHistoryAuthenticationTask = task
+        defer { protectedHistoryAuthenticationTask = nil }
+        try await task.value
         scheduleProtectedHistoryLock()
+        return true
     }
 
     private func scheduleProtectedHistoryLock() {
