@@ -42,6 +42,9 @@ you copied and turns it into useful developer actions.
 - **Handle sensitive workflows deliberately.** Pause capture, ignore the next
   copy, define custom sensitive patterns, or skip/redact sensitive matches
   before they are written to history.
+- **Encrypt selected records.** Move text-based items into protected storage
+  backed by a key in the macOS Keychain, with system authentication and an
+  automatic lock timeout.
 - **Keep clipboard data local.** No plugins, no telemetry, and no cloud sync.
 
 ## Demo
@@ -193,6 +196,12 @@ after an update, so close old DMGs and keep only the installed copy in
 - Clipboard data stays local and no telemetry is collected
 - Custom actions only render bounded local templates; they cannot execute shell
   commands, access the network, or write files
+- Selected text-based records can be encrypted with AES-GCM. The encryption key
+  is stored in the macOS Keychain; protected content and metadata are omitted
+  from SQLite search data, and unlocking requires system authentication
+- Protected records lock automatically after the configured timeout. Their
+  encrypted backup data can only be opened on a Mac that has the matching
+  PastePilot Keychain key
 - Network access is limited to checking/downloading updates and optional, explicitly enabled link metadata requests
 - History is stored in SQLite at `~/Library/Application Support/PastePilot/history.sqlite`
 - Existing `history.json` and `history.backup.json` files are retained for migration and downgrade compatibility

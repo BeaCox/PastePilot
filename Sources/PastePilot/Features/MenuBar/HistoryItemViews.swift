@@ -14,6 +14,7 @@ struct CompactHistoryItem: View {
     let editMetadata: () -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
+    let toggleProtection: () -> Void
     let togglePasteStack: () -> Void
     let delete: () -> Void
     @State private var isHovering = false
@@ -22,7 +23,9 @@ struct CompactHistoryItem: View {
         HStack(spacing: 3) {
             Button(action: copy) {
                 HStack(spacing: 7) {
-                    if item.containsSensitiveData {
+                    if item.isProtected {
+                        ProtectedContentBadge(isLocked: !item.isProtectedContentAvailable)
+                    } else if item.containsSensitiveData {
                         SensitiveContentBadge(size: 22)
                     } else if let image {
                         Image(nsImage: image)
@@ -67,6 +70,7 @@ struct CompactHistoryItem: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(item.kind.localizedTitle), \(summary)")
             .accessibilityHint("Copies the original clipboard content.".localized)
+            .disabled(item.protectionState == .locked)
 
             if showsActions {
                 RowIconButton(
@@ -113,6 +117,7 @@ struct CompactHistoryItem: View {
         }
         .contextMenu {
             Button("Copy original".localized, action: copy)
+                .disabled(item.protectionState == .locked)
             if MenuBarPopoverState.shouldShowContextPreview(for: item) {
                 Button("Preview".localized, action: preview)
             }
@@ -133,23 +138,42 @@ struct CompactHistoryItem: View {
                 }
             }
             Button(item.isPinned ? "Unpin".localized : "Pin to Top".localized, action: togglePinned)
+            if item.kind != .image && item.kind != .file {
+                Button(protectionActionTitle, action: toggleProtection)
+            }
             Button(
                 pasteStackPosition == nil
                     ? "Add to Paste Stack".localized
                     : "Remove from Paste Stack".localized,
                 action: togglePasteStack
             )
-            Button("Edit Details…".localized, action: editMetadata)
+            if item.protectionState != .locked {
+                Button("Edit Details…".localized, action: editMetadata)
+            }
             Divider()
             Button("Delete".localized, role: .destructive, action: delete)
         }
     }
 
     private var summary: String {
-        TextPreview.summary(
+        if item.protectionState == .locked {
+            return "Protected item".localized
+        }
+        return TextPreview.summary(
             for: item,
             userPatterns: userSensitivePatterns
         )
+    }
+
+    private var protectionActionTitle: String {
+        switch item.protectionState {
+        case .locked:
+            "Unlock Protected Items".localized
+        case .unlocked:
+            "Remove Protection".localized
+        case nil:
+            "Move to Protected Storage".localized
+        }
     }
 
     private var showsActions: Bool {
@@ -232,6 +256,25 @@ struct SensitiveContentBadge: View {
                 in: RoundedRectangle(cornerRadius: size * 0.24)
             )
             .accessibilityLabel("Sensitive content hidden".localized)
+    }
+}
+
+struct ProtectedContentBadge: View {
+    let isLocked: Bool
+    var size: CGFloat = 24
+
+    var body: some View {
+        Image(systemName: isLocked ? "lock.fill" : "lock.open.fill")
+            .font(.system(size: size * 0.43, weight: .medium))
+            .foregroundStyle(.blue)
+            .frame(width: size, height: size)
+            .background(
+                Color.blue.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: size * 0.24)
+            )
+            .accessibilityLabel(
+                isLocked ? "Protected item locked".localized : "Protected item unlocked".localized
+            )
     }
 }
 

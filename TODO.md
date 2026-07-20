@@ -100,7 +100,7 @@ Current PastePilot baseline:
   ordered detector chain with analyzers that can report scores, explanations,
   and secondary traits such as language, JWT, YAML, XML, SQL, Base64, email, or
   UUID.
-- [ ] Add protected storage for sensitive items. Evaluate Keychain-backed
+- [x] Add protected storage for sensitive items. Evaluate Keychain-backed
   encryption for selected records or collections, optional unlock timeout, and
   migration behavior from existing plaintext history.
 - [x] Add sequential paste / paste stack. Support selecting multiple items and

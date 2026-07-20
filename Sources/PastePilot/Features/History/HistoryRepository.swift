@@ -26,6 +26,7 @@ struct HistoryRepository: Sendable {
     }
 
     let dataDirectoryURL: URL
+    let protectedHistoryVault: ProtectedHistoryVault
     private let sqliteStore: SQLiteHistoryStore
 
     private var historyURL: URL {
@@ -44,15 +45,20 @@ struct HistoryRepository: Sendable {
         dataDirectoryURL.appendingPathComponent("text", isDirectory: true)
     }
 
-    init(dataDirectoryURL: URL) {
+    init(
+        dataDirectoryURL: URL,
+        protectedHistoryVault: ProtectedHistoryVault = ProtectedHistoryVault()
+    ) {
         self.dataDirectoryURL = dataDirectoryURL
+        self.protectedHistoryVault = protectedHistoryVault
         self.sqliteStore = SQLiteHistoryStore(
             dataDirectoryURL: dataDirectoryURL,
             databaseURL: dataDirectoryURL.appendingPathComponent("history.sqlite"),
             textDirectoryURL: dataDirectoryURL.appendingPathComponent(
                 "text",
                 isDirectory: true
-            )
+            ),
+            protectedHistoryVault: protectedHistoryVault
         )
     }
 
@@ -79,6 +85,10 @@ struct HistoryRepository: Sendable {
 
     func matchingIDs(query: String) throws -> Set<UUID> {
         try sqliteStore.matchingIDs(query: query)
+    }
+
+    func securelyCompactDatabase() throws {
+        try sqliteStore.securelyCompactDatabase()
     }
 
     func exportBackup(to archiveURL: URL) throws -> HistoryBackupResult {

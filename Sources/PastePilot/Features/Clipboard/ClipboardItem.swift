@@ -47,6 +47,11 @@ enum ContentKind: String, Codable, CaseIterable {
     }
 }
 
+enum ClipboardProtectionState: String, Codable {
+    case unlocked
+    case locked
+}
+
 struct ClipboardItem: Identifiable, Codable, Equatable {
     let id: UUID
     let content: String
@@ -79,6 +84,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     var userTitle: String?
     var userNote: String?
     var userAliases: [String]?
+    var protectionState: ClipboardProtectionState?
 
     init(
         id: UUID = UUID(),
@@ -111,7 +117,8 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         ocrText: String? = nil,
         userTitle: String? = nil,
         userNote: String? = nil,
-        userAliases: [String]? = nil
+        userAliases: [String]? = nil,
+        protectionState: ClipboardProtectionState? = nil
     ) {
         self.id = id
         self.content = content
@@ -146,6 +153,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.userTitle = Self.normalizedMetadataText(userTitle)
         self.userNote = Self.normalizedMetadataText(userNote)
         self.userAliases = Self.normalizedAliases(userAliases)
+        self.protectionState = protectionState
     }
 
     var isImage: Bool {
@@ -186,6 +194,14 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
 
     var hasDetectedBarcodes: Bool {
         detectedBarcodes?.isEmpty == false
+    }
+
+    var isProtected: Bool {
+        protectionState != nil
+    }
+
+    var isProtectedContentAvailable: Bool {
+        protectionState == .unlocked
     }
 
     mutating func updateUserMetadata(
@@ -244,6 +260,42 @@ enum ClipboardHistoryOrdering {
 }
 
 extension ClipboardItem {
+    func preparedForProtection(content fullContent: String) -> ClipboardItem {
+        ClipboardItem(
+            id: id,
+            content: fullContent,
+            kind: kind,
+            createdAt: createdAt,
+            isPinned: isPinned,
+            containsSensitiveData: containsSensitiveData,
+            sourceAppName: sourceAppName,
+            sourceBundleIdentifier: sourceBundleIdentifier,
+            imageFileName: nil,
+            imageWidth: nil,
+            imageHeight: nil,
+            imageByteCount: nil,
+            imageDigest: nil,
+            imagePerceptualHash: nil,
+            imageSourceURL: imageSourceURL,
+            imageOriginalPath: nil,
+            linkMetadata: linkMetadata,
+            detectedBarcodes: detectedBarcodes,
+            filePaths: nil,
+            richTextRTFBase64: richTextRTFBase64,
+            richTextHTML: richTextHTML,
+            pasteboardRepresentations: pasteboardRepresentations,
+            contentDigest: contentDigest ?? ContentDigest.sha256Hex(for: fullContent),
+            contentCharacterCount: contentCharacterCount ?? fullContent.count,
+            contentLineCount: contentLineCount,
+            contentByteCount: contentByteCount ?? fullContent.utf8.count,
+            ocrText: ocrText,
+            userTitle: userTitle,
+            userNote: userNote,
+            userAliases: userAliases,
+            protectionState: .unlocked
+        )
+    }
+
     func externalizedContent(fileName: String, digest: String? = nil) -> ClipboardItem {
         ClipboardItem(
             id: id,
@@ -281,7 +333,8 @@ extension ClipboardItem {
             ocrText: ocrText,
             userTitle: userTitle,
             userNote: userNote,
-            userAliases: userAliases
+            userAliases: userAliases,
+            protectionState: protectionState
         )
     }
 }

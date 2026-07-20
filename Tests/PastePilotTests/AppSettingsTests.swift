@@ -39,6 +39,10 @@ struct AppSettingsTests {
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
         #expect(settings.customSensitivePatterns.isEmpty)
+        #expect(
+            settings.protectedHistoryUnlockTimeoutSeconds
+                == AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
+        )
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
@@ -61,6 +65,7 @@ struct AppSettingsTests {
         project raven
         regex:customer-[0-9]+
         """
+        settings.protectedHistoryUnlockTimeoutSeconds = 900
         settings.ignoredBundleIdentifiers = """
         com.apple.keychainaccess
 
@@ -100,6 +105,7 @@ struct AppSettingsTests {
             restored.ignoredBundleIdentifierSet
                 == ["com.apple.keychainaccess", "com.example.private"]
         )
+        #expect(restored.protectedHistoryUnlockTimeoutSeconds == 900)
 
         restored.reset()
         #expect(restored.historyLimit == 100)
@@ -131,6 +137,10 @@ struct AppSettingsTests {
                 == AppSettings.defaultSensitiveContentStoragePolicy
         )
         #expect(restored.customSensitivePatterns.isEmpty)
+        #expect(
+            restored.protectedHistoryUnlockTimeoutSeconds
+                == AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
+        )
     }
 
     @Test
@@ -144,6 +154,7 @@ struct AppSettingsTests {
         defaults.set(1_024, forKey: "imageSizeLimitMB")
         defaults.set(42, forKey: "storageLimitMB")
         defaults.set(42, forKey: "historyTimeoutSeconds")
+        defaults.set(42, forKey: "protectedHistoryUnlockTimeoutSeconds")
         defaults.set("missing-icon", forKey: "menuBarIconStyle")
         defaults.set("close-everything", forKey: "pasteCloseBehavior")
         defaults.set("vertical-rule", forKey: "pasteStackSeparator")
@@ -164,6 +175,10 @@ struct AppSettingsTests {
         #expect(
             settings.historyTimeoutSeconds
                 == AppSettings.defaultHistoryTimeoutSeconds
+        )
+        #expect(
+            settings.protectedHistoryUnlockTimeoutSeconds
+                == AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
         )
         #expect(settings.menuBarIconStyle == MenuBarIconStyle.pastepilot.rawValue)
         #expect(settings.pasteCloseBehavior == PasteCloseBehavior.closePreview.rawValue)

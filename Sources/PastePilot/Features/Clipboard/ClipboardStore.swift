@@ -8,6 +8,7 @@ final class ClipboardStore: ObservableObject {
     let pasteboard: NSPasteboard
     let settings: AppSettings
     let historyRepository: HistoryRepository
+    let protectedHistoryVault: ProtectedHistoryVault
     let historyWriteQueue: HistoryWriteQueue
     let imageStore: ClipboardImageStore
     let textStore: ClipboardTextStore
@@ -34,6 +35,7 @@ final class ClipboardStore: ObservableObject {
     var imageSaveGeneration = 0
     var discardAllImageSavesBeforeGeneration = 0
     var deletedImageDigestGenerations: [String: Int] = [:]
+    var protectedHistoryLockTask: Task<Void, Never>?
     let thumbnailCache = NSCache<NSString, NSImage>()
 
     init(
@@ -45,14 +47,19 @@ final class ClipboardStore: ObservableObject {
         ocrService: any OCRService = VisionOCRService(),
         linkMetadataService: any LinkMetadataService = URLSessionLinkMetadataService(),
         barcodeDetectionService: any BarcodeDetectionService = VisionBarcodeDetectionService(),
+        protectedHistoryVault: ProtectedHistoryVault = ProtectedHistoryVault(),
         noticePoster: any PastePilotNoticePosting = NotificationCenterPastePilotNoticePoster(),
         logger: any PastePilotLogging = NSLogPastePilotLogger()
     ) {
         let dataDirectoryURL = dataDirectoryURL ?? Self.defaultDataDirectoryURL
-        let historyRepository = HistoryRepository(dataDirectoryURL: dataDirectoryURL)
+        let historyRepository = HistoryRepository(
+            dataDirectoryURL: dataDirectoryURL,
+            protectedHistoryVault: protectedHistoryVault
+        )
         self.pasteboard = pasteboard
         self.settings = settings ?? .shared
         self.historyRepository = historyRepository
+        self.protectedHistoryVault = protectedHistoryVault
         self.historyWriteQueue = HistoryWriteQueue(repository: historyRepository)
         self.imageStore = ClipboardImageStore(
             directoryURL: dataDirectoryURL.appendingPathComponent("images", isDirectory: true)
@@ -77,6 +84,7 @@ final class ClipboardStore: ObservableObject {
         ocrTasksByItemID.values.forEach { $0.cancel() }
         linkMetadataTasksByItemID.values.forEach { $0.cancel() }
         barcodeTasksByItemID.values.forEach { $0.cancel() }
+        protectedHistoryLockTask?.cancel()
         historyWriteQueue.flush()
     }
 
@@ -123,6 +131,7 @@ final class ClipboardStore: ObservableObject {
     }
 
     func copyOriginalItem(_ item: ClipboardItem) -> Bool {
+        guard item.protectionState != .locked else { return false }
         if copyPasteboardRepresentations(for: item) {
             return true
         }

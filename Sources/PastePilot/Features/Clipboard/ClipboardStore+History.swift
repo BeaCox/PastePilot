@@ -177,6 +177,7 @@ extension ClipboardStore {
         var didExternalize = false
         items = items.map { item in
             guard item.contentFileName == nil,
+                  !item.isProtected,
                   item.kind != .file,
                   item.kind != .image,
                   item.content.utf8.count > ClipboardTextStore.externalizationByteLimit else {

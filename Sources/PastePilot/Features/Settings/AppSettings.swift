@@ -140,6 +140,8 @@ final class AppSettings: ObservableObject {
         604_800,
         2_592_000
     ]
+    static let defaultProtectedHistoryUnlockTimeoutSeconds = 300
+    static let supportedProtectedHistoryUnlockTimeoutsSeconds = [60, 300, 900, 3_600]
     static let defaultOCRRecognitionMode = OCRRecognitionMode.accurate.rawValue
     static let defaultOCRLanguageMode = OCRLanguageMode.multilingual.rawValue
     static let defaultAppearanceMode = AppAppearanceMode.system.rawValue
@@ -215,6 +217,10 @@ final class AppSettings: ObservableObject {
             "historyTimeoutSeconds",
             default: AppSettings.defaultHistoryTimeoutSeconds
         )
+        static let protectedHistoryUnlockTimeoutSeconds = AppSetting(
+            "protectedHistoryUnlockTimeoutSeconds",
+            default: AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
+        )
         static let pasteCloseBehavior = AppSetting(
             "pasteCloseBehavior",
             default: PasteCloseBehavior.closePreview.rawValue
@@ -278,6 +284,8 @@ final class AppSettings: ObservableObject {
                 plainTextHotKeyModifiers.key: plainTextHotKeyModifiers.defaultValue,
                 menuBarIconStyle.key: menuBarIconStyle.defaultValue,
                 historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
+                protectedHistoryUnlockTimeoutSeconds.key:
+                    protectedHistoryUnlockTimeoutSeconds.defaultValue,
                 pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
                 pasteAfterCopying.key: pasteAfterCopying.defaultValue,
                 pasteStackSeparator.key: pasteStackSeparator.defaultValue,
@@ -417,6 +425,16 @@ final class AppSettings: ObservableObject {
                 for: Setting.historyTimeoutSeconds,
                 supportedValues: Self.supportedHistoryTimeoutsSeconds
             ) { historyTimeoutSeconds = $0 }
+        }
+    }
+
+    @Published var protectedHistoryUnlockTimeoutSeconds: Int {
+        didSet {
+            persistSupportedInteger(
+                protectedHistoryUnlockTimeoutSeconds,
+                for: Setting.protectedHistoryUnlockTimeoutSeconds,
+                supportedValues: Self.supportedProtectedHistoryUnlockTimeoutsSeconds
+            ) { protectedHistoryUnlockTimeoutSeconds = $0 }
         }
     }
 
@@ -588,6 +606,11 @@ final class AppSettings: ObservableObject {
             in: defaults,
             supportedValues: Self.supportedHistoryTimeoutsSeconds
         )
+        protectedHistoryUnlockTimeoutSeconds = Self.supportedInteger(
+            for: Setting.protectedHistoryUnlockTimeoutSeconds,
+            in: defaults,
+            supportedValues: Self.supportedProtectedHistoryUnlockTimeoutsSeconds
+        )
         pasteCloseBehavior = Self.supportedRawValue(
             for: Setting.pasteCloseBehavior,
             in: defaults,
@@ -675,6 +698,8 @@ final class AppSettings: ObservableObject {
         plainTextHotKeyModifiers = Setting.plainTextHotKeyModifiers.defaultValue
         menuBarIconStyle = Setting.menuBarIconStyle.defaultValue
         historyTimeoutSeconds = Setting.historyTimeoutSeconds.defaultValue
+        protectedHistoryUnlockTimeoutSeconds =
+            Setting.protectedHistoryUnlockTimeoutSeconds.defaultValue
         pasteCloseBehavior = Setting.pasteCloseBehavior.defaultValue
         pasteAfterCopying = Setting.pasteAfterCopying.defaultValue
         pasteStackSeparator = Setting.pasteStackSeparator.defaultValue
@@ -855,6 +880,10 @@ final class AppSettings: ObservableObject {
         persist(plainTextHotKeyModifiers, for: Setting.plainTextHotKeyModifiers)
         persist(menuBarIconStyle, for: Setting.menuBarIconStyle)
         persist(historyTimeoutSeconds, for: Setting.historyTimeoutSeconds)
+        persist(
+            protectedHistoryUnlockTimeoutSeconds,
+            for: Setting.protectedHistoryUnlockTimeoutSeconds
+        )
         persist(pasteCloseBehavior, for: Setting.pasteCloseBehavior)
         persist(pasteAfterCopying, for: Setting.pasteAfterCopying)
         persist(pasteStackSeparator, for: Setting.pasteStackSeparator)

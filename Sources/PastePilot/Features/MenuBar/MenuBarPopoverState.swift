@@ -164,6 +164,7 @@ enum MenuBarPopoverState {
     }
 
     static func shouldShowContextPreview(for item: ClipboardItem) -> Bool {
+        guard item.protectionState != .locked else { return false }
         if item.kind == .file {
             return false
         }

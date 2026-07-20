@@ -150,6 +150,7 @@ enum ClipboardActionFactory {
         for item: ClipboardItem,
         customActions: [CustomClipboardAction] = []
     ) -> [ClipboardAction] {
+        guard item.protectionState != .locked else { return [] }
         if item.kind == .image, let fileName = item.imageFileName {
             var actions: [ClipboardAction]
             if let originalPath = item.imageOriginalPath {
@@ -289,6 +290,13 @@ enum ClipboardActionFactory {
     }
 
     static func copyAction(for item: ClipboardItem) -> ClipboardAction {
+        if item.protectionState == .locked {
+            return ClipboardActionRegistry.copyText.action(
+                effect: .copyItem(item.id),
+                inputSource: .itemIdentity,
+                outputEffect: .clipboardItem
+            )
+        }
         if item.hasPasteboardRepresentations {
             return originalCopyAction(for: item)
         }
@@ -318,6 +326,9 @@ enum ClipboardActionFactory {
     }
 
     static func originalCopyAction(for item: ClipboardItem) -> ClipboardAction {
+        if item.protectionState == .locked {
+            return copyAction(for: item)
+        }
         let definition = item.hasPasteboardRepresentations
             ? ClipboardActionRegistry.copyOriginalRepresentation
             : ClipboardActionRegistry.copyText
@@ -340,6 +351,7 @@ enum ClipboardActionFactory {
         for item: ClipboardItem,
         customActions: [CustomClipboardAction] = []
     ) -> [ClipboardAction] {
+        guard item.protectionState != .locked else { return [] }
         let copy = copyAction(for: item)
         return [copy] + actions(for: item, customActions: customActions).filter {
             $0.id != copy.id

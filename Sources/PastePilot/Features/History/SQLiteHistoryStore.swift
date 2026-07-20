@@ -18,22 +18,26 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         let richTextRTFBase64: String?
         let richTextHTML: String?
         let pasteboardRepresentations: [ClipboardPasteboardRepresentation]
+        let protectedPayload: Data?
     }
 
     private let dataDirectoryURL: URL
     private let databaseURL: URL
     private let textDirectoryURL: URL
+    private let protectedHistoryVault: ProtectedHistoryVault
     private let dbQueueLock = NSLock()
     private var cachedDBQueue: DatabaseQueue?
 
     init(
         dataDirectoryURL: URL,
         databaseURL: URL,
-        textDirectoryURL: URL
+        textDirectoryURL: URL,
+        protectedHistoryVault: ProtectedHistoryVault
     ) {
         self.dataDirectoryURL = dataDirectoryURL
         self.databaseURL = databaseURL
         self.textDirectoryURL = textDirectoryURL
+        self.protectedHistoryVault = protectedHistoryVault
     }
 
     func load(
@@ -138,6 +142,14 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         }
     }
 
+    func securelyCompactDatabase() throws {
+        let dbQueue = try databaseQueue()
+        try dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "PRAGMA wal_checkpoint(TRUNCATE)")
+            try db.execute(sql: "VACUUM")
+        }
+    }
+
     private func databaseQueue() throws -> DatabaseQueue {
         dbQueueLock.lock()
         defer { dbQueueLock.unlock() }
@@ -158,6 +170,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         var configuration = Configuration()
         configuration.prepareDatabase { db in
             try db.execute(sql: "PRAGMA foreign_keys = ON")
+            try db.execute(sql: "PRAGMA secure_delete = ON")
         }
         let dbQueue = try DatabaseQueue(path: databaseURL.path, configuration: configuration)
         try dbQueue.writeWithoutTransaction { db in
@@ -204,7 +217,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 ocr_text TEXT,
                 user_title TEXT,
                 user_note TEXT,
-                user_aliases_json TEXT
+                user_aliases_json TEXT,
+                is_protected INTEGER NOT NULL DEFAULT 0,
+                protected_payload BLOB
             )
             """)
         try ensureColumn(
@@ -240,6 +255,18 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         try ensureColumn(
             "user_aliases_json",
             definition: "user_aliases_json TEXT",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "is_protected",
+            definition: "is_protected INTEGER NOT NULL DEFAULT 0",
+            in: "items",
+            db: db
+        )
+        try ensureColumn(
+            "protected_payload",
+            definition: "protected_payload BLOB",
             in: "items",
             db: db
         )
@@ -298,7 +325,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "5",
+            "6",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -313,6 +340,25 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             guard let id = UUID(uuidString: row["id"]) else { return nil }
             let kindRaw: String = row["kind"]
             let kind = ContentKind(rawValue: kindRaw) ?? .text
+            let isProtected = (row["is_protected"] as Int? ?? 0) != 0
+            if isProtected {
+                if let encryptedPayload: Data = row["protected_payload"],
+                   let plaintext = try? protectedHistoryVault.decrypt(encryptedPayload),
+                   var item = try? JSONDecoder().decode(ClipboardItem.self, from: plaintext) {
+                    item.protectionState = .unlocked
+                    item.isPinned = (row["is_pinned"] as Int) != 0
+                    return item
+                }
+                return ClipboardItem(
+                    id: id,
+                    content: "Protected item".localized,
+                    kind: kind,
+                    createdAt: Date(timeIntervalSince1970: row["created_at"]),
+                    isPinned: (row["is_pinned"] as Int) != 0,
+                    containsSensitiveData: true,
+                    protectionState: .locked
+                )
+            }
             let filePaths = try String.fetchAll(
                 db,
                 sql: """
@@ -388,13 +434,24 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     }
 
     private func save(_ items: [ClipboardItem], db: Database) throws {
-        let storedItems = items.map { item in
-            StoredItem(
+        let storedItems = try items.map { item in
+            let protectedPayload: Data?
+            if item.protectionState == .unlocked {
+                protectedPayload = try protectedHistoryVault.encrypt(
+                    JSONEncoder().encode(item)
+                )
+            } else {
+                protectedPayload = nil
+            }
+            return StoredItem(
                 item: item,
-                filePaths: item.filePaths ?? [],
-                richTextRTFBase64: item.richTextRTFBase64,
-                richTextHTML: item.richTextHTML,
-                pasteboardRepresentations: item.pasteboardRepresentations ?? []
+                filePaths: item.isProtected ? [] : item.filePaths ?? [],
+                richTextRTFBase64: item.isProtected ? nil : item.richTextRTFBase64,
+                richTextHTML: item.isProtected ? nil : item.richTextHTML,
+                pasteboardRepresentations: item.isProtected
+                    ? []
+                    : item.pasteboardRepresentations ?? [],
+                protectedPayload: protectedPayload
             )
         }
         let existingFingerprints = try Dictionary(
@@ -416,6 +473,23 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         for storedItem in storedItems {
             let item = storedItem.item
             let itemID = item.id.uuidString
+            if item.protectionState == .locked {
+                try db.execute(
+                    sql: "UPDATE items SET is_pinned = ?, created_at = ? WHERE id = ?",
+                    arguments: [
+                        item.isPinned ? 1 : 0,
+                        item.createdAt.timeIntervalSince1970,
+                        itemID,
+                    ]
+                )
+                if try hasSearchIndex(db: db) {
+                    try db.execute(
+                        sql: "DELETE FROM search_index WHERE item_id = ?",
+                        arguments: [itemID]
+                    )
+                }
+                continue
+            }
             let fingerprint = Self.fingerprint(for: storedItem)
             let needsItemRefresh = existingFingerprints[itemID] != fingerprint
             let needsSearchRefresh = indexedIDs.map { !$0.contains(itemID) } ?? false
@@ -457,6 +531,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         db: Database
     ) throws {
         let item = storedItem.item
+        let protected = item.isProtected
         try db.execute(
             sql: """
                 INSERT INTO items (
@@ -469,8 +544,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     detected_barcodes_json, content_file_name,
                     content_digest, content_character_count,
                     content_line_count, content_byte_count, ocr_text,
-                    user_title, user_note, user_aliases_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    user_title, user_note, user_aliases_json,
+                    is_protected, protected_payload
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
@@ -498,37 +574,41 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     ocr_text = excluded.ocr_text,
                     user_title = excluded.user_title,
                     user_note = excluded.user_note,
-                    user_aliases_json = excluded.user_aliases_json
+                    user_aliases_json = excluded.user_aliases_json,
+                    is_protected = excluded.is_protected,
+                    protected_payload = excluded.protected_payload
                 """,
             arguments: [
                 item.id.uuidString,
                 fingerprint,
-                item.content,
+                protected ? "" : item.content,
                 item.kind.rawValue,
                 item.createdAt.timeIntervalSince1970,
                 item.isPinned ? 1 : 0,
-                item.containsSensitiveData ? 1 : 0,
-                item.sourceAppName,
-                item.sourceBundleIdentifier,
-                item.imageFileName,
-                item.imageWidth,
-                item.imageHeight,
-                item.imageByteCount,
-                item.imageDigest,
-                item.imagePerceptualHash,
-                item.imageSourceURL,
-                item.imageOriginalPath,
-                Self.encodedJSON(item.linkMetadata),
-                Self.encodedJSON(item.detectedBarcodes),
-                item.contentFileName,
-                item.contentDigest,
-                item.contentCharacterCount,
-                item.contentLineCount,
-                item.contentByteCount,
-                item.ocrText,
-                item.userTitle,
-                item.userNote,
-                Self.encodedAliases(item.userAliases)
+                protected ? 1 : (item.containsSensitiveData ? 1 : 0),
+                protected ? nil : item.sourceAppName,
+                protected ? nil : item.sourceBundleIdentifier,
+                protected ? nil : item.imageFileName,
+                protected ? nil : item.imageWidth,
+                protected ? nil : item.imageHeight,
+                protected ? nil : item.imageByteCount,
+                protected ? nil : item.imageDigest,
+                protected ? nil : item.imagePerceptualHash,
+                protected ? nil : item.imageSourceURL,
+                protected ? nil : item.imageOriginalPath,
+                protected ? nil : Self.encodedJSON(item.linkMetadata),
+                protected ? nil : Self.encodedJSON(item.detectedBarcodes),
+                protected ? nil : item.contentFileName,
+                protected ? nil : item.contentDigest,
+                protected ? nil : item.contentCharacterCount,
+                protected ? nil : item.contentLineCount,
+                protected ? nil : item.contentByteCount,
+                protected ? nil : item.ocrText,
+                protected ? nil : item.userTitle,
+                protected ? nil : item.userNote,
+                protected ? nil : Self.encodedAliases(item.userAliases),
+                protected ? 1 : 0,
+                storedItem.protectedPayload
             ]
         )
     }
@@ -603,6 +683,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             sql: "DELETE FROM search_index WHERE item_id = ?",
             arguments: [id]
         )
+        guard !storedItem.item.isProtected else { return }
         try db.execute(
             sql: "INSERT INTO search_index (item_id, body) VALUES (?, ?)",
             arguments: [id, searchBody(for: storedItem)]
@@ -703,6 +784,19 @@ final class SQLiteHistoryStore: @unchecked Sendable {
 
     private static func fingerprint(for storedItem: StoredItem) -> String {
         let item = storedItem.item
+        if item.isProtected {
+            let encryptedDigest = storedItem.protectedPayload.map {
+                ContentDigest.sha256Hex(for: $0)
+            } ?? "locked"
+            return ContentDigest.sha256Hex(
+                for: [
+                    item.id.uuidString,
+                    item.kind.rawValue,
+                    item.isPinned ? "1" : "0",
+                    encryptedDigest,
+                ].joined(separator: "\u{1E}")
+            )
+        }
         var parts: [String] = []
         parts.reserveCapacity(24 + storedItem.pasteboardRepresentations.count * 3)
         parts.append(item.id.uuidString)

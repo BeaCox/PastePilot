@@ -191,6 +191,19 @@ struct StorageSettingsPage: View {
                 }
                 SettingsNote("Use one literal match per line. Prefix regular expressions with regex:. Invalid regular expressions are ignored.".localized)
                 SettingsNote("Redacted or skipped sensitive clipboard content is not recoverable from history.".localized)
+                SettingsRow(title: "Protected Unlock Timeout".localized) {
+                    Picker("", selection: $settings.protectedHistoryUnlockTimeoutSeconds) {
+                        ForEach(
+                            AppSettings.supportedProtectedHistoryUnlockTimeoutsSeconds,
+                            id: \.self
+                        ) { timeout in
+                            Text(protectedHistoryTimeoutLabel(timeout)).tag(timeout)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 150)
+                }
+                SettingsNote("Protected text records are encrypted with a key stored in your Mac Keychain and are excluded from search while locked.".localized)
             }
 
             SettingsGroup(title: "Image Text Recognition".localized) {
@@ -265,6 +278,11 @@ struct StorageSettingsPage: View {
             fromByteCount: byteCount,
             countStyle: .file
         )
+    }
+
+    private func protectedHistoryTimeoutLabel(_ seconds: Int) -> String {
+        if seconds < 60 { return "%d seconds".localized(seconds) }
+        return "%d minutes".localized(seconds / 60)
     }
 }
 

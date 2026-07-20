@@ -103,6 +103,19 @@ extension MenuBarView {
                 Button("Ignore Next Copy".localized) {
                     store.ignoreNextCopy()
                 }
+                if store.hasProtectedItems {
+                    Button(
+                        store.hasLockedProtectedItems
+                            ? "Unlock Protected Items".localized
+                            : "Lock Protected Items".localized
+                    ) {
+                        if store.hasLockedProtectedItems {
+                            Task { await store.unlockProtectedHistory() }
+                        } else {
+                            store.lockProtectedHistory()
+                        }
+                    }
+                }
                 Divider()
                 Button("Clear Unpinned".localized) {
                     beginClearUnpinnedConfirmation()
@@ -254,6 +267,18 @@ extension MenuBarView {
                                 },
                                 togglePinned: {
                                     store.togglePinned(item.id)
+                                },
+                                toggleProtection: {
+                                    Task {
+                                        switch item.protectionState {
+                                        case .locked:
+                                            await store.unlockProtectedHistory()
+                                        case .unlocked:
+                                            await store.removeProtection(item.id)
+                                        case nil:
+                                            await store.protect(item.id)
+                                        }
+                                    }
                                 },
                                 togglePasteStack: {
                                     togglePasteStackItem(item)

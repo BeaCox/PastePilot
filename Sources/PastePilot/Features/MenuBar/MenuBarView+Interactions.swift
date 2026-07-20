@@ -145,6 +145,13 @@ extension MenuBarView {
     }
 
     func togglePasteStackItem(_ item: ClipboardItem) {
+        guard item.protectionState != .locked else {
+            showNotice(PastePilotNotice(
+                "Unlock protected history before adding this item.".localized,
+                style: .warning
+            ))
+            return
+        }
         let wasQueued = pasteStack.contains(item.id)
         let isQueued = pasteStack.toggle(item.id)
         if !wasQueued, !isQueued {
@@ -324,6 +331,7 @@ extension MenuBarView {
         }
         interactionState.closePreviewTask?.cancel()
         selectedID = item.id
+        guard item.protectionState != .locked else { return }
         guard settings.hoverPreviewEnabled else { return }
         if previewedItem != nil {
             previewedID = item.id
@@ -361,6 +369,7 @@ extension MenuBarView {
         if previewedItem != nil {
             closePreview()
         } else {
+            guard selectedItem?.protectionState != .locked else { return }
             previewedID = selectedItem?.id
         }
     }
@@ -371,6 +380,10 @@ extension MenuBarView {
     }
 
     func performPrimaryAction(for item: ClipboardItem) {
+        guard item.protectionState != .locked else {
+            Task { await store.unlockProtectedHistory() }
+            return
+        }
         let action = ClipboardActionFactory.copyAction(for: item)
         performAction(action)
     }
