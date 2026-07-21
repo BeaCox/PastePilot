@@ -821,4 +821,22 @@ struct ContentBehaviorTests {
             #expect(style.previewImage.size.height > 0)
         }
     }
+
+    @Test
+    func statusItemIconPresentationTracksPublishedValues() {
+        #expect(
+            StatusItemIconPresentation.resolve(
+                hasItems: true,
+                iconStyle: MenuBarIconStyle.clipboard.rawValue,
+                monitoringEnabled: false
+            ) == .paused
+        )
+        #expect(
+            StatusItemIconPresentation.resolve(
+                hasItems: true,
+                iconStyle: MenuBarIconStyle.clipboard.rawValue,
+                monitoringEnabled: true
+            ) == .active(style: .clipboard, filled: true)
+        )
+    }
 }

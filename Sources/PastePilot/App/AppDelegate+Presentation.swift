@@ -3,6 +3,23 @@ import Combine
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum StatusItemIconPresentation: Equatable {
+    case paused
+    case active(style: MenuBarIconStyle, filled: Bool)
+
+    static func resolve(
+        hasItems: Bool,
+        iconStyle: String,
+        monitoringEnabled: Bool
+    ) -> Self {
+        guard monitoringEnabled else { return .paused }
+        return .active(
+            style: MenuBarIconStyle(rawValue: iconStyle) ?? .pastepilot,
+            filled: hasItems
+        )
+    }
+}
+
 extension AppDelegate {
     @objc func togglePopover() {
         guard let button = statusItem?.button else { return }
@@ -121,22 +138,34 @@ extension AppDelegate {
             button.addSubview(dropView)
         }
         statusItem = item
-        updateStatusItemIcon()
+        updateStatusItemIcon(
+            presentation: .resolve(
+                hasItems: !store.items.isEmpty,
+                iconStyle: settings.menuBarIconStyle,
+                monitoringEnabled: settings.monitoringEnabled
+            )
+        )
 
         Publishers.CombineLatest3(
             store.$items.map { !$0.isEmpty }.removeDuplicates(),
             settings.$menuBarIconStyle.removeDuplicates(),
             settings.$monitoringEnabled.removeDuplicates()
         )
-        .sink { [weak self] _, _, _ in
-            self?.updateStatusItemIcon()
+        .sink { [weak self] hasItems, iconStyle, monitoringEnabled in
+            self?.updateStatusItemIcon(
+                presentation: .resolve(
+                    hasItems: hasItems,
+                    iconStyle: iconStyle,
+                    monitoringEnabled: monitoringEnabled
+                )
+            )
         }
         .store(in: &cancellables)
     }
 
-    private func updateStatusItemIcon() {
+    private func updateStatusItemIcon(presentation: StatusItemIconPresentation) {
         guard let button = statusItem?.button else { return }
-        guard settings.monitoringEnabled else {
+        guard case let .active(style, filled) = presentation else {
             let image = NSImage(
                 systemSymbolName: "pause.circle",
                 accessibilityDescription: "PastePilot"
@@ -148,8 +177,6 @@ extension AppDelegate {
             button.toolTip = "PastePilot: Capture paused — click for clipboard actions".localized
             return
         }
-        let style = MenuBarIconStyle(rawValue: settings.menuBarIconStyle) ?? .pastepilot
-        let filled = !store.items.isEmpty
         let image = AppIconRenderer.menuBarImage(style: style, filled: filled)
         image?.isTemplate = true
         button.image = image
