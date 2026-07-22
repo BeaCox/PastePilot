@@ -4,12 +4,25 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-07-23
+
 ### Added
 
 - A local `pastepilot` command can search and read history, copy items, export a
   live SQLite backup, and report storage diagnostics. Search accepts the same
   common filters as the app, JSON output is available for automation, and
   protected content remains behind the app's authentication boundary.
+
+### Changed
+
+- History rows now keep a visible preview arrow, and their context menu groups
+  copy, preview, paste-stack, pin, metadata, protection, and delete actions in
+  one place.
+
+### Fixed
+
+- Copying a locked protected item now continues automatically after successful
+  authentication instead of requiring the user to repeat the copy action.
 
 ## [0.10.1] - 2026-07-21
 
