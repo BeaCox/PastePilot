@@ -4,6 +4,13 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- A local `pastepilot` command can search and read history, copy items, export a
+  live SQLite backup, and report storage diagnostics. Search accepts the same
+  common filters as the app, JSON output is available for automation, and
+  protected content remains behind the app's authentication boundary.
+
 ## [0.10.1] - 2026-07-21
 
 ### Added

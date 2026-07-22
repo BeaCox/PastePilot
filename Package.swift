@@ -9,7 +9,8 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "PastePilot", targets: ["PastePilot"])
+        .executable(name: "PastePilot", targets: ["PastePilot"]),
+        .executable(name: "PastePilotCLI", targets: ["PastePilotCLI"])
     ],
     dependencies: [
         .package(
@@ -31,10 +32,23 @@ let package = Package(
             path: "Sources/PastePilot",
             resources: [.copy("Resources/zh-Hans.lproj")]
         ),
+        .target(
+            name: "PastePilotCLIKit",
+            dependencies: [
+                .product(name: "GRDB", package: "GRDB.swift")
+            ],
+            path: "Sources/PastePilotCLIKit"
+        ),
+        .executableTarget(
+            name: "PastePilotCLI",
+            dependencies: ["PastePilotCLIKit"],
+            path: "Sources/PastePilotCLI"
+        ),
         .testTarget(
             name: "PastePilotTests",
             dependencies: [
                 "PastePilot",
+                "PastePilotCLIKit",
                 .product(name: "GRDB", package: "GRDB.swift")
             ],
             path: "Tests/PastePilotTests"

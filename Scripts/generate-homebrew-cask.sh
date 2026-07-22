@@ -53,6 +53,8 @@ cask "pastepilot" do
   depends_on macos: ">= :sonoma"
 
   app "PastePilot.app"
+  binary "#{appdir}/PastePilot.app/Contents/MacOS/PastePilotCLI",
+         target: "pastepilot"
 
   zap trash: [
     "~/Library/Application Support/PastePilot",

@@ -41,6 +41,8 @@ you copied and turns it into useful developer actions.
   shell commands, accessing the network, or writing files.
 - **Automate clipboard workflows.** Use Shortcuts to get, copy, delete, or
   transform history items without opening the PastePilot popover.
+- **Script local history.** Use the bundled `pastepilot` command to search,
+  read, copy, export, or inspect local history without adding a cloud service.
 - **Handle sensitive workflows deliberately.** Pause capture, ignore the next
   copy, define custom sensitive patterns, or skip/redact sensitive matches
   before they are written to history.
@@ -144,6 +146,30 @@ getting an item by one-based index, copying or deleting an item, clearing
 unpinned history, and running any available built-in or enabled custom action.
 The selected-item action uses the item most recently highlighted in the menu
 bar, or the newest history item when no selection has been made.
+
+### Command-Line Automation
+
+Homebrew installs the bundled `pastepilot` command with the app. It reads the
+same local SQLite history safely while PastePilot is running:
+
+```sh
+pastepilot search 'kind:json app:Terminal "release notes"' --json
+pastepilot read 1
+pastepilot copy 3f9a2c1b
+pastepilot export "$HOME/Desktop/PastePilot-Backup.zip"
+pastepilot diagnostics
+```
+
+Selectors are either a one-based history index or an unambiguous UUID prefix.
+Use `--json` with `search`, `read`, or `diagnostics` for stable structured
+output, and `--limit` to bound search results. For source builds, run the tool
+with `swift run PastePilotCLI`; `PASTEPILOT_DATA_DIR` or the global
+`--data-dir` option can point it at a non-default history directory.
+
+The CLI does not authenticate or decrypt protected history. It can show the
+same user-authored title, note, and aliases that remain visible in the app, but
+reading or copying locked content must be done after authentication in
+PastePilot. Backup export uses a live SQLite snapshot and never pauses capture.
 
 ### Command Intelligence
 

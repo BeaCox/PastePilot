@@ -86,7 +86,7 @@ Current PastePilot baseline:
 - [x] Add App Intents. Provide Shortcuts actions for get selected item, get item
   by index, copy item, delete item, clear unpinned history, and run a named
   PastePilot action.
-- [ ] Add CLI automation after App Intents. Consider a small `pastepilot` command
+- [x] Add CLI automation after App Intents. Provide a small `pastepilot` command
   for search, read, copy, export, and diagnostics while the app is running.
 - [x] Add notes, aliases, and editable titles. Store user metadata separately
   from captured content, index it in search, and keep it when duplicate content
