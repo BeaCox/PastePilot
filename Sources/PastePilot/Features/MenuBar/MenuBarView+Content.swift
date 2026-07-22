@@ -300,7 +300,6 @@ extension MenuBarView {
                                 showSourceAppIcon: settings.showSourceAppIconInHistory,
                                 shortcutNumber: index < 9 ? index + 1 : nil,
                                 isSelected: selectedID == item.id,
-                                isPreviewed: previewedID == item.id,
                                 pasteStackPosition: pasteStack.position(of: item.id),
                                 select: { selectedID = item.id },
                                 hoverChanged: { hovering in

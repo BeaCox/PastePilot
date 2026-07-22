@@ -7,7 +7,6 @@ struct CompactHistoryItem: View {
     let showSourceAppIcon: Bool
     let shortcutNumber: Int?
     let isSelected: Bool
-    let isPreviewed: Bool
     let pasteStackPosition: Int?
     let select: () -> Void
     let hoverChanged: (Bool) -> Void
@@ -127,13 +126,6 @@ struct CompactHistoryItem: View {
                     .frame(width: 24, height: 24)
                     .accessibilityLabel("Pinned".localized)
             }
-
-            RowIconButton(
-                symbol: "chevron.right",
-                label: "Preview".localized,
-                isActive: isPreviewed,
-                action: preview
-            )
         }
         .background(
             isSelected ? Color.accentColor.opacity(0.1) : Color.clear,

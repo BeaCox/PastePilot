@@ -15,9 +15,8 @@ All notable changes to PastePilot are documented in this file.
 
 ### Changed
 
-- History rows now keep a visible preview arrow, and their context menu groups
-  copy, preview, paste-stack, pin, metadata, protection, and delete actions in
-  one place.
+- History row context menus now group copy, preview, paste-stack, pin, metadata,
+  protection, and delete actions in one place.
 
 ### Fixed
 
