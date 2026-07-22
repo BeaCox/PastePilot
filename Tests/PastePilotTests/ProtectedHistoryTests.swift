@@ -390,6 +390,66 @@ struct ProtectedHistoryTests {
     }
 
     @Test @MainActor
+    func primaryActionUnlocksAndCopiesProtectedItemInOneRequest() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settings = AppSettings(defaults: defaults)
+        let authenticator = ControlledProtectedHistoryAuthenticator()
+        let vault = ProtectedHistoryVault(
+            keyStore: FixedProtectedHistoryKeyStore()
+        )
+        try vault.unlock(timeout: 60)
+        let pasteboard = NSPasteboard(
+            name: .init("ProtectedHistoryPrimaryActionTests")
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            settings: settings,
+            dataDirectoryURL: directory,
+            protectedHistoryVault: vault,
+            protectedHistoryAuthenticator: authenticator,
+            logger: SilentPastePilotLogger()
+        )
+        let content = "protected-primary-action-8172"
+        let protectedItem = ClipboardItem(content: content, kind: .text)
+            .preparedForProtection(content: content)
+        try store.historyRepository.save([protectedItem])
+        store.lockProtectedHistory(postsNotice: false)
+
+        let lockedItem = try #require(store.items.first)
+        #expect(lockedItem.protectionState == .locked)
+
+        let popover = MenuBarView(
+            store: store,
+            settings: settings,
+            pasteStack: PasteStackController(
+                isAccessibilityGranted: { true },
+                postPasteShortcut: {}
+            ),
+            openSettings: {},
+            openAbout: {},
+            checkForUpdates: {},
+            quit: {},
+            closePopover: {},
+            pasteAfterCopying: { .pasted },
+            showAccessibilityRequired: {},
+            resize: { _ in }
+        )
+        let action = Task {
+            await popover.unlockAndPerformPrimaryAction(for: lockedItem.id)
+        }
+        await authenticator.waitUntilAuthenticationStarts()
+        await authenticator.succeed()
+        await action.value
+
+        #expect(pasteboard.string(forType: .string) == content)
+        #expect(store.items.first?.protectionState == .unlocked)
+    }
+
+    @Test @MainActor
     func unlockedProtectedItemsCanBeLockedManually() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

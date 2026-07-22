@@ -401,12 +401,39 @@ extension MenuBarView {
     }
 
     func togglePreview() {
-        if previewedItem != nil {
+        guard let item = selectedItem else { return }
+        togglePreview(for: item)
+    }
+
+    func togglePreview(for item: ClipboardItem) {
+        interactionState.previewTask?.cancel()
+        interactionState.closePreviewTask?.cancel()
+        selectedID = item.id
+
+        if previewedID == item.id {
             closePreview()
-        } else {
-            guard selectedItem?.protectionState != .locked else { return }
-            previewedID = selectedItem?.id
+            return
         }
+
+        guard item.protectionState == .locked else {
+            previewedID = item.id
+            return
+        }
+
+        Task {
+            await unlockAndShowPreview(for: item.id)
+        }
+    }
+
+    func unlockAndShowPreview(for itemID: UUID) async {
+        guard await store.unlockProtectedHistory(),
+              selectedID == itemID,
+              store.items.contains(where: {
+                  $0.id == itemID && $0.protectionState == .unlocked
+              }) else {
+            return
+        }
+        previewedID = itemID
     }
 
     func closePreview() {
@@ -416,11 +443,23 @@ extension MenuBarView {
 
     func performPrimaryAction(for item: ClipboardItem) {
         guard item.protectionState != .locked else {
-            Task { await store.unlockProtectedHistory() }
+            Task {
+                await unlockAndPerformPrimaryAction(for: item.id)
+            }
             return
         }
         let action = ClipboardActionFactory.copyAction(for: item)
         performAction(action)
+    }
+
+    func unlockAndPerformPrimaryAction(for itemID: UUID) async {
+        guard await store.unlockProtectedHistory(),
+              let item = store.items.first(where: {
+                  $0.id == itemID && $0.protectionState == .unlocked
+              }) else {
+            return
+        }
+        performAction(ClipboardActionFactory.copyAction(for: item))
     }
 
     func performAction(at oneBasedIndex: Int) {

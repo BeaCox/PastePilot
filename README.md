@@ -249,7 +249,10 @@ after an update, so close old DMGs and keep only the installed copy in
 
 ### Menu Bar Interface
 
-- **Hover preview** — pause on any item to see full content, source app, and metadata
+- **Preview** — click the always-visible row arrow, press Space, or pause on an
+  item to see full content, source app, and metadata
+- **Context actions** — right-click an item to copy, preview, queue, pin, edit,
+  protect, or delete it from one menu
 - **Keyboard-driven** — search, navigation, previews, item actions, pinning,
   deletion, and cleanup all have keyboard paths
 - **Search** — filter history by content, type, source app, pin state, OCR text,

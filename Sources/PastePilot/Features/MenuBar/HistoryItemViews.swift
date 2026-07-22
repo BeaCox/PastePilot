@@ -7,9 +7,11 @@ struct CompactHistoryItem: View {
     let showSourceAppIcon: Bool
     let shortcutNumber: Int?
     let isSelected: Bool
+    let isPreviewed: Bool
     let pasteStackPosition: Int?
     let select: () -> Void
     let hoverChanged: (Bool) -> Void
+    let preview: () -> Void
     let editMetadata: () -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
@@ -125,6 +127,13 @@ struct CompactHistoryItem: View {
                     .frame(width: 24, height: 24)
                     .accessibilityLabel("Pinned".localized)
             }
+
+            RowIconButton(
+                symbol: "chevron.right",
+                label: "Preview".localized,
+                isActive: isPreviewed,
+                action: preview
+            )
         }
         .background(
             isSelected ? Color.accentColor.opacity(0.1) : Color.clear,
@@ -139,13 +148,32 @@ struct CompactHistoryItem: View {
             hoverChanged(hovering)
         }
         .contextMenu {
+            Button(
+                ClipboardActionFactory.copyAction(for: item).title,
+                action: copy
+            )
+            Button("Preview".localized, action: preview)
+            Divider()
+            Button(
+                pasteStackPosition == nil
+                    ? "Add to Paste Stack".localized
+                    : "Remove from Paste Stack".localized,
+                action: togglePasteStack
+            )
+            Button(
+                item.isPinned ? "Unpin".localized : "Pin to Top".localized,
+                action: togglePinned
+            )
             Button("Edit Details…".localized, action: editMetadata)
             if item.kind != .image && item.kind != .file {
+                Divider()
                 if item.protectionState == .unlocked {
                     Button("Lock Protected Items".localized, action: lockProtectedItems)
                 }
                 Button(protectionActionTitle, action: toggleProtection)
             }
+            Divider()
+            Button("Delete".localized, role: .destructive, action: delete)
         }
     }
 
