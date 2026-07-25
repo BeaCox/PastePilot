@@ -401,7 +401,7 @@ extension MenuBarView {
                         ClipboardDetailPreview(
                             item: item,
                             image: store.image(for: item),
-                            customActions: settings.customClipboardActions,
+                            customActions: settings.availableCustomClipboardActions,
                             performAction: performAction,
                             hoverChanged: handlePreviewHover,
                             previewSnippet: store.previewSnippet

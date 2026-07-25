@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct CustomActionsSettingsPage: View {
@@ -52,7 +53,66 @@ struct CustomActionsSettingsPage: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            SettingsGroup(title: "Local Action Plugins".localized) {
+                if settings.localActionPlugins.isEmpty {
+                    SettingsNote(
+                        "Add declarative JSON plugin files to the Plugins folder, then reload them.".localized
+                    )
+                } else {
+                    ForEach(settings.localActionPlugins) { plugin in
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(plugin.name)
+                                    .font(.body.weight(.medium))
+                                Text(
+                                    "%@ · %@ content types · %@ actions".localized(
+                                        plugin.version,
+                                        String(plugin.contentTypeNames.count),
+                                        String(plugin.actions.count)
+                                    )
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(plugin.fileName)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                ForEach(Array(settings.localActionPluginErrors.enumerated()), id: \.offset) {
+                    _, message in
+                    Label(message, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+
+                HStack {
+                    Button("Open Plugins Folder".localized) {
+                        openPluginsFolder()
+                    }
+                    Button("Reload Plugins".localized) {
+                        settings.reloadLocalActionPlugins()
+                    }
+                }
+
+                Label(
+                    "Plugins declare content matchers and bounded templates only; executable code is never loaded.".localized,
+                    systemImage: "lock.shield"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
         }
+    }
+
+    private func openPluginsFolder() {
+        guard (try? settings.createPluginsDirectory()) != nil else { return }
+        NSWorkspace.shared.open(settings.pluginsDirectoryURL)
     }
 
     private func addAction() {

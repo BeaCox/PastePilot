@@ -1,0 +1,171 @@
+import Foundation
+import Testing
+@testable import PastePilot
+
+@Suite
+struct LocalActionPluginTests {
+    @Test
+    func pluginContentTypeGeneratesStableMatchedAction() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writePlugin(
+            """
+            {
+              "schemaVersion": 1,
+              "identifier": "dev.pastepilot.issue-tools",
+              "name": "Issue Tools",
+              "version": "1.0.0",
+              "contentTypes": [
+                {
+                  "id": "issue-key",
+                  "title": "Issue Key",
+                  "matcher": {
+                    "type": "regularExpression",
+                    "pattern": "^[A-Z]+-[0-9]+$"
+                  }
+                }
+              ],
+              "actions": [
+                {
+                  "id": "copy-issue-url",
+                  "title": "Copy Issue URL",
+                  "detail": "Build a local issue link",
+                  "template": "https://issues.example/browse/{{content|urlencode}}",
+                  "contentTypes": ["issue-key"]
+                }
+              ]
+            }
+            """,
+            named: "issue-tools.json",
+            in: directory
+        )
+
+        let catalog = LocalActionPluginLoader.load(from: directory)
+        #expect(catalog.errors.isEmpty)
+        let plugin = try #require(catalog.plugins.first)
+        #expect(plugin.id == "dev.pastepilot.issue-tools")
+        #expect(plugin.contentTypeNames == ["Issue Key"])
+
+        let matchingItem = ClipboardItem(content: "APP-42", kind: .text)
+        let generated = try #require(
+            ClipboardActionFactory.actions(
+                for: matchingItem,
+                customActions: catalog.actions
+            ).first { $0.id == "plugin-dev.pastepilot.issue-tools-copy-issue-url" }
+        )
+        #expect(generated.preview == "https://issues.example/browse/APP-42")
+        #expect(generated.detail == "Build a local issue link")
+
+        let otherItem = ClipboardItem(content: "not an issue", kind: .text)
+        #expect(
+            ClipboardActionFactory.actions(
+                for: otherItem,
+                customActions: catalog.actions
+            ).allSatisfy { !$0.id.hasPrefix("plugin-") }
+        )
+    }
+
+    @Test
+    func settingsReloadsPluginsWithoutPersistingThemAsUserActions() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaultsName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defaults.removePersistentDomain(forName: defaultsName)
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+
+        let settings = AppSettings(
+            defaults: defaults,
+            pluginsDirectoryURL: directory
+        )
+        #expect(settings.localActionPlugins.isEmpty)
+
+        try writePlugin(validLiteralPlugin, named: "commit.json", in: directory)
+        settings.reloadLocalActionPlugins()
+
+        #expect(settings.localActionPlugins.map(\.name) == ["Commit Tools"])
+        #expect(settings.customClipboardActions.isEmpty)
+        #expect(settings.availableCustomClipboardActions.count == 1)
+    }
+
+    @Test
+    func invalidAndDuplicatePluginManifestsAreRejected() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writePlugin(validLiteralPlugin, named: "a.json", in: directory)
+        try writePlugin(validLiteralPlugin, named: "b.json", in: directory)
+        try writePlugin(
+            validLiteralPlugin.replacingOccurrences(
+                of: #""type": "literal", "pattern": "fix:""#,
+                with: #""type": "regularExpression", "pattern": "[""#
+            ),
+            named: "invalid-regex.json",
+            in: directory
+        )
+
+        let catalog = LocalActionPluginLoader.load(from: directory)
+        #expect(catalog.plugins.count == 1)
+        #expect(catalog.errors.count == 2)
+    }
+
+    @Test
+    func matchersAreBoundedAndHonorCaseSensitivity() {
+        let insensitive = LocalPluginContentMatcher(type: .literal, pattern: "FIX:")
+        let sensitive = LocalPluginContentMatcher(
+            type: .literal,
+            pattern: "FIX:",
+            caseSensitive: true
+        )
+        #expect(insensitive.matches("fix: bug"))
+        #expect(!sensitive.matches("fix: bug"))
+        #expect(
+            !insensitive.matches(
+                String(repeating: "x", count: LocalPluginContentMatcher.maximumMatchedContentLength + 1)
+            )
+        )
+    }
+
+    private var validLiteralPlugin: String {
+        """
+        {
+          "schemaVersion": 1,
+          "identifier": "dev.pastepilot.commit-tools",
+          "name": "Commit Tools",
+          "version": "1",
+          "contentTypes": [
+            {
+              "id": "conventional-commit",
+              "title": "Conventional Commit",
+              "matcher": { "type": "literal", "pattern": "fix:" }
+            }
+          ],
+          "actions": [
+            {
+              "id": "uppercase",
+              "title": "Uppercase Commit",
+              "template": "{{content|uppercase}}",
+              "contentTypes": ["conventional-commit"]
+            }
+          ]
+        }
+        """
+    }
+
+    private func temporaryDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PastePilotPluginTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        return directory
+    }
+
+    private func writePlugin(
+        _ contents: String,
+        named name: String,
+        in directory: URL
+    ) throws {
+        try Data(contents.utf8).write(to: directory.appendingPathComponent(name))
+    }
+}

@@ -29,6 +29,7 @@ enum CustomClipboardActionScope: String, Codable, CaseIterable, Identifiable {
 
 struct CustomClipboardAction: Identifiable, Codable, Equatable {
     static let maximumCount = 20
+    static let maximumRuntimeCount = 120
     static let maximumTitleLength = 80
     static let maximumTemplateLength = 20_000
     static let maximumOutputLength = 1_000_000
@@ -38,19 +39,31 @@ struct CustomClipboardAction: Identifiable, Codable, Equatable {
     var template: String
     var scope: CustomClipboardActionScope
     var isEnabled: Bool
+    var pluginIdentifier: String?
+    var pluginActionIdentifier: String?
+    var detail: String?
+    var contentMatchers: [LocalPluginContentMatcher]?
 
     init(
         id: UUID = UUID(),
         title: String = "New Action".localized,
         template: String = "{{content}}",
         scope: CustomClipboardActionScope = .text,
-        isEnabled: Bool = true
+        isEnabled: Bool = true,
+        pluginIdentifier: String? = nil,
+        pluginActionIdentifier: String? = nil,
+        detail: String? = nil,
+        contentMatchers: [LocalPluginContentMatcher]? = nil
     ) {
         self.id = id
         self.title = title
         self.template = template
         self.scope = scope
         self.isEnabled = isEnabled
+        self.pluginIdentifier = pluginIdentifier
+        self.pluginActionIdentifier = pluginActionIdentifier
+        self.detail = detail
+        self.contentMatchers = contentMatchers
     }
 
     var normalized: CustomClipboardAction? {
@@ -68,6 +81,7 @@ struct CustomClipboardAction: Identifiable, Codable, Equatable {
     func renderedOutput(for item: ClipboardItem) -> String? {
         guard isEnabled,
               scope.acceptedKinds.contains(item.kind),
+              contentMatchers?.contains(where: { $0.matches(item.content) }) != false,
               let normalized else {
             return nil
         }
@@ -78,11 +92,23 @@ struct CustomClipboardAction: Identifiable, Codable, Equatable {
         )
     }
 
-    static func normalized(_ actions: [CustomClipboardAction]) -> [CustomClipboardAction] {
+    var actionIdentifier: String {
+        if let pluginIdentifier, let pluginActionIdentifier {
+            return "plugin-\(pluginIdentifier)-\(pluginActionIdentifier)"
+        }
+        return "custom-\(id.uuidString.lowercased())"
+    }
+
+    static func normalized(
+        _ actions: [CustomClipboardAction],
+        limit: Int = maximumCount
+    ) -> [CustomClipboardAction] {
         var seen: Set<UUID> = []
-        return actions.prefix(maximumCount).compactMap { action in
+        var seenIdentifiers: Set<String> = []
+        return actions.prefix(max(0, limit)).compactMap { action in
             guard let normalized = action.normalized,
-                  seen.insert(normalized.id).inserted else {
+                  seen.insert(normalized.id).inserted,
+                  seenIdentifiers.insert(normalized.actionIdentifier).inserted else {
                 return nil
             }
             return normalized

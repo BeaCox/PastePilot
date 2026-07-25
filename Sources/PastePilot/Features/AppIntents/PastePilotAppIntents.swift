@@ -47,13 +47,18 @@ enum PastePilotAppIntents {
         let builtInActions = ClipboardActionRegistry.allDefinitions.map {
             PastePilotActionEntity(id: $0.id, title: $0.title, detail: $0.detail)
         }
-        let customActionEntities = CustomClipboardAction.normalized(customActions)
+        let customActionEntities = CustomClipboardAction.normalized(
+            customActions,
+            limit: CustomClipboardAction.maximumRuntimeCount
+        )
             .filter(\.isEnabled)
             .map {
                 PastePilotActionEntity(
-                    id: "custom-\($0.id.uuidString.lowercased())",
+                    id: $0.actionIdentifier,
                     title: $0.title,
-                    detail: "Run a local template transform".localized
+                    detail: $0.detail?.isEmpty == false
+                        ? $0.detail!
+                        : "Run a local template transform".localized
                 )
             }
         return builtInActions + customActionEntities
@@ -154,7 +159,7 @@ struct PastePilotActionQuery: EntityQuery {
     ) async throws -> [PastePilotActionEntity] {
         await MainActor.run {
             let actions = PastePilotAppIntents.actionEntities(
-                customActions: PastePilotAppIntents.store().settings.customClipboardActions
+                customActions: PastePilotAppIntents.store().settings.availableCustomClipboardActions
             )
             let actionsByID = Dictionary(uniqueKeysWithValues: actions.map { ($0.id, $0) })
             return identifiers.compactMap { actionsByID[$0] }
@@ -164,7 +169,7 @@ struct PastePilotActionQuery: EntityQuery {
     func suggestedEntities() async throws -> [PastePilotActionEntity] {
         await MainActor.run {
             PastePilotAppIntents.actionEntities(
-                customActions: PastePilotAppIntents.store().settings.customClipboardActions
+                customActions: PastePilotAppIntents.store().settings.availableCustomClipboardActions
             )
         }
     }
@@ -324,7 +329,7 @@ struct RunPastePilotActionIntent: AppIntent {
             guard let clipboardAction = PastePilotAppIntents.action(
                 id: action.id,
                 for: clipboardItem,
-                customActions: store.settings.customClipboardActions
+                customActions: store.settings.availableCustomClipboardActions
             ) else {
                 throw PastePilotAppIntentError.actionUnavailable
             }

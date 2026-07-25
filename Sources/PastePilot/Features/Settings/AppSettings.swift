@@ -154,6 +154,14 @@ final class AppSettings: ObservableObject {
     static let defaultPerceptualImageDeduplicationEnabled = false
     static let defaultLinkMetadataFetchingEnabled = false
     static let defaultCustomClipboardActions = "[]"
+    static var defaultPluginsDirectoryURL: URL {
+        FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0]
+        .appendingPathComponent("PastePilot", isDirectory: true)
+        .appendingPathComponent("Plugins", isDirectory: true)
+    }
 
     private struct AppSetting<Value: Sendable>: Sendable {
         let key: String
@@ -310,6 +318,10 @@ final class AppSettings: ObservableObject {
     }
 
     private let defaults: UserDefaults
+    let pluginsDirectoryURL: URL
+
+    @Published private(set) var localActionPlugins: [LocalActionPlugin] = []
+    @Published private(set) var localActionPluginErrors: [String] = []
 
     @Published var monitoringEnabled: Bool {
         didSet { persist(monitoringEnabled, for: Setting.monitoringEnabled) }
@@ -558,8 +570,13 @@ final class AppSettings: ObservableObject {
 
     @Published var hotKeyRegistrationWarning: String?
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        pluginsDirectoryURL: URL? = nil
+    ) {
         self.defaults = defaults
+        self.pluginsDirectoryURL = pluginsDirectoryURL
+            ?? Self.defaultPluginsDirectoryURL
         defaults.register(defaults: Setting.registeredDefaults)
         monitoringEnabled = Self.bool(for: Setting.monitoringEnabled, in: defaults)
         hoverPreviewEnabled = Self.bool(for: Setting.hoverPreviewEnabled, in: defaults)
@@ -678,7 +695,28 @@ final class AppSettings: ObservableObject {
         customClipboardActions = Self.decodeCustomClipboardActions(
             Self.string(for: Setting.customClipboardActions, in: defaults)
         )
+        reloadLocalActionPlugins()
         persistCurrentValues()
+    }
+
+    var availableCustomClipboardActions: [CustomClipboardAction] {
+        CustomClipboardAction.normalized(
+            customClipboardActions + localActionPlugins.flatMap(\.actions),
+            limit: CustomClipboardAction.maximumRuntimeCount
+        )
+    }
+
+    func reloadLocalActionPlugins() {
+        let catalog = LocalActionPluginLoader.load(from: pluginsDirectoryURL)
+        localActionPlugins = catalog.plugins
+        localActionPluginErrors = catalog.errors
+    }
+
+    func createPluginsDirectory() throws {
+        try FileManager.default.createDirectory(
+            at: pluginsDirectoryURL,
+            withIntermediateDirectories: true
+        )
     }
 
     var userSensitivePatterns: [UserSensitivePattern] {

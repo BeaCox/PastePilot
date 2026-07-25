@@ -362,12 +362,17 @@ enum ClipboardActionFactory {
         _ customActions: [CustomClipboardAction],
         for item: ClipboardItem
     ) -> [ClipboardAction] {
-        CustomClipboardAction.normalized(customActions).compactMap { customAction in
+        CustomClipboardAction.normalized(
+            customActions,
+            limit: CustomClipboardAction.maximumRuntimeCount
+        ).compactMap { customAction in
             guard let output = customAction.renderedOutput(for: item) else { return nil }
             return ClipboardAction(
-                id: "custom-\(customAction.id.uuidString.lowercased())",
+                id: customAction.actionIdentifier,
                 title: customAction.title,
-                detail: "Run a local template transform".localized,
+                detail: customAction.detail?.isEmpty == false
+                    ? customAction.detail!
+                    : "Run a local template transform".localized,
                 symbol: "wand.and.stars",
                 acceptedKinds: customAction.scope.acceptedKinds,
                 inputSource: .generatedContent,

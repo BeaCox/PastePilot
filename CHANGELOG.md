@@ -4,6 +4,12 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Local declarative JSON plugins can define bounded custom content matchers and
+  template actions. Plugins are loaded from the app's Plugins folder and are
+  available in the menu bar and App Intents without executing plugin code.
+
 ## [0.10.2] - 2026-07-23
 
 ### Added
