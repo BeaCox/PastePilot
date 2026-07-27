@@ -53,15 +53,6 @@ struct LocalPluginContentMatcher: Codable, Equatable {
         }
     }
 
-    var isValid: Bool {
-        guard !pattern.isEmpty, pattern.count <= Self.maximumPatternLength else {
-            return false
-        }
-        if type == .regularExpression {
-            return (try? NSRegularExpression(pattern: pattern)) != nil
-        }
-        return true
-    }
 }
 
 struct LocalActionPlugin: Identifiable, Equatable {
@@ -79,6 +70,28 @@ struct LocalActionPluginCatalog {
 
     var actions: [CustomClipboardAction] {
         plugins.flatMap(\.actions)
+    }
+}
+
+enum LocalActionPluginResources {
+    static let examplePluginFileName = "ExampleIssueTools.json"
+    static let manifestSchemaFileName = "LocalActionPluginManifest.v1.schema.json"
+
+    static var examplePluginURL: URL? {
+        resourceURL(for: examplePluginFileName)
+    }
+
+    static var manifestSchemaURL: URL? {
+        resourceURL(for: manifestSchemaFileName)
+    }
+
+    private static func resourceURL(for fileName: String) -> URL? {
+        let fileURL = URL(fileURLWithPath: fileName)
+        return pastePilotResourceBundle.url(
+            forResource: fileURL.deletingPathExtension().lastPathComponent,
+            withExtension: fileURL.pathExtension,
+            subdirectory: "LocalActionPlugins"
+        )
     }
 }
 
@@ -123,13 +136,21 @@ enum LocalActionPluginLoader {
                 guard values.isRegularFile == true,
                       values.isSymbolicLink != true,
                       values.fileSize.map({ $0 <= maximumFileByteCount }) == true else {
-                    throw ValidationError.invalidFile
+                    throw ValidationError(field: "file", reason: .invalidFile)
                 }
                 let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
-                let manifest = try JSONDecoder().decode(Manifest.self, from: data)
+                let manifest: Manifest
+                do {
+                    manifest = try JSONDecoder().decode(Manifest.self, from: data)
+                } catch let error as DecodingError {
+                    throw validationError(for: error)
+                }
                 let plugin = try validate(manifest, fileName: fileURL.lastPathComponent)
                 guard identifiers.insert(plugin.id).inserted else {
-                    throw ValidationError.duplicateIdentifier
+                    throw ValidationError(
+                        field: "identifier",
+                        reason: .duplicatePluginIdentifier
+                    )
                 }
                 plugins.append(plugin)
             } catch {
@@ -148,45 +169,104 @@ enum LocalActionPluginLoader {
         _ manifest: Manifest,
         fileName: String
     ) throws -> LocalActionPlugin {
-        guard manifest.schemaVersion == 1,
-              isValidIdentifier(manifest.identifier),
-              !manifest.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              manifest.name.count <= 80,
-              !manifest.version.isEmpty,
-              manifest.version.count <= 40,
-              !manifest.contentTypes.isEmpty,
-              manifest.contentTypes.count <= maximumContentTypeCount,
-              !manifest.actions.isEmpty,
-              manifest.actions.count <= maximumActionCount else {
-            throw ValidationError.invalidManifest
-        }
+        try require(manifest.schemaVersion == 1, field: "schemaVersion", reason: .unsupportedSchema)
+        try require(
+            isValidIdentifier(manifest.identifier),
+            field: "identifier",
+            reason: .invalidIdentifier
+        )
+        try validateNonblankText(manifest.name, field: "name", maximumLength: 80)
+        try validateNonblankText(manifest.version, field: "version", maximumLength: 40)
+        try require(
+            !manifest.contentTypes.isEmpty,
+            field: "contentTypes",
+            reason: .emptyCollection("content type".localized)
+        )
+        try require(
+            manifest.contentTypes.count <= maximumContentTypeCount,
+            field: "contentTypes",
+            reason: .tooManyItems(maximumContentTypeCount, "content types".localized)
+        )
+        try require(
+            !manifest.actions.isEmpty,
+            field: "actions",
+            reason: .emptyCollection("action".localized)
+        )
+        try require(
+            manifest.actions.count <= maximumActionCount,
+            field: "actions",
+            reason: .tooManyItems(maximumActionCount, "actions".localized)
+        )
 
         var contentTypesByID: [String: ContentType] = [:]
-        for contentType in manifest.contentTypes {
-            guard isValidIdentifier(contentType.id),
-                  !contentType.title.isEmpty,
-                  contentType.title.count <= 80,
-                  contentType.matcher.isValid,
-                  contentTypesByID.updateValue(contentType, forKey: contentType.id) == nil else {
-                throw ValidationError.invalidContentType
-            }
+        for (index, contentType) in manifest.contentTypes.enumerated() {
+            let path = "contentTypes[\(index)]"
+            try require(
+                isValidIdentifier(contentType.id),
+                field: "\(path).id",
+                reason: .invalidIdentifier
+            )
+            try validateNonblankText(
+                contentType.title,
+                field: "\(path).title",
+                maximumLength: 80
+            )
+            try validateMatcher(contentType.matcher, field: "\(path).matcher")
+            try require(
+                contentTypesByID.updateValue(contentType, forKey: contentType.id) == nil,
+                field: "\(path).id",
+                reason: .duplicateIdentifier
+            )
         }
 
         var actionIDs: Set<String> = []
-        let actions = try manifest.actions.map { action -> CustomClipboardAction in
-            guard isValidIdentifier(action.id),
-                  actionIDs.insert(action.id).inserted,
-                  !action.title.isEmpty,
-                  action.title.count <= CustomClipboardAction.maximumTitleLength,
-                  !action.template.isEmpty,
-                  action.template.count <= CustomClipboardAction.maximumTemplateLength,
-                  !action.contentTypes.isEmpty,
-                  action.contentTypes.count <= maximumContentTypeCount else {
-                throw ValidationError.invalidAction
-            }
-            let matchedTypes = try action.contentTypes.map { identifier -> ContentType in
+        let actions = try manifest.actions.enumerated().map { index, action -> CustomClipboardAction in
+            let path = "actions[\(index)]"
+            try require(
+                isValidIdentifier(action.id),
+                field: "\(path).id",
+                reason: .invalidIdentifier
+            )
+            try require(
+                actionIDs.insert(action.id).inserted,
+                field: "\(path).id",
+                reason: .duplicateIdentifier
+            )
+            try validateNonblankText(
+                action.title,
+                field: "\(path).title",
+                maximumLength: CustomClipboardAction.maximumTitleLength
+            )
+            try require(
+                !action.template.isEmpty,
+                field: "\(path).template",
+                reason: .blankValue
+            )
+            try require(
+                action.template.count <= CustomClipboardAction.maximumTemplateLength,
+                field: "\(path).template",
+                reason: .tooLong(CustomClipboardAction.maximumTemplateLength)
+            )
+            try require(
+                !action.contentTypes.isEmpty,
+                field: "\(path).contentTypes",
+                reason: .emptyCollection("content type reference".localized)
+            )
+            try require(
+                action.contentTypes.count <= maximumContentTypeCount,
+                field: "\(path).contentTypes",
+                reason: .tooManyItems(
+                    maximumContentTypeCount,
+                    "content type references".localized
+                )
+            )
+            let matchedTypes = try action.contentTypes.enumerated().map {
+                referenceIndex, identifier -> ContentType in
                 guard let contentType = contentTypesByID[identifier] else {
-                    throw ValidationError.unknownContentType
+                    throw ValidationError(
+                        field: "\(path).contentTypes[\(referenceIndex)]",
+                        reason: .unknownContentType(identifier)
+                    )
                 }
                 return contentType
             }
@@ -218,6 +298,93 @@ enum LocalActionPluginLoader {
         ) != nil
     }
 
+    private static func validateNonblankText(
+        _ value: String,
+        field: String,
+        maximumLength: Int
+    ) throws {
+        try require(
+            !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            field: field,
+            reason: .blankValue
+        )
+        try require(
+            value.count <= maximumLength,
+            field: field,
+            reason: .tooLong(maximumLength)
+        )
+    }
+
+    private static func validateMatcher(
+        _ matcher: LocalPluginContentMatcher,
+        field: String
+    ) throws {
+        try require(
+            !matcher.pattern.isEmpty,
+            field: "\(field).pattern",
+            reason: .blankValue
+        )
+        try require(
+            matcher.pattern.count <= LocalPluginContentMatcher.maximumPatternLength,
+            field: "\(field).pattern",
+            reason: .tooLong(LocalPluginContentMatcher.maximumPatternLength)
+        )
+        if matcher.type == .regularExpression {
+            try require(
+                (try? NSRegularExpression(pattern: matcher.pattern)) != nil,
+                field: "\(field).pattern",
+                reason: .invalidRegularExpression
+            )
+        }
+    }
+
+    private static func require(
+        _ condition: @autoclosure () -> Bool,
+        field: String,
+        reason: ValidationError.Reason
+    ) throws {
+        guard condition() else { throw ValidationError(field: field, reason: reason) }
+    }
+
+    private static func validationError(for error: DecodingError) -> ValidationError {
+        switch error {
+        case let .keyNotFound(key, context):
+            return ValidationError(
+                field: fieldPath(context.codingPath + [key]),
+                reason: .missingValue
+            )
+        case let .typeMismatch(_, context):
+            return ValidationError(
+                field: fieldPath(context.codingPath),
+                reason: .wrongValueType
+            )
+        case let .valueNotFound(_, context):
+            return ValidationError(
+                field: fieldPath(context.codingPath),
+                reason: .missingValue
+            )
+        case let .dataCorrupted(context):
+            return ValidationError(
+                field: fieldPath(context.codingPath),
+                reason: .unsupportedValue
+            )
+        @unknown default:
+            return ValidationError(field: "JSON", reason: .unsupportedValue)
+        }
+    }
+
+    private static func fieldPath(_ codingPath: [CodingKey]) -> String {
+        guard !codingPath.isEmpty else { return "JSON" }
+        return codingPath.reduce(into: "") { path, key in
+            if let index = key.intValue {
+                path += "[\(index)]"
+            } else {
+                if !path.isEmpty { path += "." }
+                path += key.stringValue
+            }
+        }
+    }
+
     private struct Manifest: Decodable {
         let schemaVersion: Int
         let identifier: String
@@ -241,23 +408,62 @@ enum LocalActionPluginLoader {
         let contentTypes: [String]
     }
 
-    private enum ValidationError: LocalizedError {
-        case invalidFile
-        case invalidManifest
-        case duplicateIdentifier
-        case invalidContentType
-        case invalidAction
-        case unknownContentType
+    private struct ValidationError: LocalizedError {
+        enum Reason {
+            case invalidFile
+            case unsupportedSchema
+            case invalidIdentifier
+            case duplicateIdentifier
+            case duplicatePluginIdentifier
+            case blankValue
+            case tooLong(Int)
+            case emptyCollection(String)
+            case tooManyItems(Int, String)
+            case invalidRegularExpression
+            case unknownContentType(String)
+            case missingValue
+            case wrongValueType
+            case unsupportedValue
+
+            var description: String {
+                switch self {
+                case .invalidFile:
+                    "The file is not a safe regular JSON file.".localized
+                case .unsupportedSchema:
+                    "The value must be schema version 1.".localized
+                case .invalidIdentifier:
+                    "Use 1 to 128 letters, numbers, periods, underscores, or hyphens.".localized
+                case .duplicateIdentifier:
+                    "The identifier is duplicated in this plugin.".localized
+                case .duplicatePluginIdentifier:
+                    "Another plugin uses the same identifier.".localized
+                case .blankValue:
+                    "The value must not be blank.".localized
+                case let .tooLong(limit):
+                    "The value must contain at most %d characters.".localized(limit)
+                case let .emptyCollection(itemName):
+                    "At least one %@ is required.".localized(itemName)
+                case let .tooManyItems(limit, itemName):
+                    "No more than %d %@ are allowed.".localized(limit, itemName)
+                case .invalidRegularExpression:
+                    "The regular expression is invalid.".localized
+                case let .unknownContentType(identifier):
+                    "The referenced content type '%@' is not defined.".localized(identifier)
+                case .missingValue:
+                    "The required value is missing or null.".localized
+                case .wrongValueType:
+                    "The value has the wrong JSON type.".localized
+                case .unsupportedValue:
+                    "The value or JSON syntax is unsupported.".localized
+                }
+            }
+        }
+
+        let field: String
+        let reason: Reason
 
         var errorDescription: String? {
-            switch self {
-            case .invalidFile: "The file is not a safe regular JSON file.".localized
-            case .invalidManifest: "The plugin manifest is invalid or unsupported.".localized
-            case .duplicateIdentifier: "Another plugin uses the same identifier.".localized
-            case .invalidContentType: "A content type definition is invalid.".localized
-            case .invalidAction: "An action definition is invalid.".localized
-            case .unknownContentType: "An action references an unknown content type.".localized
-            }
+            "Field %@: %@".localized(field, reason.description)
         }
     }
 }

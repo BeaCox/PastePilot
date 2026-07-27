@@ -138,6 +138,29 @@ struct MenuBarPopoverRegressionTests {
     }
 
     @Test
+    func bundledPluginActionAppearsInMenuBarPreviewActions() throws {
+        let exampleURL = try #require(LocalActionPluginResources.examplePluginURL)
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.copyItem(
+            at: exampleURL,
+            to: directory.appendingPathComponent(exampleURL.lastPathComponent)
+        )
+        let catalog = LocalActionPluginLoader.load(from: directory)
+        let item = ClipboardItem(content: "APP-42", kind: .text)
+
+        let action = try #require(
+            MenuBarPopoverState.previewActions(
+                for: item,
+                customActions: catalog.actions
+            ).first { $0.id == "plugin-dev.pastepilot.example.issue-tools-copy-issue-url" }
+        )
+
+        #expect(action.title == "Copy Example Issue URL")
+        #expect(action.preview == "https://issues.example/browse/APP-42")
+    }
+
+    @Test
     func filteringMatchesUserMetadataWithoutFullTextSearch() {
         let item = ClipboardItem(
             content: "ordinary body",

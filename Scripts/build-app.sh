@@ -80,6 +80,16 @@ if [ -d "$BUNDLE" ]; then
   cp -R "$BUNDLE" "$CONTENTS/Resources/"
 fi
 
+PLUGIN_RESOURCE_DIR="$CONTENTS/Resources/PastePilot_PastePilot.bundle/LocalActionPlugins"
+for RESOURCE_NAME in \
+  ExampleIssueTools.json \
+  LocalActionPluginManifest.v1.schema.json; do
+  if [ ! -f "$PLUGIN_RESOURCE_DIR/$RESOURCE_NAME" ]; then
+    printf 'Missing packaged plugin resource: %s\n' "$RESOURCE_NAME" >&2
+    exit 1
+  fi
+done
+
 cat > "$CONTENTS/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"

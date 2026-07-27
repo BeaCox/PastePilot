@@ -341,15 +341,32 @@
 "%@ · %@ content types · %@ actions" = "%@ · %@ 个内容类型 · %@ 个动作";
 "Open Plugins Folder" = "打开插件文件夹";
 "Reload Plugins" = "重新加载插件";
+"Reveal Example Plugin" = "在 Finder 中显示示例插件";
+"Reveal Manifest Schema" = "在 Finder 中显示清单 Schema";
 "Plugins declare content matchers and bounded templates only; executable code is never loaded." = "插件只能声明内容匹配器和受限模板；应用绝不会加载可执行代码。";
 "Only the first %d plugin files were loaded." = "仅加载了前 %d 个插件文件。";
 "Could not load plugin %@: %@" = "无法加载插件 %@：%@";
+"Field %@: %@" = "字段 %@：%@";
 "The file is not a safe regular JSON file." = "该文件不是安全的常规 JSON 文件。";
-"The plugin manifest is invalid or unsupported." = "插件清单无效或不受支持。";
+"The value must be schema version 1." = "值必须使用清单 Schema 版本 1。";
+"Use 1 to 128 letters, numbers, periods, underscores, or hyphens." = "请使用 1 到 128 个字母、数字、句点、下划线或连字符。";
+"The identifier is duplicated in this plugin." = "此插件中存在重复的标识符。";
 "Another plugin uses the same identifier." = "另一个插件使用了相同的标识符。";
-"A content type definition is invalid." = "内容类型定义无效。";
-"An action definition is invalid." = "动作定义无效。";
-"An action references an unknown content type." = "动作引用了未知的内容类型。";
+"The value must not be blank." = "值不能为空。";
+"The value must contain at most %d characters." = "值最多可包含 %d 个字符。";
+"At least one %@ is required." = "至少需要一个%@。";
+"No more than %d %@ are allowed." = "最多允许 %d 个%@。";
+"content type" = "内容类型";
+"content types" = "内容类型";
+"action" = "动作";
+"actions" = "动作";
+"content type reference" = "内容类型引用";
+"content type references" = "内容类型引用";
+"The regular expression is invalid." = "正则表达式无效。";
+"The referenced content type '%@' is not defined." = "引用的内容类型“%@”未定义。";
+"The required value is missing or null." = "缺少必填值，或该值为 null。";
+"The value has the wrong JSON type." = "值的 JSON 类型不正确。";
+"The value or JSON syntax is unsupported." = "不支持该值或 JSON 语法。";
 
 /* AboutView */
 "Smart Clipboard for Developers" = "开发者的智能剪贴板";

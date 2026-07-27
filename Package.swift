@@ -30,7 +30,10 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/PastePilot",
-            resources: [.copy("Resources/zh-Hans.lproj")]
+            resources: [
+                .copy("Resources/zh-Hans.lproj"),
+                .copy("Resources/LocalActionPlugins")
+            ]
         ),
         .target(
             name: "PastePilotCLIKit",

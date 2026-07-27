@@ -74,6 +74,39 @@ enum PastePilotAppIntents {
             customActions: customActions
         ).first { $0.id == id }
     }
+
+    @discardableResult
+    static func runAction(
+        id actionID: String,
+        for itemID: UUID,
+        in store: ClipboardStore
+    ) throws -> ClipboardActionResult {
+        guard let item = store.items.first(where: { $0.id == itemID }) else {
+            throw PastePilotAppIntentError.itemNotFound
+        }
+        guard let clipboardAction = action(
+            id: actionID,
+            for: item,
+            customActions: store.settings.availableCustomClipboardActions
+        ) else {
+            throw PastePilotAppIntentError.actionUnavailable
+        }
+        let result = ClipboardActionFactory.performResult(clipboardAction, using: store)
+        let copiesToClipboard = switch clipboardAction.outputEffect {
+        case .clipboardText,
+             .clipboardItem,
+             .clipboardImage,
+             .clipboardFiles,
+             .clipboardRichText:
+            true
+        case .revealInFinder, .quickLook, .openURL:
+            false
+        }
+        guard !copiesToClipboard || result.didCopy else {
+            throw PastePilotAppIntentError.actionFailed
+        }
+        return result
+    }
 }
 
 struct PastePilotClipboardItemEntity: AppEntity, Hashable, Sendable {
@@ -323,30 +356,11 @@ struct RunPastePilotActionIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         try await MainActor.run {
             let store = PastePilotAppIntents.store()
-            guard let clipboardItem = store.items.first(where: { $0.id == item.id }) else {
-                throw PastePilotAppIntentError.itemNotFound
-            }
-            guard let clipboardAction = PastePilotAppIntents.action(
+            try PastePilotAppIntents.runAction(
                 id: action.id,
-                for: clipboardItem,
-                customActions: store.settings.availableCustomClipboardActions
-            ) else {
-                throw PastePilotAppIntentError.actionUnavailable
-            }
-            let result = ClipboardActionFactory.performResult(clipboardAction, using: store)
-            let copiesToClipboard = switch clipboardAction.outputEffect {
-            case .clipboardText,
-                 .clipboardItem,
-                 .clipboardImage,
-                 .clipboardFiles,
-                 .clipboardRichText:
-                true
-            case .revealInFinder, .quickLook, .openURL:
-                false
-            }
-            guard !copiesToClipboard || result.didCopy else {
-                throw PastePilotAppIntentError.actionFailed
-            }
+                for: item.id,
+                in: store
+            )
         }
         return .result(dialog: "Ran PastePilot action")
     }
@@ -395,7 +409,7 @@ struct PastePilotShortcuts: AppShortcutsProvider {
     }
 }
 
-private enum PastePilotAppIntentError: LocalizedError {
+enum PastePilotAppIntentError: LocalizedError {
     case noSelectedItem
     case invalidIndex
     case itemNotFound

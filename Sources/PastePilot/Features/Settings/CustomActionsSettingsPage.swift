@@ -100,6 +100,18 @@ struct CustomActionsSettingsPage: View {
                     }
                 }
 
+                HStack {
+                    Button("Reveal Example Plugin".localized) {
+                        revealBundledResource(LocalActionPluginResources.examplePluginURL)
+                    }
+                    .disabled(LocalActionPluginResources.examplePluginURL == nil)
+
+                    Button("Reveal Manifest Schema".localized) {
+                        revealBundledResource(LocalActionPluginResources.manifestSchemaURL)
+                    }
+                    .disabled(LocalActionPluginResources.manifestSchemaURL == nil)
+                }
+
                 Label(
                     "Plugins declare content matchers and bounded templates only; executable code is never loaded.".localized,
                     systemImage: "lock.shield"
@@ -113,6 +125,11 @@ struct CustomActionsSettingsPage: View {
     private func openPluginsFolder() {
         guard (try? settings.createPluginsDirectory()) != nil else { return }
         NSWorkspace.shared.open(settings.pluginsDirectoryURL)
+    }
+
+    private func revealBundledResource(_ url: URL?) {
+        guard let url else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     private func addAction() {

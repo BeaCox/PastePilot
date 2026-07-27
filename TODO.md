@@ -1,110 +1,98 @@
-# TODO
+# PastePilot Roadmap
 
-## Research Notes
+This roadmap lists the next meaningful product and maintenance work. It is
+ordered by priority rather than by a promised release date. Completed release
+history belongs in `CHANGELOG.md` instead of accumulating here.
 
-Comparable projects reviewed:
+## Product Principles
 
-- [Maccy](https://github.com/p0deje/Maccy): native macOS clipboard manager with
-  preserved pasteboard representations, transient/concealed type ignores,
-  fuzzy/regex/mixed search, stable shortcuts for pinned items, paste stack, and
-  App Intents.
-- [Clipy](https://github.com/Clipy/Clipy): native macOS menu-based history plus
-  separate snippet folders; stores selected pasteboard types as typed assets so
-  items can be replayed with higher fidelity.
-- [CopyQ](https://github.com/hluk/CopyQ): mature cross-platform manager with
-  tabs, notes, tags, editing, command-line access, configurable commands, and
-  optional encrypted tab storage.
-- [PasteBar](https://github.com/PasteBar/PasteBarApp): Tauri app with saved
-  clips, collections, tabs, boards, favorites, protected collections,
-  backup/restore, link metadata, language detection, and custom data location.
+- Stay local-first: no telemetry, cloud dependency, or implicit network access.
+  Link metadata remains explicit opt-in.
+- Keep protected clipboard payloads encrypted at rest and unavailable to
+  previews, actions, search indexes, logs, and external text files while locked.
+- Preserve useful pasteboard representations only within strict type and size
+  limits, and continue to ignore concealed or transient clipboard data before
+  capture.
+- Keep capture, persistence, image processing, OCR, and enrichment work off the
+  main actor while preserving cancellation and stale-result guards.
+- Extend bounded declarative actions instead of loading executable plugins.
 
-Current PastePilot baseline:
+## Current Baseline
 
-- Strong local-first developer workflow: command cleanup, JSON transforms,
-  TypeScript declaration generation, OCR search, source app metadata,
-  sensitive-content masking, and paste-as-plain-text.
-- Solid storage foundation: GRDB/SQLite history, FTS5 trigram search with
-  fallback scan, externalized large text, PNG image storage, async history/image
-  writes, and storage cleanup.
-- Actions are still mostly hard-coded by `ContentKind`; history organization is
-  mostly recency plus pinned state; pasteboard capture intentionally normalizes
-  content but does not preserve all original pasteboard representations.
+- Content-aware capture and actions for developer text, structured data, rich
+  text, images, and files, with high-fidelity replay when safe.
+- SQLite/FTS history with externalized large text, image storage, OCR, source
+  application metadata, filters, pinned items, titles, notes, and aliases.
+- Local privacy controls including pause/ignore-next-copy, sensitive-content
+  policies, custom patterns, encrypted protected history, and backup/restore.
+- A declarative action registry, safe template actions, local JSON action
+  plugins, App Intents, and the `pastepilot` command-line tool.
+- The largest remaining product gap is organization beyond recency, pinned
+  state, and free-form searchable metadata.
+
+## Now — Finish and Ship Local Action Plugins
+
+- [x] Add a bundled example plugin and a machine-readable JSON Schema for the
+  version 1 manifest. Make both easy to reveal from the Actions settings page.
+- [x] Improve plugin validation errors so they identify the invalid field or
+  referenced content type, while keeping file, matcher, and action limits
+  enforced.
+- [x] Add regression coverage that exercises plugin actions through the menu
+  bar action list and App Intents, not only the manifest loader.
+- [x] Complete release QA for the plugin feature: run `make app`, verify plugin
+  discovery/reload in the packaged app, and prepare the next version notes.
+
+## Next — Organize Reusable History
+
+- [ ] Add tags to clipboard items.
+  - Persist normalized tags separately from captured content and keep them when
+    duplicate content moves to the top.
+  - Add tag editing and compact tag indicators without making history rows
+    visually noisy.
+  - Support `tag:<name>` and `has:tag` in app and CLI search, including backup
+    and restore coverage.
+  - Treat tags on protected items as user-authored visible metadata, matching
+    titles, notes, and aliases, and document that boundary in the UI.
+- [ ] Add saved searches as local smart collections.
+  - Store a name and existing search query instead of duplicating clipboard
+    payloads.
+  - Provide built-in views for recent, pinned, protected, images, and files,
+    plus user-created saved searches.
+  - Keep collection membership deterministic across restarts and after history
+    cleanup.
+- [ ] Make pinned items intentionally reusable.
+  - Allow manual ordering within the pinned section.
+  - Keep `Command-1` through `Command-9` stable for pinned items when search is
+    empty, while preserving the current visible-result behavior during search.
+  - Persist ordering and cover duplicate recapture, deletion, and restore.
+
+## Later — Workflow Polish
+
+- [ ] Add plugin management controls for enabling, disabling, importing, and
+  exporting individual declarative plugins without editing Application Support
+  manually.
+- [ ] Let users export selected history items in useful local formats such as
+  plain text, JSON, original files, or images without turning export into an
+  automatic sharing or network feature.
+- [ ] Audit keyboard and VoiceOver behavior across the menu bar, previews,
+  metadata editing, protected-history authentication, and settings; add focused
+  regression coverage for discovered gaps.
 
 ## Maintenance
 
-- [x] Standard SwiftPM test target using Swift Testing
-- [x] Split history persistence, image storage, and OCR from `ClipboardStore`
-- [x] Global paste-as-plain-text shortcut
-- [x] Move history writes off the main actor
-- [x] Move image encoding off the main actor
-- [x] Split the settings views into focused files
-- [x] Split the menu bar view into focused files
+- [ ] Split `AppSettings` persistence, validation, and plugin catalog state into
+  focused components while retaining its existing dependency-injection seams.
+- [ ] Split `SQLiteHistoryStore` migrations, row encoding, FTS indexing, and
+  metadata access into focused files without changing the storage schema or
+  transaction boundaries.
+- [ ] Add representative performance fixtures for startup, filtered search,
+  externalized text search, and cleanup at the supported history limits.
 
-## Short Term
+## Completed Milestones
 
-- [x] Code signing and notarization release workflow
-- [x] Homebrew Cask generation for releases
-- [x] Show new version details and release notes when an update is available
-- [x] Ignore confidential and temporary pasteboard types by default. Inspect
-  `NSPasteboard` types in `ClipboardCaptureQueue` and skip
-  `org.nspasteboard.TransientType`, `org.nspasteboard.ConcealedType`,
-  `org.nspasteboard.AutoGeneratedType`, and common password-manager types before
-  any content is read into history.
-- [x] Add a quick "Pause Capture" / "Ignore Next Copy" control. Reuse
-  `AppSettings.monitoringEnabled` for persistent pause and add one-shot state in
-  `ClipboardStore` or `AppDelegate` for sensitive workflows.
-- [x] Extend search query syntax. Support filters such as `kind:json`,
-  `app:Terminal`, `pinned:true`, `has:ocr`, and quoted phrases; index source app
-  fields in `SQLiteHistoryStore.searchBody`.
-- [x] Add user-defined sensitive patterns. Store custom regex or plain-word masks
-  in settings, apply them through `ContentAnalyzer`, and test store-original,
-  store-redacted, and skip policies.
-- [x] Add backup and restore. Export `history.sqlite`, `images/`, and `text/` to
-  a versioned zip; create a pre-restore backup; validate archive layout before
-  replacing local data.
-- [x] Add optional copy-and-paste action. Keep the current copy-only behavior as
-  default, but provide a modifier or setting that copies the item and posts the
-  paste keystroke after Accessibility permission is granted.
-- [x] Add visual and interaction regression tests for the menu bar popover.
-  Cover search, preview, pin/delete, actions, notices, empty state, and
-  long-content layout.
-
-## Future
-
-- [ ] iCloud sync for cross-device history
-- [x] Plugin system for custom content types and actions
-- [x] Manual light/dark theme toggle
-- [x] Preserve original pasteboard representations for high-fidelity replay.
-  Add a typed asset side table for selected pasteboard types, with strict size
-  limits and cleanup, so rich text, file groups, and app-specific formats can be
-  restored when safe.
-- [x] Build a declarative action registry. Move built-in actions toward a common
-  model with id, title, symbol, accepted kinds, input source, output effect, and
-  close behavior; use this as the path toward a plugin system.
-- [x] Support safe custom actions before arbitrary plugins. Add bounded local
-  text/image template transforms without shell, network, or file execution.
-- [x] Add App Intents. Provide Shortcuts actions for get selected item, get item
-  by index, copy item, delete item, clear unpinned history, and run a named
-  PastePilot action.
-- [x] Add CLI automation after App Intents. Provide a small `pastepilot` command
-  for search, read, copy, export, and diagnostics while the app is running.
-- [x] Add notes, aliases, and editable titles. Store user metadata separately
-  from captured content, index it in search, and keep it when duplicate content
-  is moved to the top.
-- [x] Add perceptual image deduplication. Keep the current SHA-256 digest for
-  exact identity, and add an optional perceptual hash to collapse visually
-  identical screenshots saved with different encodings.
-- [x] Add link metadata and QR/barcode extraction. Keep network metadata strictly
-  opt-in; use local Vision barcode detection for QR codes in images.
-- [x] Improve content detection with confidence and reasons. Replace the current
-  ordered detector chain with analyzers that can report scores, explanations,
-  and secondary traits such as language, JWT, YAML, XML, SQL, Base64, email, or
-  UUID.
-- [x] Add protected storage for sensitive items. Evaluate Keychain-backed
-  encryption for selected records or collections, optional unlock timeout, and
-  migration behavior from existing plaintext history.
-- [x] Add sequential paste / paste stack. Support selecting multiple items and
-  pasting them in order, with configurable separators and cancellation.
-- [ ] Revisit iCloud sync with a local-first design. Define conflict handling,
-  per-item redaction/encryption policy, image/text asset syncing, and opt-in UI
-  before implementation.
+The project already includes signed release packaging, automatic update checks,
+high-fidelity pasteboard replay, sensitive-content policies, encrypted protected
+history, backup/restore, advanced search, metadata editing, OCR and local barcode
+analysis, perceptual image deduplication, paste stack, App Intents, CLI
+automation, safe custom actions, and declarative local action plugins. See
+`CHANGELOG.md` for versioned details.

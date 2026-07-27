@@ -5,6 +5,32 @@ import Testing
 @Suite
 struct LocalActionPluginTests {
     @Test
+    func bundledExampleAndManifestSchemaAreAvailable() throws {
+        let exampleURL = try #require(LocalActionPluginResources.examplePluginURL)
+        let schemaURL = try #require(LocalActionPluginResources.manifestSchemaURL)
+        #expect(FileManager.default.fileExists(atPath: exampleURL.path))
+        #expect(FileManager.default.fileExists(atPath: schemaURL.path))
+
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.copyItem(
+            at: exampleURL,
+            to: directory.appendingPathComponent(exampleURL.lastPathComponent)
+        )
+
+        let catalog = LocalActionPluginLoader.load(from: directory)
+        #expect(catalog.errors.isEmpty)
+        #expect(catalog.plugins.map(\.id) == ["dev.pastepilot.example.issue-tools"])
+
+        let schemaObject = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: schemaURL))
+                as? [String: Any]
+        )
+        #expect(schemaObject["$schema"] as? String == "https://json-schema.org/draft/2020-12/schema")
+        #expect(schemaObject["title"] as? String == "PastePilot Local Action Plugin Manifest v1")
+    }
+
+    @Test
     func pluginContentTypeGeneratesStableMatchedAction() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -106,6 +132,37 @@ struct LocalActionPluginTests {
         let catalog = LocalActionPluginLoader.load(from: directory)
         #expect(catalog.plugins.count == 1)
         #expect(catalog.errors.count == 2)
+        #expect(catalog.errors.contains { $0.contains("identifier") })
+        #expect(catalog.errors.contains { $0.contains("contentTypes[0].matcher.pattern") })
+    }
+
+    @Test
+    func validationErrorsNameMissingAndReferencedFields() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writePlugin(
+            validLiteralPlugin.replacingOccurrences(
+                of: #""contentTypes": ["conventional-commit"]"#,
+                with: #""contentTypes": ["missing-type"]"#
+            ),
+            named: "unknown-type.json",
+            in: directory
+        )
+        try writePlugin(
+            validLiteralPlugin.replacingOccurrences(
+                of: #""template": "{{content|uppercase}}","#,
+                with: ""
+            ),
+            named: "missing-template.json",
+            in: directory
+        )
+
+        let catalog = LocalActionPluginLoader.load(from: directory)
+        #expect(catalog.plugins.isEmpty)
+        #expect(catalog.errors.contains {
+            $0.contains("actions[0].contentTypes[0]") && $0.contains("missing-type")
+        })
+        #expect(catalog.errors.contains { $0.contains("actions[0].template") })
     }
 
     @Test

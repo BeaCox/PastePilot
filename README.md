@@ -145,12 +145,16 @@ Declarative JSON plugins let a set of custom content matchers and actions be
 shared without loading executable code. Open **Preferences → Actions → Open
 Plugins Folder**, add one or more `.json` files, and click **Reload Plugins**.
 The default folder is `~/Library/Application Support/PastePilot/Plugins`.
+The same settings page can reveal a bundled working example and the version 1
+JSON Schema for editor completion and validation. Copy the example into the
+Plugins folder before editing it; bundled resources are read-only.
 
 Each plugin declares named content types using bounded literal or regular
 expression matchers, then associates template actions with those types:
 
 ```json
 {
+  "$schema": "./LocalActionPluginManifest.v1.schema.json",
   "schemaVersion": 1,
   "identifier": "dev.example.issue-tools",
   "name": "Issue Tools",
@@ -183,6 +187,8 @@ periods, underscores, and hyphens. A plugin file is limited to 256 KB and 20
 content types/actions; at most 20 plugin files and 120 combined custom actions
 are loaded. Matchers inspect at most 100,000 characters. The same placeholder,
 transform, output, and local-only restrictions as Safe Custom Actions apply.
+Reload errors include the precise manifest field path and name any referenced
+content type that is not defined.
 
 ### Shortcuts Automation
 

@@ -9,6 +9,19 @@ All notable changes to PastePilot are documented in this file.
 - Local declarative JSON plugins can define bounded custom content matchers and
   template actions. Plugins are loaded from the app's Plugins folder and are
   available in the menu bar and App Intents without executing plugin code.
+- The Actions settings page can reveal a bundled example plugin and the version
+  1 JSON Schema for manifest validation and editor completion.
+
+### Changed
+
+- Plugin reload errors now identify the invalid manifest field and include the
+  name of an undefined content type referenced by an action.
+
+### Maintenance
+
+- Added regression coverage for plugin actions in the menu bar action list and
+  App Intent execution, plus packaged-resource coverage for the example and
+  manifest schema.
 
 ## [0.10.2] - 2026-07-23
 

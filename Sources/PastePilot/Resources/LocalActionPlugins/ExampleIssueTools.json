@@ -1,0 +1,29 @@
+{
+  "$schema": "./LocalActionPluginManifest.v1.schema.json",
+  "schemaVersion": 1,
+  "identifier": "dev.pastepilot.example.issue-tools",
+  "name": "Example Issue Tools",
+  "version": "1.0.0",
+  "contentTypes": [
+    {
+      "id": "issue-key",
+      "title": "Issue Key",
+      "matcher": {
+        "type": "regularExpression",
+        "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+        "caseSensitive": false
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "copy-issue-url",
+      "title": "Copy Example Issue URL",
+      "detail": "Build an example issue URL without accessing the network",
+      "template": "https://issues.example/browse/{{content|urlencode}}",
+      "contentTypes": [
+        "issue-key"
+      ]
+    }
+  ]
+}

@@ -68,4 +68,53 @@ struct AppIntentsTests {
             ) == nil
         )
     }
+
+    @Test @MainActor
+    func appIntentExecutionRunsBundledPluginAction() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let pluginsDirectory = root.appendingPathComponent("Plugins", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: pluginsDirectory,
+            withIntermediateDirectories: true
+        )
+        let exampleURL = try #require(LocalActionPluginResources.examplePluginURL)
+        try FileManager.default.copyItem(
+            at: exampleURL,
+            to: pluginsDirectory.appendingPathComponent(exampleURL.lastPathComponent)
+        )
+
+        let suiteName = "PastePilotAppIntentsPluginTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settings = AppSettings(
+            defaults: defaults,
+            pluginsDirectoryURL: pluginsDirectory
+        )
+        let pasteboard = NSPasteboard.withUniqueName()
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            settings: settings,
+            dataDirectoryURL: root.appendingPathComponent("Data", isDirectory: true),
+            pasteboardCaptureQueue: StubClipboardCaptureQueue(results: [])
+        )
+        let item = ClipboardItem(content: "APP-42", kind: .text)
+        store.items = [item]
+        let actionID = "plugin-dev.pastepilot.example.issue-tools-copy-issue-url"
+
+        #expect(
+            PastePilotAppIntents.actionEntities(
+                customActions: settings.availableCustomClipboardActions
+            ).contains { $0.id == actionID }
+        )
+        let result = try PastePilotAppIntents.runAction(
+            id: actionID,
+            for: item.id,
+            in: store
+        )
+
+        #expect(result.didCopy)
+        #expect(pasteboard.string(forType: .string) == "https://issues.example/browse/APP-42")
+    }
 }
