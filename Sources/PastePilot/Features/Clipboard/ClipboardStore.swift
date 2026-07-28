@@ -331,13 +331,13 @@ final class ClipboardStore: ObservableObject {
         for id: UUID,
         title: String?,
         note: String?,
-        aliases: [String]?
+        tags: [String]?
     ) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].updateUserMetadata(
             title: title,
             note: note,
-            aliases: aliases
+            tags: tags
         )
         save()
     }

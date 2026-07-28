@@ -16,6 +16,8 @@ All notable changes to PastePilot are documented in this file.
 
 - Plugin reload errors now identify the invalid manifest field and include the
   name of an undefined content type referenced by an action.
+- Clipboard item aliases have been removed in favor of the clearer title and
+  tag organization model.
 
 ### Maintenance
 

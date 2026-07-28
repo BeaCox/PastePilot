@@ -10,6 +10,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private enum MetadataKey {
         static let schemaVersion = "schema_version"
         static let legacyJSONImported = "legacy_json_imported"
+        static let aliasRemoval = "alias_removal"
     }
 
     private struct StoredItem {
@@ -73,7 +74,16 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         }
 
         let items = try dbQueue.write { db in
-            try loadItems(db: db)
+            let items = try loadItems(db: db)
+            if try metadataValue(for: MetadataKey.aliasRemoval, db: db) == "pending" {
+                try save(items, db: db)
+                try setMetadataValue(
+                    "complete",
+                    for: MetadataKey.aliasRemoval,
+                    db: db
+                )
+            }
+            return items
         }
         let source: HistoryRepository.LoadSource
         if let importedSource {
@@ -218,7 +228,6 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 ocr_text TEXT,
                 user_title TEXT,
                 user_note TEXT,
-                user_aliases_json TEXT,
                 is_protected INTEGER NOT NULL DEFAULT 0,
                 protected_payload BLOB,
                 protected_metadata_version INTEGER NOT NULL DEFAULT 0
@@ -255,12 +264,6 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             db: db
         )
         try ensureColumn(
-            "user_aliases_json",
-            definition: "user_aliases_json TEXT",
-            in: "items",
-            db: db
-        )
-        try ensureColumn(
             "is_protected",
             definition: "is_protected INTEGER NOT NULL DEFAULT 0",
             in: "items",
@@ -278,6 +281,11 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             in: "items",
             db: db
         )
+        if try hasColumn("user_aliases_json", in: "items", db: db) {
+            try db.execute(sql: "UPDATE items SET fingerprint = ''")
+            try db.execute(sql: "ALTER TABLE items DROP COLUMN user_aliases_json")
+            try setMetadataValue("pending", for: MetadataKey.aliasRemoval, db: db)
+        }
         try db.execute(sql: """
             CREATE TABLE IF NOT EXISTS rich_text (
                 item_id TEXT PRIMARY KEY NOT NULL
@@ -303,6 +311,18 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 data BLOB NOT NULL,
                 PRIMARY KEY (item_id, item_index, ordinal)
             )
+            """)
+        try db.execute(sql: """
+            CREATE TABLE IF NOT EXISTS item_tags (
+                item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+                ordinal INTEGER NOT NULL,
+                normalized_name TEXT NOT NULL,
+                PRIMARY KEY (item_id, normalized_name)
+            )
+            """)
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS item_tags_name_idx
+            ON item_tags(normalized_name)
             """)
         try db.execute(sql: """
             CREATE INDEX IF NOT EXISTS items_created_at_idx
@@ -333,7 +353,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "7",
+            "9",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -348,6 +368,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             guard let id = UUID(uuidString: row["id"]) else { return nil }
             let kindRaw: String = row["kind"]
             let kind = ContentKind(rawValue: kindRaw) ?? .text
+            let tags = try tags(for: id, db: db)
             let isProtected = (row["is_protected"] as Int? ?? 0) != 0
             if isProtected {
                 if let encryptedPayload: Data = row["protected_payload"],
@@ -355,13 +376,11 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                    var item = try? JSONDecoder().decode(ClipboardItem.self, from: plaintext) {
                     item.protectionState = .unlocked
                     item.isPinned = (row["is_pinned"] as Int) != 0
+                    item.tags = tags.isEmpty ? nil : tags
                     let metadataVersion = row["protected_metadata_version"] as Int? ?? 0
                     if metadataVersion > 0 {
                         item.userTitle = row["user_title"]
                         item.userNote = row["user_note"]
-                        item.userAliases = Self.decodedAliases(
-                            from: row["user_aliases_json"]
-                        )
                     } else {
                         // Schema v6 kept these labels only inside the encrypted
                         // payload. Promote them on the first successful unlock.
@@ -369,13 +388,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                             sql: """
                                 UPDATE items SET
                                     user_title = ?, user_note = ?,
-                                    user_aliases_json = ?, protected_metadata_version = 1
+                                    protected_metadata_version = 1
                                 WHERE id = ?
                                 """,
                             arguments: [
                                 item.userTitle,
                                 item.userNote,
-                                Self.encodedAliases(item.userAliases),
                                 id.uuidString,
                             ]
                         )
@@ -396,9 +414,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     containsSensitiveData: true,
                     userTitle: row["user_title"],
                     userNote: row["user_note"],
-                    userAliases: Self.decodedAliases(
-                        from: row["user_aliases_json"]
-                    ),
+                    tags: tags,
                     protectionState: .locked
                 )
             }
@@ -471,7 +487,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 ocrText: row["ocr_text"],
                 userTitle: row["user_title"],
                 userNote: row["user_note"],
-                userAliases: Self.decodedAliases(from: row["user_aliases_json"])
+                tags: tags
             )
         }
     }
@@ -534,8 +550,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     sql: """
                         UPDATE items SET
                             is_pinned = ?, created_at = ?, user_title = ?,
-                            user_note = ?, user_aliases_json = ?,
-                            protected_metadata_version = ?
+                            user_note = ?, protected_metadata_version = ?
                         WHERE id = ?
                         """,
                     arguments: [
@@ -543,11 +558,11 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                         item.createdAt.timeIntervalSince1970,
                         item.userTitle,
                         item.userNote,
-                        Self.encodedAliases(item.userAliases),
                         metadataVersion,
                         itemID,
                     ]
                 )
+                try replaceTags(for: item, db: db)
                 try refreshSearchIndex(for: storedItem, db: db)
                 continue
             }
@@ -605,9 +620,9 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     detected_barcodes_json, content_file_name,
                     content_digest, content_character_count,
                     content_line_count, content_byte_count, ocr_text,
-                    user_title, user_note, user_aliases_json,
+                    user_title, user_note,
                     is_protected, protected_payload, protected_metadata_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
@@ -635,7 +650,6 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     ocr_text = excluded.ocr_text,
                     user_title = excluded.user_title,
                     user_note = excluded.user_note,
-                    user_aliases_json = excluded.user_aliases_json,
                     is_protected = excluded.is_protected,
                     protected_payload = excluded.protected_payload,
                     protected_metadata_version = excluded.protected_metadata_version
@@ -668,7 +682,6 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 protected ? nil : item.ocrText,
                 item.userTitle,
                 item.userNote,
-                Self.encodedAliases(item.userAliases),
                 protected ? 1 : 0,
                 storedItem.protectedPayload,
                 protected ? 1 : 0
@@ -734,6 +747,34 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 ]
             )
         }
+
+        try replaceTags(for: storedItem.item, db: db)
+    }
+
+    private func tags(for id: UUID, db: Database) throws -> [String] {
+        try String.fetchAll(
+            db,
+            sql: """
+                SELECT normalized_name FROM item_tags
+                WHERE item_id = ?
+                ORDER BY ordinal
+                """,
+            arguments: [id.uuidString]
+        )
+    }
+
+    private func replaceTags(for item: ClipboardItem, db: Database) throws {
+        let id = item.id.uuidString
+        try db.execute(sql: "DELETE FROM item_tags WHERE item_id = ?", arguments: [id])
+        for (index, tag) in (item.tags ?? []).enumerated() {
+            try db.execute(
+                sql: """
+                    INSERT INTO item_tags (item_id, ordinal, normalized_name)
+                    VALUES (?, ?, ?)
+                    """,
+                arguments: [id, index, tag]
+            )
+        }
     }
 
     private func refreshSearchIndex(
@@ -793,7 +834,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             item.detectedBarcodes?.map(\.payload).joined(separator: "\n"),
             item.userTitle,
             item.userNote,
-            item.userAliases?.joined(separator: "\n"),
+            item.tags?.joined(separator: "\n"),
             storedItem.filePaths.joined(separator: "\n")
         ]
         .compactMap { value in
@@ -808,7 +849,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             item.kind.rawValue,
             item.userTitle,
             item.userNote,
-            item.userAliases?.joined(separator: "\n"),
+            item.tags?.joined(separator: "\n"),
         ]
         .compactMap { value in
             guard let value, !value.isEmpty else { return nil }
@@ -849,13 +890,18 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         in table: String,
         db: Database
     ) throws {
-        let columns = try Set(
-            Row.fetchAll(db, sql: "PRAGMA table_info(\(table))").map { row in
-                row["name"] as String
-            }
-        )
-        guard !columns.contains(column) else { return }
+        guard try !hasColumn(column, in: table, db: db) else { return }
         try db.execute(sql: "ALTER TABLE \(table) ADD COLUMN \(definition)")
+    }
+
+    private func hasColumn(
+        _ column: String,
+        in table: String,
+        db: Database
+    ) throws -> Bool {
+        try Row.fetchAll(db, sql: "PRAGMA table_info(\(table))").contains { row in
+            row["name"] as String == column
+        }
     }
 
     private func hasSearchIndex(db: Database) throws -> Bool {
@@ -922,7 +968,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         parts.append(item.ocrText ?? "")
         parts.append(item.userTitle ?? "")
         parts.append(item.userNote ?? "")
-        parts.append(item.userAliases?.joined(separator: "\u{1F}") ?? "")
+        parts.append(item.tags?.joined(separator: "\u{1F}") ?? "")
         return ContentDigest.sha256Hex(for: parts.joined(separator: "\u{1E}"))
     }
 
@@ -944,25 +990,6 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             .replacingOccurrences(of: "%", with: "\\%")
             .replacingOccurrences(of: "_", with: "\\_")
         return "%\(escaped)%"
-    }
-
-    private static func decodedAliases(from json: String?) -> [String]? {
-        guard let json,
-              let data = json.data(using: .utf8),
-              let aliases = try? JSONDecoder().decode([String].self, from: data),
-              !aliases.isEmpty else {
-            return nil
-        }
-        return aliases
-    }
-
-    private static func encodedAliases(_ aliases: [String]?) -> String? {
-        guard let aliases,
-              !aliases.isEmpty,
-              let data = try? JSONEncoder().encode(aliases) else {
-            return nil
-        }
-        return String(data: data, encoding: .utf8)
     }
 
     private static func encodedProtectedPayload(_ item: ClipboardItem) throws -> Data {

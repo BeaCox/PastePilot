@@ -327,12 +327,16 @@ struct ContentBehaviorTests {
             kind: .text,
             userTitle: "Customer escalation",
             userNote: "Needs billing review",
-            userAliases: ["vip", "renewal"]
+            tags: [" Release ", "Client Work", "release"]
         )
 
+        #expect(item.tags == ["release", "client work"])
         #expect(ClipboardSearchQuery("has:title").matchesFilters(item))
         #expect(ClipboardSearchQuery("has:note").matchesFilters(item))
-        #expect(ClipboardSearchQuery("has:alias").matchesFilters(item))
+        #expect(ClipboardSearchQuery("has:tag").matchesFilters(item))
+        #expect(ClipboardSearchQuery("tag:release").matchesFilters(item))
+        #expect(ClipboardSearchQuery(#"tag:"client work""#).matchesFilters(item))
+        #expect(!ClipboardSearchQuery("tag:personal").matchesFilters(item))
         #expect(!ClipboardSearchQuery("has:ocr").matchesFilters(item))
     }
 
@@ -766,7 +770,8 @@ struct ContentBehaviorTests {
           "kind": "text",
           "createdAt": "2026-06-06T14:02:05Z",
           "isPinned": false,
-          "containsSensitiveData": false
+          "containsSensitiveData": false,
+          "userAliases": ["ignored legacy alias"]
         }
         """
         let decoder = JSONDecoder()
@@ -779,7 +784,7 @@ struct ContentBehaviorTests {
         #expect(legacyItem.pasteboardRepresentations == nil)
         #expect(legacyItem.userTitle == nil)
         #expect(legacyItem.userNote == nil)
-        #expect(legacyItem.userAliases == nil)
+        #expect(legacyItem.tags == nil)
 
         let oldPinned = ClipboardItem(
             content: "pinned",

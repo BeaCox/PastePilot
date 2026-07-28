@@ -22,7 +22,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 - Content-aware capture and actions for developer text, structured data, rich
   text, images, and files, with high-fidelity replay when safe.
 - SQLite/FTS history with externalized large text, image storage, OCR, source
-  application metadata, filters, pinned items, titles, notes, and aliases.
+  application metadata, filters, pinned items, titles, notes, and tags.
 - Local privacy controls including pause/ignore-next-copy, sensitive-content
   policies, custom patterns, encrypted protected history, and backup/restore.
 - A declarative action registry, safe template actions, local JSON action
@@ -44,7 +44,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 
 ## Next — Organize Reusable History
 
-- [ ] Add tags to clipboard items.
+- [x] Add tags to clipboard items.
   - Persist normalized tags separately from captured content and keep them when
     duplicate content moves to the top.
   - Add tag editing and compact tag indicators without making history rows
@@ -52,7 +52,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
   - Support `tag:<name>` and `has:tag` in app and CLI search, including backup
     and restore coverage.
   - Treat tags on protected items as user-authored visible metadata, matching
-    titles, notes, and aliases, and document that boundary in the UI.
+    titles and notes, and document that boundary in the UI.
 - [ ] Add saved searches as local smart collections.
   - Store a name and existing search query instead of duplicating clipboard
     payloads.

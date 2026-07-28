@@ -11,7 +11,7 @@ A local-first macOS clipboard manager that understands developer content.
 PastePilot recognizes commands, JSON, code, errors, colors, screenshots, rich
 text, and files, then suggests the next useful action from your menu bar. It
 keeps high-fidelity pasteboard data when safe, supports searchable notes and
-aliases, and includes local backup/restore. No telemetry, no cloud sync.
+tags, and includes local backup/restore. No telemetry, no cloud sync.
 Everything stays on your Mac. Safe custom actions let you build reusable local
 text and image-metadata templates without enabling shell execution.
 
@@ -33,7 +33,7 @@ you copied and turns it into useful developer actions.
 - **Find screenshots by text.** OCR copied images locally with macOS Vision,
   then search clipboard history by visible text.
 - **Organize history without changing the copied content.** Add titles, notes,
-  and aliases that stay searchable and survive duplicate recapture.
+  and tags that stay searchable and survive duplicate recapture.
 - **Paste several fragments in one pass.** Queue up to 50 history items, choose
   the separator between them, and paste the stack into the active app in order.
 - **Build your own safe transforms.** Create local template actions for text or
@@ -49,7 +49,7 @@ you copied and turns it into useful developer actions.
 - **Encrypt selected records.** Move text-based items into protected storage
   backed by a key in the macOS Keychain, with system authentication and an
   automatic lock timeout. Protected items lock as soon as they are moved;
-  user titles, notes, and aliases remain visible so locked items stay identifiable.
+  user titles, notes, and tags remain visible so locked items stay identifiable.
 - **Keep clipboard data local.** No executable plugins, no telemetry, and no cloud sync.
 
 ## Demo
@@ -88,7 +88,7 @@ PastePilot automatically identifies 11 content types and tailors actions to each
 ### Search and Organization
 
 Search works across captured content, OCR text, source app metadata, file paths,
-and your own titles, notes, and aliases. Use plain text, quoted phrases, or
+and your own titles, notes, and tags. Use plain text, quoted phrases, or
 filters:
 
 | Query | Meaning |
@@ -96,16 +96,18 @@ filters:
 | `kind:json` | JSON clipboard items |
 | `app:Terminal` | Content copied from Terminal |
 | `pinned:true` | Pinned items only |
+| `tag:release` | Items tagged `release` |
+| `has:tag` | Items with one or more tags |
 | `has:ocr` | Images with recognized text |
-| `has:title`, `has:note`, `has:alias` | Items with user metadata |
+| `has:title`, `has:note` | Items with user metadata |
 | `has:metadata`, `has:link` | Links with fetched metadata |
 | `has:barcode`, `has:qr` | Images with locally detected codes |
 | `"release notes"` | Exact phrase match |
 
 Right-click any history item and choose **Edit Details…** to add a title, note,
-or aliases. These fields are stored separately from captured content, indexed in
-search, and kept when duplicate content is copied again and moved back to the
-top.
+or comma-separated tags. These fields are stored separately from
+captured content, indexed in search, included in local backups, and kept when
+duplicate content is copied again and moved back to the top.
 
 ### High-Fidelity Clipboard Replay
 
@@ -218,7 +220,7 @@ with `swift run PastePilotCLI`; `PASTEPILOT_DATA_DIR` or the global
 `--data-dir` option can point it at a non-default history directory.
 
 The CLI does not authenticate or decrypt protected history. It can show the
-same user-authored title, note, and aliases that remain visible in the app, but
+same user-authored title, note, and tags that remain visible in the app, but
 reading or copying locked content must be done after authentication in
 PastePilot. Backup export uses a live SQLite snapshot and never pauses capture.
 
@@ -279,7 +281,7 @@ after an update, so close old DMGs and keep only the installed copy in
 - Selected text-based records can be encrypted with AES-GCM. The encryption key
   is stored in the macOS Keychain; protected clipboard content is omitted from
   SQLite search data, and unlocking requires system authentication. User titles,
-  notes, and aliases are visible metadata and remain searchable while locked
+  notes, and tags are visible metadata and remain searchable while locked
 - Protected records lock immediately when moved, after the configured unlock
   timeout, and when the Mac sleeps or the login session becomes inactive. Their
   encrypted backup data can only be opened on a Mac that has the matching
@@ -289,7 +291,7 @@ after an update, so close old DMGs and keep only the installed copy in
 - Existing `history.json` and `history.backup.json` files are retained for migration and downgrade compatibility
 - Copied images are stored as PNG files under `~/Library/Application Support/PastePilot/images/`
 - Rich text, OCR results, locally detected barcode payloads, optional link metadata, source app metadata, and detected sensitive content may be persisted in history
-- Titles, notes, aliases, and retained pasteboard representations may be
+- Titles, notes, tags, and retained pasteboard representations may be
   persisted in history for search and high-fidelity replay
 - Backup archives include the SQLite database, externalized text, and images
 - The storage limit setting removes the oldest unpinned items when retained
@@ -307,7 +309,7 @@ after an update, so close old DMGs and keep only the installed copy in
 - **Keyboard-driven** — search, navigation, previews, item actions, pinning,
   deletion, and cleanup all have keyboard paths
 - **Search** — filter history by content, type, source app, pin state, OCR text,
-  titles, notes, and aliases
+  titles, notes, and tags
 - **Pin** — pinned items stay at the top and survive cleanup
 - **Search filters** — a filter menu next to the search field inserts
   `kind:`, `pinned:`, and `has:` query tokens
@@ -315,7 +317,7 @@ after an update, so close old DMGs and keep only the installed copy in
   before its data is actually removed
 - **Paste stack** — queue multiple items, reorder them by dragging, and paste
   them into the active app in the selected order
-- **Edit details** — add searchable titles, notes, and aliases from the context menu
+- **Edit details** — add searchable titles, notes, and tags from the context menu
 - **Drag & drop** — drop files or images directly into the popover
 
 #### Keyboard shortcuts

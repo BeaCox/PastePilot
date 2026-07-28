@@ -40,7 +40,7 @@ public struct PastePilotCLIItem: Codable, Equatable, Sendable {
     public let sourceAppName: String?
     public let title: String?
     public let note: String?
-    public let aliases: [String]
+    public let tags: [String]
     public let content: String?
     public let imagePath: String?
     public let filePaths: [String]
@@ -253,9 +253,9 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         let ocrText: String?
         let userTitle: String?
         let userNote: String?
-        let userAliases: [String]
         let linkMetadataJSON: String?
         let detectedBarcodesJSON: String?
+        let tags: [String]
         let searchBody: String
     }
 
@@ -268,6 +268,24 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
             ? "LEFT JOIN search_index s ON s.item_id = i.id"
             : ""
         let searchColumn = hasSearchIndex ? "COALESCE(s.body, '')" : "''"
+        let hasTags = try Bool.fetchOne(
+            db,
+            sql: "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'item_tags')"
+        ) ?? false
+        let tagsByItemID: [String: [String]]
+        if hasTags {
+            let tagRows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT item_id, normalized_name FROM item_tags
+                    ORDER BY item_id, ordinal
+                    """
+            )
+            tagsByItemID = Dictionary(grouping: tagRows, by: { $0["item_id"] as String })
+                .mapValues { rows in rows.map { $0["normalized_name"] as String } }
+        } else {
+            tagsByItemID = [:]
+        }
         let rows = try Row.fetchAll(
             db,
             sql: """
@@ -292,9 +310,9 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
                 ocrText: row["ocr_text"],
                 userTitle: row["user_title"],
                 userNote: row["user_note"],
-                userAliases: Self.decodeAliases(row["user_aliases_json"]),
                 linkMetadataJSON: row["link_metadata_json"],
                 detectedBarcodesJSON: row["detected_barcodes_json"],
+                tags: tagsByItemID[row["id"] as String] ?? [],
                 searchBody: row["cli_search_body"]
             )
         }
@@ -330,7 +348,7 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
             sourceAppName: row.isProtected ? nil : row.sourceAppName,
             title: row.userTitle,
             note: row.userNote,
-            aliases: row.userAliases,
+            tags: row.tags,
             content: try effectiveContent(for: row),
             imagePath: try imagePath(for: row),
             filePaths: row.isProtected ? [] : paths
@@ -368,11 +386,6 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
             sql: "SELECT path FROM file_paths WHERE item_id = ? ORDER BY ordinal",
             arguments: [id]
         )
-    }
-
-    private static func decodeAliases(_ json: String?) -> [String] {
-        guard let json, let data = json.data(using: .utf8) else { return [] }
-        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
     }
 
     private func writeManifest(to root: URL) throws {
@@ -459,6 +472,7 @@ private struct CLIQuery {
     var apps: [String] = []
     var pinned: Bool?
     var has = Set<String>()
+    var tags: [String] = []
 
     init(_ rawValue: String) {
         for token in Self.tokens(from: rawValue) {
@@ -482,13 +496,15 @@ private struct CLIQuery {
                 default: terms.append(token.lowercased())
                 }
             case "has": has.insert(value)
+            case "tag", "tags": tags.append(value)
             default: terms.append(token.lowercased())
             }
         }
     }
 
     var isEmpty: Bool {
-        terms.isEmpty && kinds.isEmpty && apps.isEmpty && pinned == nil && has.isEmpty
+        terms.isEmpty && kinds.isEmpty && apps.isEmpty && pinned == nil
+            && has.isEmpty && tags.isEmpty
     }
 
     func matches(_ row: PastePilotCLIHistory.StoredRow, filePaths: [String]) throws -> Bool {
@@ -498,6 +514,7 @@ private struct CLIQuery {
         let source = [row.sourceAppName, row.sourceBundleIdentifier]
             .compactMap { $0 }.joined(separator: " ").lowercased()
         if !apps.allSatisfy({ source.contains($0) }) { return false }
+        if !tags.allSatisfy({ row.tags.contains($0) }) { return false }
         for filter in has {
             switch filter {
             case "ocr": if row.ocrText?.isEmpty != false { return false }
@@ -506,7 +523,7 @@ private struct CLIQuery {
             case "sensitive": if !row.containsSensitiveData { return false }
             case "title": if row.userTitle?.isEmpty != false { return false }
             case "note", "notes": if row.userNote?.isEmpty != false { return false }
-            case "alias", "aliases": if row.userAliases.isEmpty { return false }
+            case "tag", "tags": if row.tags.isEmpty { return false }
             case "metadata", "link": if row.linkMetadataJSON == nil { return false }
             case "barcode", "qr": if row.detectedBarcodesJSON == nil { return false }
             default: return false

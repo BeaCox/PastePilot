@@ -56,6 +56,26 @@ struct CompactHistoryItem: View {
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
+                    if let tags = item.tags, let firstTag = tags.first {
+                        HStack(spacing: 2) {
+                            Text("#\(firstTag)")
+                            if tags.count > 1 {
+                                Text("+\(tags.count - 1)")
+                            }
+                        }
+                        .font(.system(size: 9, design: .rounded).weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: 88)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
+                        .accessibilityLabel(
+                            "Tags: %@".localized(tags.joined(separator: ", "))
+                        )
+                    }
+
                     if let pasteStackPosition {
                         Text("#\(pasteStackPosition)")
                             .font(.system(size: 10, design: .rounded).weight(.semibold))

@@ -56,7 +56,11 @@ struct ClipboardStorageLifecycleTests {
             noticePoster: noticePoster,
             logger: SilentPastePilotLogger()
         )
-        let exportedItem = ClipboardItem(content: "exported from memory", kind: .text)
+        let exportedItem = ClipboardItem(
+            content: "exported from memory",
+            kind: .text,
+            tags: ["backup"]
+        )
         sourceStore.items = [exportedItem]
 
         try sourceStore.exportBackup(to: archiveURL)
@@ -74,6 +78,7 @@ struct ClipboardStorageLifecycleTests {
         try targetStore.restoreBackup(from: archiveURL)
 
         #expect(targetStore.items.map(\.id) == [exportedItem.id])
+        #expect(targetStore.items.first?.tags == ["backup"])
         #expect(
             noticePoster.notices.contains(
                 PastePilotNotice("Backup exported".localized, style: .success)

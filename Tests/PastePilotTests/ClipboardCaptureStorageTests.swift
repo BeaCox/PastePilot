@@ -345,7 +345,7 @@ struct ClipboardCaptureStorageTests {
             contentByteCount: originalContent.utf8.count,
             userTitle: "Saved deploy command",
             userNote: "Keep the note on duplicate recapture",
-            userAliases: ["deploy", "release"]
+            tags: ["snippet", "production"]
         )
         store.items = [oldItem]
 
@@ -360,7 +360,7 @@ struct ClipboardCaptureStorageTests {
         #expect(newItem.isPinned)
         #expect(newItem.userTitle == oldItem.userTitle)
         #expect(newItem.userNote == oldItem.userNote)
-        #expect(newItem.userAliases == oldItem.userAliases)
+        #expect(newItem.tags == oldItem.tags)
         #expect(newItem.contentDigest == oldItem.contentDigest)
         #expect(newItem.contentFileName != oldFileName)
         #expect(store.content(for: newItem) == originalContent)

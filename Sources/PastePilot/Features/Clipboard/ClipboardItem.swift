@@ -83,7 +83,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     var ocrText: String?
     var userTitle: String?
     var userNote: String?
-    var userAliases: [String]?
+    var tags: [String]?
     var protectionState: ClipboardProtectionState?
 
     init(
@@ -117,7 +117,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         ocrText: String? = nil,
         userTitle: String? = nil,
         userNote: String? = nil,
-        userAliases: [String]? = nil,
+        tags: [String]? = nil,
         protectionState: ClipboardProtectionState? = nil
     ) {
         self.id = id
@@ -152,7 +152,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.ocrText = ocrText
         self.userTitle = Self.normalizedMetadataText(userTitle)
         self.userNote = Self.normalizedMetadataText(userNote)
-        self.userAliases = Self.normalizedAliases(userAliases)
+        self.tags = Self.normalizedTags(tags)
         self.protectionState = protectionState
     }
 
@@ -184,12 +184,16 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         userNote?.isEmpty == false
     }
 
-    var hasUserAliases: Bool {
-        userAliases?.isEmpty == false
+    var hasTags: Bool {
+        tags?.isEmpty == false
     }
 
     var hasUserMetadata: Bool {
-        hasUserTitle || hasUserNote || hasUserAliases
+        hasUserTitle || hasUserNote
+    }
+
+    var hasVisibleMetadata: Bool {
+        hasUserMetadata || hasTags
     }
 
     var hasDetectedBarcodes: Bool {
@@ -211,18 +215,18 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     mutating func updateUserMetadata(
         title: String?,
         note: String?,
-        aliases: [String]?
+        tags: [String]?
     ) {
         userTitle = Self.normalizedMetadataText(title)
         userNote = Self.normalizedMetadataText(note)
-        userAliases = Self.normalizedAliases(aliases)
+        self.tags = Self.normalizedTags(tags)
     }
 
     mutating func inheritUserMetadata(from item: ClipboardItem?) {
         guard let item else { return }
         userTitle = item.userTitle
         userNote = item.userNote
-        userAliases = item.userAliases
+        tags = item.tags
     }
 
     mutating func inheritEnrichment(from item: ClipboardItem?) {
@@ -237,15 +241,15 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private static func normalizedAliases(_ aliases: [String]?) -> [String]? {
-        guard let aliases else { return nil }
+    static func normalizedTags(_ tags: [String]?) -> [String]? {
+        guard let tags else { return nil }
         var seen = Set<String>()
-        let normalized = aliases.compactMap { alias -> String? in
-            let trimmed = alias.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { return nil }
-            let key = trimmed.lowercased()
-            guard seen.insert(key).inserted else { return nil }
-            return trimmed
+        let normalized = tags.compactMap { tag -> String? in
+            let value = tag
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            guard !value.isEmpty, seen.insert(value).inserted else { return nil }
+            return value
         }
         return normalized.isEmpty ? nil : normalized
     }
@@ -295,7 +299,7 @@ extension ClipboardItem {
             ocrText: ocrText,
             userTitle: userTitle,
             userNote: userNote,
-            userAliases: userAliases,
+            tags: tags,
             protectionState: .unlocked
         )
     }
@@ -337,7 +341,7 @@ extension ClipboardItem {
             ocrText: ocrText,
             userTitle: userTitle,
             userNote: userNote,
-            userAliases: userAliases,
+            tags: tags,
             protectionState: protectionState
         )
     }

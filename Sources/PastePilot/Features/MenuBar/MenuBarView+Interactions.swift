@@ -285,7 +285,7 @@ extension MenuBarView {
         selectedID = item.id
         metadataTitle = item.userTitle ?? ""
         metadataNote = item.userNote ?? ""
-        metadataAliases = (item.userAliases ?? []).joined(separator: ", ")
+        metadataTags = (item.tags ?? []).joined(separator: ", ")
         prepareForTopLevelPresentation()
         editingMetadataItemID = item.id
     }
@@ -296,7 +296,7 @@ extension MenuBarView {
             for: id,
             title: metadataTitle,
             note: metadataNote,
-            aliases: parsedMetadataAliases
+            tags: parsedMetadataTags
         )
         editingMetadataItemID = nil
         previewClosesInstantly = false
@@ -317,8 +317,8 @@ extension MenuBarView {
         closePreview()
     }
 
-    private var parsedMetadataAliases: [String] {
-        metadataAliases
+    private var parsedMetadataTags: [String] {
+        metadataTags
             .split { character in
                 character == "," || character == "\n"
             }

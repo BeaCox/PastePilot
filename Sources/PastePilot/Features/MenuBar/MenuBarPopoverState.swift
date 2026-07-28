@@ -51,7 +51,7 @@ enum MenuBarPopoverState {
         let userMetadata = [
             item.userTitle,
             item.userNote,
-            item.userAliases?.joined(separator: " ")
+            item.tags?.joined(separator: " ")
         ]
             .compactMap { value in
                 guard let value, !value.isEmpty else { return nil }

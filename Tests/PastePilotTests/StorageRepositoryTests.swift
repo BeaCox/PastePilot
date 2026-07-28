@@ -187,15 +187,50 @@ struct StorageRepositoryTests {
             kind: loadedItem.kind,
             createdAt: loadedItem.createdAt,
             userTitle: "Migrated title",
-            userNote: "Migrated note",
-            userAliases: ["legacy"]
+            userNote: "Migrated note"
         )
         try repository.save([updatedItem])
 
         let reloadedItem = try #require(repository.load().items.first)
         #expect(reloadedItem.userTitle == "Migrated title")
         #expect(reloadedItem.userNote == "Migrated note")
-        #expect(reloadedItem.userAliases == ["legacy"])
+    }
+
+    @Test
+    func repositoryMigrationRemovesLegacyAliasesAndRebuildsSearchIndex() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let item = ClipboardItem(content: "ordinary body", kind: .text)
+        do {
+            let repository = HistoryRepository(dataDirectoryURL: directory)
+            try repository.save([item])
+        }
+
+        let databaseURL = directory.appendingPathComponent("history.sqlite")
+        try DatabaseQueue(path: databaseURL.path).write { db in
+            try db.execute(sql: "ALTER TABLE items ADD COLUMN user_aliases_json TEXT")
+            try db.execute(
+                sql: "UPDATE items SET user_aliases_json = ? WHERE id = ?",
+                arguments: [#"["legacy-search-alias"]"#, item.id.uuidString]
+            )
+            try db.execute(
+                sql: "UPDATE search_index SET body = body || ? WHERE item_id = ?",
+                arguments: ["\nlegacy-search-alias", item.id.uuidString]
+            )
+            try db.execute(
+                sql: "UPDATE metadata SET value = '8' WHERE key = 'schema_version'"
+            )
+        }
+
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        #expect(repository.load().items.map(\.id) == [item.id])
+        #expect(try repository.matchingIDs(query: "legacy-search-alias").isEmpty)
+        let columns = try DatabaseQueue(path: databaseURL.path).read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(items)").map { row in
+                row["name"] as String
+            }
+        }
+        #expect(!columns.contains("user_aliases_json"))
     }
 
     @Test
@@ -250,7 +285,7 @@ struct StorageRepositoryTests {
             ocrText: "recognized text",
             userTitle: "Deploy snippet",
             userNote: "Use after staging checks",
-            userAliases: ["release", "ship it"]
+            tags: [" Release ", "Team Alpha", "release"]
         )
         let repository = HistoryRepository(dataDirectoryURL: directory)
 
@@ -258,8 +293,18 @@ struct StorageRepositoryTests {
 
         let loadedItem = try #require(repository.load().items.first)
         #expect(loadedItem == item)
+        #expect(loadedItem.tags == ["release", "team alpha"])
         #expect(try repository.matchingIDs(query: "Indexed summary") == Set([item.id]))
         #expect(try repository.matchingIDs(query: "barcode-search-value") == Set([item.id]))
+        #expect(try repository.matchingIDs(query: "team alpha") == Set([item.id]))
+        let databaseURL = directory.appendingPathComponent("history.sqlite")
+        let storedTags = try DatabaseQueue(path: databaseURL.path).read { db in
+            try String.fetchAll(
+                db,
+                sql: "SELECT normalized_name FROM item_tags ORDER BY ordinal"
+            )
+        }
+        #expect(storedTags == ["release", "team alpha"])
     }
 
     @Test
@@ -336,7 +381,7 @@ struct StorageRepositoryTests {
             kind: .text,
             userTitle: "Customer escalation",
             userNote: "Needs billing review",
-            userAliases: ["vip", "renewal"]
+            tags: ["vip", "renewal"]
         )
         let repository = HistoryRepository(dataDirectoryURL: directory)
 
@@ -418,7 +463,8 @@ struct StorageRepositoryTests {
             content: "preview",
             kind: .image,
             imageFileName: imageFileName,
-            contentFileName: textFileName
+            contentFileName: textFileName,
+            tags: ["backup", "reference"]
         )
         let sourceRepository = HistoryRepository(dataDirectoryURL: sourceDirectory)
         try sourceRepository.save([item])
@@ -435,6 +481,7 @@ struct StorageRepositoryTests {
 
         let restoredItem = try #require(restoredRepository.load().items.first)
         #expect(restoredItem.id == item.id)
+        #expect(restoredItem.tags == ["backup", "reference"])
         #expect(
             try Data(
                 contentsOf: restoredDirectory

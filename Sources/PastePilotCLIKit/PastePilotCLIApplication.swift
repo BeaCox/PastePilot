@@ -15,7 +15,7 @@ public struct PastePilotCLIApplication {
           help                                 Show this help
 
         Search supports PastePilot filters such as kind:json, app:Terminal,
-        pinned:true, has:ocr, and quoted phrases. Protected content stays locked.
+        pinned:true, tag:<name>, has:tag, has:ocr, and quoted phrases. Protected content stays locked.
         """
 
     private let stdout: Write

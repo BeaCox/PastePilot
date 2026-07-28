@@ -37,7 +37,7 @@ struct MenuBarView: View {
     @State var editingMetadataItemID: UUID?
     @State var metadataTitle = ""
     @State var metadataNote = ""
-    @State var metadataAliases = ""
+    @State var metadataTags = ""
     @State var interactionState = MenuBarInteractionState()
     @State var historyItemFrames: [UUID: CGRect] = [:]
     @State var previewClosesInstantly = false

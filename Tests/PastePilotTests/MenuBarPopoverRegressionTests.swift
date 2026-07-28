@@ -167,14 +167,22 @@ struct MenuBarPopoverRegressionTests {
             kind: .text,
             userTitle: "Customer escalation",
             userNote: "Billing review",
-            userAliases: ["vip"]
+            tags: ["customer", "urgent"]
         )
         let other = ClipboardItem(content: "unrelated", kind: .text)
 
         #expect(
             MenuBarPopoverState.filteredItems(
                 from: [item, other],
-                query: ClipboardSearchQuery("billing vip"),
+                query: ClipboardSearchQuery("tag:urgent has:tag"),
+                fullTextIDs: []
+            ).map(\.id) == [item.id]
+        )
+
+        #expect(
+            MenuBarPopoverState.filteredItems(
+                from: [item, other],
+                query: ClipboardSearchQuery("billing customer"),
                 fullTextIDs: []
             ).map(\.id) == [item.id]
         )

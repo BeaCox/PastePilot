@@ -46,7 +46,7 @@ extension MenuBarView {
                 item: editingMetadataItem,
                 title: $metadataTitle,
                 note: $metadataNote,
-                aliases: $metadataAliases,
+                tags: $metadataTags,
                 save: saveMetadataEdit,
                 cancel: cancelMetadataEdit
             )
@@ -261,6 +261,7 @@ extension MenuBarView {
             ("JSON".localized, "kind:json"),
             ("Pinned Only".localized, "pinned:true"),
             ("Has OCR Text".localized, "has:ocr"),
+            ("Has Tags".localized, "has:tag"),
             ("Sensitive".localized, "has:sensitive")
         ]
     }
@@ -454,7 +455,7 @@ private struct ClipboardMetadataEditor: View {
     let item: ClipboardItem?
     @Binding var title: String
     @Binding var note: String
-    @Binding var aliases: String
+    @Binding var tags: String
     let save: () -> Void
     let cancel: () -> Void
 
@@ -469,7 +470,7 @@ private struct ClipboardMetadataEditor: View {
             VStack(alignment: .leading, spacing: 14) {
                 if item?.isProtected == true {
                     Label(
-                        "Titles, notes, and aliases stay visible and searchable while protected. Keep secrets in the content itself.".localized,
+                        "Titles, notes, and tags stay visible and searchable while protected. Keep secrets in the content itself.".localized,
                         systemImage: "info.circle"
                     )
                     .font(.caption)
@@ -482,8 +483,8 @@ private struct ClipboardMetadataEditor: View {
                         .metadataEditorControl()
                 }
 
-                MetadataEditorField(title: "Aliases".localized, symbol: "tag") {
-                    TextField("Aliases".localized, text: $aliases)
+                MetadataEditorField(title: "Tags".localized, symbol: "number") {
+                    TextField("Comma-separated tags".localized, text: $tags)
                         .metadataEditorControl()
                 }
 

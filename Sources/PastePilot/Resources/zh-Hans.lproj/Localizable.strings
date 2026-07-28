@@ -109,6 +109,7 @@
 "JSON" = "JSON";
 "Pinned Only" = "仅显示固定项";
 "Has OCR Text" = "含 OCR 文字";
+"Has Tags" = "含标签";
 "Sensitive" = "敏感内容";
 "Searching…" = "正在搜索…";
 "Scanning large clipboard items." = "正在扫描大段剪贴板内容。";
@@ -170,7 +171,9 @@
 "Edit Details" = "编辑详情";
 "Edit Details…" = "编辑详情…";
 "Title" = "标题";
-"Aliases" = "别名";
+"Tags" = "标签";
+"Comma-separated tags" = "以逗号分隔标签";
+"Tags: %@" = "标签：%@";
 "Note" = "备注";
 "Save" = "保存";
 "Unknown Source" = "未知来源";
@@ -423,11 +426,11 @@
 "Protected item" = "受保护条目";
 "Protected item locked" = "受保护条目已锁定";
 "Protected item unlocked" = "受保护条目已解锁";
-"Protected content is encrypted with a key stored in your Mac Keychain. Titles, notes, and aliases remain visible and searchable while locked so you can identify items." = "受保护内容使用存储在 Mac 钥匙串中的密钥加密。标题、备注和别名在锁定时仍可见且可搜索，便于区分条目。";
+"Protected content is encrypted with a key stored in your Mac Keychain. Titles, notes, and tags remain visible and searchable while locked so you can identify items." = "受保护内容使用存储在 Mac 钥匙串中的密钥加密。标题、备注和标签在锁定时仍可见且可搜索，便于区分条目。";
 "Remove Protection" = "移除保护";
 "This Mac cannot authenticate access to protected history." = "此 Mac 无法验证对受保护历史记录的访问。";
 "Unlock Protected Items" = "解锁受保护条目";
 "Unlocks protected content." = "解锁受保护内容。";
 "Unlock protected PastePilot history" = "解锁 PastePilot 受保护历史记录";
 "Unlock protected history before adding this item." = "请先解锁受保护历史记录，再添加此条目。";
-"Titles, notes, and aliases stay visible and searchable while protected. Keep secrets in the content itself." = "受保护时，标题、备注和别名仍可见且可搜索。请只将秘密信息放在正文内容中。";
+"Titles, notes, and tags stay visible and searchable while protected. Keep secrets in the content itself." = "受保护时，标题、备注和标签仍可见且可搜索。请只将秘密信息放在正文内容中。";

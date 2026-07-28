@@ -64,7 +64,7 @@ struct ClipboardPreviewMetadata: View {
             Divider()
                 .padding(.vertical, 8)
 
-            if item.hasUserMetadata {
+            if item.hasVisibleMetadata {
                 UserMetadataPreview(item: item)
                     .padding(.bottom, 8)
             }
@@ -228,9 +228,8 @@ private struct UserMetadataPreview: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
             }
-            if let aliases = item.userAliases,
-               !aliases.isEmpty {
-                Label(aliases.joined(separator: ", "), systemImage: "tag")
+            if let tags = item.tags, !tags.isEmpty {
+                Label(tags.map { "#\($0)" }.joined(separator: "  "), systemImage: "tag")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

@@ -125,7 +125,7 @@ struct ProtectedHistoryTests {
             richTextHTML: "<b>protected-secret-417</b>",
             userTitle: "Production token",
             userNote: "Do not expose",
-            userAliases: ["prod"]
+            tags: ["credential", "production"]
         ).preparedForProtection(content: "api-token=protected-secret-417")
 
         try repository.save([original])
@@ -138,17 +138,18 @@ struct ProtectedHistoryTests {
         #expect(locked.content == "Protected item".localized)
         #expect(locked.userTitle == original.userTitle)
         #expect(locked.userNote == original.userNote)
-        #expect(locked.userAliases == original.userAliases)
+        #expect(locked.tags == original.tags)
         #expect(
             try repository.matchingIDs(query: "production token") == [original.id]
         )
+        #expect(try repository.matchingIDs(query: "credential") == [original.id])
         #expect(try repository.matchingIDs(query: "protected-secret-417").isEmpty)
 
         locked.isPinned = true
         locked.updateUserMetadata(
             title: "Rotated production token",
             note: "Visible organizational note",
-            aliases: ["rotated", "prod"]
+            tags: ["rotated", "credential"]
         )
         try repository.save([locked])
 
@@ -159,7 +160,7 @@ struct ProtectedHistoryTests {
         #expect(restored.richTextHTML == original.richTextHTML)
         #expect(restored.userTitle == "Rotated production token")
         #expect(restored.userNote == "Visible organizational note")
-        #expect(restored.userAliases == ["rotated", "prod"])
+        #expect(restored.tags == ["rotated", "credential"])
         #expect(restored.isPinned)
         #expect(restored.protectionState == .unlocked)
     }
@@ -180,8 +181,7 @@ struct ProtectedHistoryTests {
             content: "legacy-protected-secret-2257",
             kind: .text,
             userTitle: "Legacy production key",
-            userNote: "Migrated visible note",
-            userAliases: ["legacy", "production"]
+            userNote: "Migrated visible note"
         ).preparedForProtection(content: "legacy-protected-secret-2257")
         try repository.save([original])
 
@@ -193,7 +193,7 @@ struct ProtectedHistoryTests {
                 sql: """
                     UPDATE items SET
                         user_title = NULL, user_note = NULL,
-                        user_aliases_json = NULL, protected_metadata_version = 0
+                        protected_metadata_version = 0
                     WHERE id = ?
                     """,
                 arguments: [original.id.uuidString]
@@ -207,7 +207,6 @@ struct ProtectedHistoryTests {
         let migrated = try #require(repository.load().items.first)
         #expect(migrated.userTitle == original.userTitle)
         #expect(migrated.userNote == original.userNote)
-        #expect(migrated.userAliases == original.userAliases)
         #expect(
             try repository.matchingIDs(query: "legacy production") == [original.id]
         )
@@ -217,7 +216,6 @@ struct ProtectedHistoryTests {
         #expect(locked.protectionState == .locked)
         #expect(locked.userTitle == original.userTitle)
         #expect(locked.userNote == original.userNote)
-        #expect(locked.userAliases == original.userAliases)
     }
 
     @Test
@@ -236,14 +234,13 @@ struct ProtectedHistoryTests {
             content: "clear-metadata-secret-7742",
             kind: .text,
             userTitle: "Temporary title",
-            userNote: "Temporary note",
-            userAliases: ["temporary"]
+            userNote: "Temporary note"
         ).preparedForProtection(content: "clear-metadata-secret-7742")
         try repository.save([original])
 
         vault.lockVault()
         var locked = try #require(repository.load().items.first)
-        locked.updateUserMetadata(title: nil, note: nil, aliases: nil)
+        locked.updateUserMetadata(title: nil, note: nil, tags: nil)
         try repository.save([locked])
 
         try vault.unlock(timeout: 60)
@@ -251,7 +248,6 @@ struct ProtectedHistoryTests {
         #expect(restored.content == original.content)
         #expect(restored.userTitle == nil)
         #expect(restored.userNote == nil)
-        #expect(restored.userAliases == nil)
     }
 
     @Test

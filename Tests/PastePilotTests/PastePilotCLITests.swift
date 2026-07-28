@@ -20,7 +20,7 @@ struct PastePilotCLITests {
             sourceAppName: "Terminal",
             sourceBundleIdentifier: "com.apple.Terminal",
             userTitle: "Deploy payload",
-            userAliases: ["shipping"]
+            tags: ["release", "team alpha"]
         )
         let newer = ClipboardItem(
             content: "unrelated text",
@@ -31,14 +31,14 @@ struct PastePilotCLITests {
 
         let history = PastePilotCLIHistory(dataDirectoryURL: directory)
         let matches = try history.search(
-            "\"release notes\" kind:json app:Terminal pinned:true has:alias"
+            "\"release notes\" kind:json app:Terminal pinned:true has:tag tag:release"
         )
 
         #expect(matches.count == 1)
         #expect(matches.first?.id == older.id.uuidString)
         #expect(matches.first?.index == 1)
         #expect(matches.first?.content == older.content)
-        #expect(matches.first?.aliases == ["shipping"])
+        #expect(matches.first?.tags == ["release", "team alpha"])
         #expect(try history.read(older.id.uuidString.prefix(8).description).id == older.id.uuidString)
     }
 
@@ -97,7 +97,7 @@ struct PastePilotCLITests {
             sourceAppName: "Secrets",
             userTitle: "Visible label",
             userNote: "Visible note",
-            userAliases: ["visible alias"]
+            tags: ["credential"]
         )
         let repository = HistoryRepository(dataDirectoryURL: directory)
         try repository.save([item])
@@ -113,7 +113,7 @@ struct PastePilotCLITests {
             )
             try db.execute(
                 sql: "UPDATE search_index SET body = ? WHERE item_id = ?",
-                arguments: ["text\nVisible label\nVisible note\nvisible alias", item.id.uuidString]
+                arguments: ["text\nVisible label\nVisible note\ncredential", item.id.uuidString]
             )
         }
 
@@ -122,14 +122,14 @@ struct PastePilotCLITests {
         #expect(result.isProtected)
         #expect(result.title == "Visible label")
         #expect(result.note == "Visible note")
-        #expect(result.aliases == ["visible alias"])
+        #expect(result.tags == ["credential"])
         #expect(result.content == nil)
         #expect(result.sourceAppName == nil)
         #expect(result.filePaths.isEmpty)
         #expect(throws: PastePilotCLIError.protectedItem) {
             try history.copy("1", to: NSPasteboard(name: .init("PastePilotCLIProtectedTest")))
         }
-        #expect(try history.search("visible alias").count == 1)
+        #expect(try history.search("tag:credential has:tag").count == 1)
         #expect(try history.search("must not escape").isEmpty)
     }
 

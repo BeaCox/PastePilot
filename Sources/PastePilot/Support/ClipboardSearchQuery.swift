@@ -7,6 +7,7 @@ struct ClipboardSearchQuery: Equatable, Sendable {
     let appFilters: [String]
     let pinnedFilter: Bool?
     let hasFilters: Set<String>
+    let tagFilters: [String]
 
     init(_ query: String) {
         rawValue = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -15,6 +16,7 @@ struct ClipboardSearchQuery: Equatable, Sendable {
         var parsedAppFilters: [String] = []
         var parsedPinnedFilter: Bool?
         var parsedHasFilters = Set<String>()
+        var parsedTagFilters: [String] = []
 
         for token in Self.tokens(from: rawValue) {
             guard let filter = Self.filter(from: token) else {
@@ -35,6 +37,8 @@ struct ClipboardSearchQuery: Equatable, Sendable {
                 }
             case "has":
                 parsedHasFilters.insert(filter.value)
+            case "tag", "tags":
+                parsedTagFilters.append(filter.value)
             default:
                 parsedTerms.append(token)
             }
@@ -45,6 +49,7 @@ struct ClipboardSearchQuery: Equatable, Sendable {
         appFilters = parsedAppFilters
         pinnedFilter = parsedPinnedFilter
         hasFilters = parsedHasFilters
+        tagFilters = parsedTagFilters
     }
 
     var isEmpty: Bool {
@@ -53,6 +58,7 @@ struct ClipboardSearchQuery: Equatable, Sendable {
             && appFilters.isEmpty
             && pinnedFilter == nil
             && hasFilters.isEmpty
+            && tagFilters.isEmpty
     }
 
     var hasSearchTerms: Bool {
@@ -119,8 +125,8 @@ struct ClipboardSearchQuery: Equatable, Sendable {
                     guard item.hasUserTitle else { return false }
                 case "note", "notes":
                     guard item.hasUserNote else { return false }
-                case "alias", "aliases":
-                    guard item.hasUserAliases else { return false }
+                case "tag", "tags":
+                    guard item.hasTags else { return false }
                 case "metadata", "link":
                     guard item.linkMetadata != nil else { return false }
                 case "barcode", "qr":
@@ -128,6 +134,13 @@ struct ClipboardSearchQuery: Equatable, Sendable {
                 default:
                     return false
                 }
+            }
+        }
+
+        if !tagFilters.isEmpty {
+            let tags = Set(item.tags ?? [])
+            guard tagFilters.allSatisfy({ tags.contains($0.lowercased()) }) else {
+                return false
             }
         }
 
