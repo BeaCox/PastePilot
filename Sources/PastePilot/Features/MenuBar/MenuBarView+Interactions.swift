@@ -54,6 +54,54 @@ extension MenuBarView {
         searchText.split(separator: " ").map(String.init).contains(token)
     }
 
+    func applySearchCollection(_ collection: ClipboardSearchCollection) {
+        searchText = collection.query
+        searchFocused = true
+    }
+
+    func isSearchCollectionActive(_ collection: ClipboardSearchCollection) -> Bool {
+        ClipboardSearchCollection.isActiveQuery(searchText, collection.query)
+    }
+
+    func beginSavingCurrentSearch() {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        savedSearchName = defaultSavedSearchName(for: query)
+        savedSearchQuery = query
+        prepareForTopLevelPresentation()
+        showsSavedSearchEditor = true
+    }
+
+    func saveCurrentSearch() {
+        let saved = settings.upsertSavedSearch(
+            name: savedSearchName,
+            query: savedSearchQuery
+        )
+        showsSavedSearchEditor = false
+        previewClosesInstantly = false
+
+        guard saved else {
+            showNotice(PastePilotNotice(
+                "Saved search limit reached".localized,
+                style: .warning
+            ))
+            return
+        }
+
+        searchText = savedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchFocused = true
+        showNotice(PastePilotNotice("Saved search updated".localized))
+    }
+
+    func cancelSavingCurrentSearch() {
+        showsSavedSearchEditor = false
+        previewClosesInstantly = false
+    }
+
+    func deleteSavedSearch(_ savedSearch: SavedClipboardSearch) {
+        settings.deleteSavedSearch(id: savedSearch.id)
+    }
+
     func scheduleFullTextSearch() {
         interactionState.fullTextSearchTask?.cancel()
         let searchQuery = ClipboardSearchQuery(searchText)
@@ -325,6 +373,12 @@ extension MenuBarView {
             .map {
                 String($0).trimmingCharacters(in: .whitespacesAndNewlines)
             }
+    }
+
+    private func defaultSavedSearchName(for query: String) -> String {
+        ClipboardSearchCollection.builtInCollections.first {
+            ClipboardSearchCollection.isActiveQuery($0.query, query)
+        }?.title ?? query
     }
 
     func shouldShowPinnedHeader(at index: Int) -> Bool {

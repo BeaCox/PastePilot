@@ -60,6 +60,14 @@ extension MenuBarView {
                 done: { showsPasteStackReorder = false }
             )
         }
+        .sheet(isPresented: $showsSavedSearchEditor) {
+            SavedSearchEditor(
+                name: $savedSearchName,
+                query: $savedSearchQuery,
+                save: saveCurrentSearch,
+                cancel: cancelSavingCurrentSearch
+            )
+        }
     }
 
     var notificationHandlingPanel: some View {
@@ -233,6 +241,53 @@ extension MenuBarView {
 
     var searchFilterMenu: some View {
         Menu {
+            Section("Collections".localized) {
+                ForEach(ClipboardSearchCollection.builtInCollections) { collection in
+                    Button {
+                        applySearchCollection(collection)
+                    } label: {
+                        Label(
+                            collection.title,
+                            systemImage: isSearchCollectionActive(collection)
+                                ? "checkmark"
+                                : collection.systemImage
+                        )
+                    }
+                }
+            }
+            if !settings.savedSearches.isEmpty {
+                Section("Saved Searches".localized) {
+                    ForEach(settings.savedSearches) { savedSearch in
+                        let collection = ClipboardSearchCollection(
+                            savedSearch: savedSearch
+                        )
+                        Button {
+                            applySearchCollection(collection)
+                        } label: {
+                            Label(
+                                collection.title,
+                                systemImage: isSearchCollectionActive(collection)
+                                    ? "checkmark"
+                                    : collection.systemImage
+                            )
+                        }
+                    }
+                }
+                Menu("Delete Saved Search".localized) {
+                    ForEach(settings.savedSearches) { savedSearch in
+                        Button(role: .destructive) {
+                            deleteSavedSearch(savedSearch)
+                        } label: {
+                            Label(savedSearch.name, systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            Button("Save Current Search…".localized) {
+                beginSavingCurrentSearch()
+            }
+            .disabled(!canSaveCurrentSearch)
+            Divider()
             ForEach(searchFilterShortcuts, id: \.token) { shortcut in
                 Button {
                     toggleSearchFilterToken(shortcut.token)
@@ -264,6 +319,10 @@ extension MenuBarView {
             ("Has Tags".localized, "has:tag"),
             ("Sensitive".localized, "has:sensitive")
         ]
+    }
+
+    private var canSaveCurrentSearch: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     @ViewBuilder
@@ -572,6 +631,77 @@ private struct ClipboardMetadataEditor: View {
                 .foregroundStyle(.tertiary)
             }
         }
+    }
+}
+
+private struct SavedSearchEditor: View {
+    @Binding var name: String
+    @Binding var query: String
+    let save: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Save Search".localized)
+                        .font(.headline)
+                    Text("Saved searches store the query, not clipboard content.".localized)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                MetadataEditorField(title: "Name".localized, symbol: "textformat") {
+                    TextField("Name".localized, text: $name)
+                        .metadataEditorControl()
+                }
+
+                MetadataEditorField(title: "Query".localized, symbol: "magnifyingglass") {
+                    TextField("Query".localized, text: $query)
+                        .metadataEditorControl()
+                }
+            }
+            .padding(14)
+            .background(
+                .quaternary.opacity(0.4),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.quaternary, lineWidth: 0.5)
+            }
+            .padding(18)
+
+            Divider()
+
+            HStack(spacing: 8) {
+                Spacer()
+                Button("Cancel".localized, action: cancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Save".localized, action: save)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(SavedClipboardSearch(name: name, query: query) == nil)
+            }
+            .controlSize(.regular)
+            .padding(.horizontal, 18)
+            .frame(height: 52)
+        }
+        .frame(width: MenuBarPopoverState.preferredWidth)
     }
 }
 

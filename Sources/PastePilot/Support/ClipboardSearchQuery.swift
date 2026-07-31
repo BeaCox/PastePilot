@@ -121,6 +121,8 @@ struct ClipboardSearchQuery: Equatable, Sendable {
                     guard item.filePaths?.isEmpty == false else { return false }
                 case "sensitive":
                     guard item.containsSensitiveData else { return false }
+                case "protected":
+                    guard item.isProtected else { return false }
                 case "title":
                     guard item.hasUserTitle else { return false }
                 case "note", "notes":

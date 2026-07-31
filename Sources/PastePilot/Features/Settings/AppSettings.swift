@@ -154,6 +154,7 @@ final class AppSettings: ObservableObject {
     static let defaultPerceptualImageDeduplicationEnabled = false
     static let defaultLinkMetadataFetchingEnabled = false
     static let defaultCustomClipboardActions = "[]"
+    static let defaultSavedSearches = "[]"
     static var defaultPluginsDirectoryURL: URL {
         FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -277,6 +278,10 @@ final class AppSettings: ObservableObject {
             "customClipboardActions",
             default: AppSettings.defaultCustomClipboardActions
         )
+        static let savedSearches = AppSetting(
+            "savedSearches",
+            default: AppSettings.defaultSavedSearches
+        )
 
         static var registeredDefaults: [String: Any] {
             [
@@ -313,6 +318,8 @@ final class AppSettings: ObservableObject {
                     customSensitivePatterns.defaultValue,
                 customClipboardActions.key:
                     customClipboardActions.defaultValue,
+                savedSearches.key:
+                    savedSearches.defaultValue,
             ]
         }
     }
@@ -568,6 +575,17 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var savedSearches: [SavedClipboardSearch] {
+        didSet {
+            let normalizedSearches = SavedClipboardSearch.normalized(savedSearches)
+            guard savedSearches == normalizedSearches else {
+                savedSearches = normalizedSearches
+                return
+            }
+            persistSavedSearches()
+        }
+    }
+
     @Published var hotKeyRegistrationWarning: String?
 
     init(
@@ -695,6 +713,9 @@ final class AppSettings: ObservableObject {
         customClipboardActions = Self.decodeCustomClipboardActions(
             Self.string(for: Setting.customClipboardActions, in: defaults)
         )
+        savedSearches = Self.decodeSavedSearches(
+            Self.string(for: Setting.savedSearches, in: defaults)
+        )
         reloadLocalActionPlugins()
         persistCurrentValues()
     }
@@ -717,6 +738,34 @@ final class AppSettings: ObservableObject {
             at: pluginsDirectoryURL,
             withIntermediateDirectories: true
         )
+    }
+
+    @discardableResult
+    func upsertSavedSearch(name: String, query: String) -> Bool {
+        guard let savedSearch = SavedClipboardSearch(name: name, query: query) else {
+            return false
+        }
+
+        if let index = savedSearches.firstIndex(where: {
+            $0.name.localizedCaseInsensitiveCompare(savedSearch.name) == .orderedSame
+        }) {
+            savedSearches[index] = SavedClipboardSearch(
+                id: savedSearches[index].id,
+                name: savedSearch.name,
+                query: savedSearch.query
+            ) ?? savedSearch
+            return true
+        }
+
+        guard savedSearches.count < SavedClipboardSearch.maximumCount else {
+            return false
+        }
+        savedSearches.append(savedSearch)
+        return true
+    }
+
+    func deleteSavedSearch(id: UUID) {
+        savedSearches.removeAll { $0.id == id }
     }
 
     var userSensitivePatterns: [UserSensitivePattern] {
@@ -769,6 +818,7 @@ final class AppSettings: ObservableObject {
             Setting.sensitiveContentStoragePolicy.defaultValue
         customSensitivePatterns = Setting.customSensitivePatterns.defaultValue
         customClipboardActions = []
+        savedSearches = []
     }
 
     private static func supportedInteger(
@@ -959,6 +1009,7 @@ final class AppSettings: ObservableObject {
         )
         persist(customSensitivePatterns, for: Setting.customSensitivePatterns)
         persistCustomClipboardActions()
+        persistSavedSearches()
     }
 
     private static func decodeCustomClipboardActions(
@@ -980,6 +1031,27 @@ final class AppSettings: ObservableObject {
             return
         }
         persist(encoded, for: Setting.customClipboardActions)
+    }
+
+    private static func decodeSavedSearches(
+        _ encoded: String
+    ) -> [SavedClipboardSearch] {
+        guard let data = encoded.data(using: .utf8),
+              let searches = try? JSONDecoder().decode(
+                  [SavedClipboardSearch].self,
+                  from: data
+              ) else {
+            return []
+        }
+        return SavedClipboardSearch.normalized(searches)
+    }
+
+    private func persistSavedSearches() {
+        guard let data = try? JSONEncoder().encode(savedSearches),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return
+        }
+        persist(encoded, for: Setting.savedSearches)
     }
 
     private static func bool(

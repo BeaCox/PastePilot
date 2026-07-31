@@ -34,6 +34,9 @@ struct MenuBarView: View {
     @State var needsScrollToSelection = false
     @State var showsClearConfirmation = false
     @State var showsPasteStackReorder = false
+    @State var showsSavedSearchEditor = false
+    @State var savedSearchName = ""
+    @State var savedSearchQuery = ""
     @State var editingMetadataItemID: UUID?
     @State var metadataTitle = ""
     @State var metadataNote = ""

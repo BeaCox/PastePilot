@@ -53,7 +53,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
     and restore coverage.
   - Treat tags on protected items as user-authored visible metadata, matching
     titles and notes, and document that boundary in the UI.
-- [ ] Add saved searches as local smart collections.
+- [x] Add saved searches as local smart collections.
   - Store a name and existing search query instead of duplicating clipboard
     payloads.
   - Provide built-in views for recent, pinned, protected, images, and files,

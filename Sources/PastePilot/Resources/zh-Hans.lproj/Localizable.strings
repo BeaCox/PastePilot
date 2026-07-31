@@ -105,6 +105,16 @@
 
 "Search clipboard history" = "搜索剪贴板历史";
 "Search Filters" = "搜索过滤器";
+"Collections" = "集合";
+"Saved Searches" = "已保存搜索";
+"Save Current Search…" = "保存当前搜索…";
+"Delete Saved Search" = "删除已保存搜索";
+"Save Search" = "保存搜索";
+"Saved searches store the query, not clipboard content." = "已保存搜索只保存查询，不保存剪贴板内容。";
+"Saved search updated" = "已保存搜索";
+"Saved search limit reached" = "已达到保存搜索数量上限";
+"Name" = "名称";
+"Query" = "查询";
 "Images" = "图片";
 "JSON" = "JSON";
 "Pinned Only" = "仅显示固定项";
@@ -115,6 +125,7 @@
 "Scanning large clipboard items." = "正在扫描大段剪贴板内容。";
 "No search results" = "没有搜索结果";
 "Pinned" = "已固定";
+"Protected" = "受保护";
 "Recent" = "最近项目";
 "%d items" = "%d 条记录";
 "Clear Unpinned" = "清除未固定记录";

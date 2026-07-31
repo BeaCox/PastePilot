@@ -189,6 +189,63 @@ struct MenuBarPopoverRegressionTests {
     }
 
     @Test
+    func builtInCollectionsResolveThroughSearchQueries() {
+        let recent = ClipboardItem(
+            content: "plain",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 4)
+        )
+        let pinned = ClipboardItem(
+            content: "important",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 3),
+            isPinned: true
+        )
+        let protected = ClipboardItem(
+            content: "Protected item".localized,
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 2),
+            protectionState: .locked
+        )
+        let image = ClipboardItem(
+            content: "screenshot",
+            kind: .image,
+            createdAt: Date(timeIntervalSince1970: 1),
+            imageFileName: "screen.png"
+        )
+        let file = ClipboardItem(
+            content: "/tmp/report.txt",
+            kind: .file,
+            createdAt: Date(timeIntervalSince1970: 0),
+            filePaths: ["/tmp/report.txt"]
+        )
+        let items = [recent, pinned, protected, image, file]
+
+        let collectionsByID = Dictionary(
+            uniqueKeysWithValues: ClipboardSearchCollection
+                .builtInCollections
+                .map { ($0.id, $0) }
+        )
+
+        #expect(
+            filteredIDs(for: collectionsByID["recent"]?.query, in: items) == [
+                pinned.id,
+                recent.id,
+                protected.id,
+                image.id,
+                file.id
+            ]
+        )
+        #expect(filteredIDs(for: collectionsByID["pinned"]?.query, in: items) == [pinned.id])
+        #expect(
+            filteredIDs(for: collectionsByID["protected"]?.query, in: items)
+                == [protected.id]
+        )
+        #expect(filteredIDs(for: collectionsByID["images"]?.query, in: items) == [image.id])
+        #expect(filteredIDs(for: collectionsByID["files"]?.query, in: items) == [file.id])
+    }
+
+    @Test
     func popoverKeyboardMonitorIgnoresTopLevelEditorsAndSheets() {
         let popoverWindow = NSWindow()
         let editorWindow = NSWindow()
@@ -294,6 +351,17 @@ struct MenuBarPopoverRegressionTests {
         let hostingView = NSHostingView(rootView: view)
         hostingView.layoutSubtreeIfNeeded()
         return hostingView.fittingSize
+    }
+
+    private func filteredIDs(
+        for query: String?,
+        in items: [ClipboardItem]
+    ) -> [UUID] {
+        MenuBarPopoverState.filteredItems(
+            from: items,
+            searchText: query ?? "",
+            fullTextSearch: FullTextSearchState()
+        ).map(\.id)
     }
 
     private func makePopoverView(

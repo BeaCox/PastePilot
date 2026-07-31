@@ -11,6 +11,9 @@ All notable changes to PastePilot are documented in this file.
   available in the menu bar and App Intents without executing plugin code.
 - The Actions settings page can reveal a bundled example plugin and the version
   1 JSON Schema for manifest validation and editor completion.
+- The menu bar search menu now includes local smart collections for recent,
+  pinned, protected, image, and file history, plus saved searches that store a
+  name and query without duplicating clipboard content.
 
 ### Changed
 

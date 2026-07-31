@@ -43,6 +43,7 @@ struct AppSettingsTests {
             settings.protectedHistoryUnlockTimeoutSeconds
                 == AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
         )
+        #expect(settings.savedSearches.isEmpty)
 
         settings.historyLimit = 200
         settings.imageSizeLimitMB = 50
@@ -71,6 +72,10 @@ struct AppSettingsTests {
 
          com.example.private
         """
+        #expect(settings.upsertSavedSearch(name: " Urgent Items ", query: " tag:urgent "))
+        #expect(settings.savedSearches.count == 1)
+        #expect(settings.savedSearches[0].name == "Urgent Items")
+        #expect(settings.savedSearches[0].query == "tag:urgent")
 
         let restored = AppSettings(defaults: defaults)
         #expect(restored.historyLimit == 200)
@@ -106,6 +111,18 @@ struct AppSettingsTests {
                 == ["com.apple.keychainaccess", "com.example.private"]
         )
         #expect(restored.protectedHistoryUnlockTimeoutSeconds == 900)
+        #expect(restored.savedSearches.map(\.name) == ["Urgent Items"])
+        #expect(restored.savedSearches.map(\.query) == ["tag:urgent"])
+
+        let savedSearchID = try #require(restored.savedSearches.first?.id)
+        #expect(restored.upsertSavedSearch(name: "urgent items", query: "kind:image"))
+        #expect(restored.savedSearches.count == 1)
+        #expect(restored.savedSearches[0].id == savedSearchID)
+        #expect(restored.savedSearches[0].name == "urgent items")
+        #expect(restored.savedSearches[0].query == "kind:image")
+
+        restored.deleteSavedSearch(id: savedSearchID)
+        #expect(restored.savedSearches.isEmpty)
 
         restored.reset()
         #expect(restored.historyLimit == 100)
@@ -141,6 +158,47 @@ struct AppSettingsTests {
             restored.protectedHistoryUnlockTimeoutSeconds
                 == AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
         )
+        #expect(restored.savedSearches.isEmpty)
+    }
+
+    @Test
+    func savedSearchesNormalizeInvalidPersistedValues() throws {
+        let suiteName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let persisted = """
+        [
+          {
+            "id": "\(UUID().uuidString)",
+            "name": " Work Items ",
+            "query": " tag:work "
+          },
+          {
+            "id": "\(UUID().uuidString)",
+            "name": "work items",
+            "query": "kind:image"
+          },
+          {
+            "id": "\(UUID().uuidString)",
+            "name": "",
+            "query": "kind:file"
+          },
+          {
+            "id": "\(UUID().uuidString)",
+            "name": "Empty Query",
+            "query": "   "
+          }
+        ]
+        """
+        defaults.set(persisted, forKey: "savedSearches")
+
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.savedSearches.count == 1)
+        #expect(settings.savedSearches[0].name == "Work Items")
+        #expect(settings.savedSearches[0].query == "tag:work")
     }
 
     @Test
