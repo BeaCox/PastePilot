@@ -194,10 +194,13 @@ extension MenuBarView {
 
     func copyItem(at notification: Notification) {
         guard let number = notification.object as? Int,
-              filteredItems.indices.contains(number - 1) else {
+              let item = MenuBarPopoverState.shortcutItem(
+                  number: number,
+                  in: filteredItems,
+                  searchText: searchText
+              ) else {
             return
         }
-        let item = filteredItems[number - 1]
         performAction(ClipboardActionFactory.copyAction(for: item))
     }
 
@@ -263,6 +266,11 @@ extension MenuBarView {
     func beginPasteStackReorder() {
         prepareForTopLevelPresentation()
         showsPasteStackReorder = true
+    }
+
+    func beginPinnedItemsReorder() {
+        prepareForTopLevelPresentation()
+        showsPinnedItemsReorder = true
     }
 
     func cancelPasteStack() {

@@ -73,6 +73,85 @@ struct MenuBarPopoverRegressionTests {
     }
 
     @Test
+    func pinnedOrderOwnsNumberShortcutsUntilSearchIsActive() throws {
+        let firstPinned = ClipboardItem(
+            content: "first shortcut",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 1),
+            isPinned: true,
+            pinnedOrder: 0
+        )
+        let secondPinned = ClipboardItem(
+            content: "second shortcut needle",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 3),
+            isPinned: true,
+            pinnedOrder: 1
+        )
+        let recent = ClipboardItem(
+            content: "recent needle",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 4)
+        )
+        let unfiltered = MenuBarPopoverState.filteredItems(
+            from: [recent, secondPinned, firstPinned],
+            searchText: "",
+            fullTextSearch: FullTextSearchState()
+        )
+
+        #expect(unfiltered.map(\.id) == [firstPinned.id, secondPinned.id, recent.id])
+        #expect(
+            MenuBarPopoverState.shortcutItem(
+                number: 1,
+                in: unfiltered,
+                searchText: ""
+            )?.id == firstPinned.id
+        )
+        #expect(
+            MenuBarPopoverState.shortcutItem(
+                number: 2,
+                in: unfiltered,
+                searchText: ""
+            )?.id == secondPinned.id
+        )
+        #expect(
+            MenuBarPopoverState.shortcutItem(
+                number: 3,
+                in: unfiltered,
+                searchText: ""
+            ) == nil
+        )
+        #expect(
+            MenuBarPopoverState.shortcutNumber(
+                for: recent,
+                at: 2,
+                searchText: ""
+            ) == nil
+        )
+
+        let searched = MenuBarPopoverState.filteredItems(
+            from: unfiltered,
+            searchText: "needle",
+            fullTextSearch: FullTextSearchState()
+        )
+        #expect(searched.map(\.id) == [secondPinned.id, recent.id])
+        #expect(
+            MenuBarPopoverState.shortcutItem(
+                number: 2,
+                in: searched,
+                searchText: "needle"
+            )?.id == recent.id
+        )
+        #expect(
+            MenuBarPopoverState.shortcutNumber(
+                for: recent,
+                at: 1,
+                searchText: "needle"
+            ) == 2
+        )
+    }
+
+    @Test
     func emptyStatesDistinguishWaitingSearchingAndNoResults() {
         #expect(
             MenuBarPopoverState.emptyState(itemCount: 0, isSearching: false)

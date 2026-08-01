@@ -310,7 +310,8 @@ after an update, so close old DMGs and keep only the installed copy in
   deletion, and cleanup all have keyboard paths
 - **Search** — filter history by content, type, source app, pin state, OCR text,
   titles, notes, and tags
-- **Pin** — pinned items stay at the top and survive cleanup
+- **Pin** — pinned items stay at the top, survive cleanup, and can be dragged
+  into a reusable shortcut order
 - **Search filters** — a filter menu next to the search field inserts
   `kind:`, `pinned:`, and `has:` query tokens
 - **Undo delete** — deleting an item shows an Undo toast for a few seconds
@@ -327,7 +328,7 @@ after an update, so close old DMGs and keep only the installed copy in
 | `↑` / `↓` | Move the selected history item |
 | `↩` | Copy the selected item |
 | `␣` | Open or close the selected item's preview |
-| `⌘1`–`⌘9` | Copy the corresponding visible history item |
+| `⌘1`–`⌘9` | Copy the corresponding pinned item; while searching, copy the corresponding visible result |
 | `⌥1`–`⌥9` | Run an action for the selected item, matching the preview action list |
 | `⌘P` | Pin or unpin the selected item |
 | `⌘⌫` | Delete the selected item |

@@ -322,7 +322,15 @@ final class ClipboardStore: ObservableObject {
 
     func togglePinned(_ id: UUID) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
-        items[index].isPinned.toggle()
+        let pinnedIDs = ClipboardHistoryOrdering.pinnedItems(items).map(\.id)
+        if items[index].isPinned {
+            items[index].isPinned = false
+            items[index].pinnedOrder = nil
+            applyPinnedOrder(pinnedIDs.filter { $0 != id })
+        } else {
+            items[index].isPinned = true
+            applyPinnedOrder([id] + pinnedIDs)
+        }
         sortItems()
         save()
     }

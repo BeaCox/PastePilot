@@ -34,6 +34,7 @@ struct MenuBarView: View {
     @State var needsScrollToSelection = false
     @State var showsClearConfirmation = false
     @State var showsPasteStackReorder = false
+    @State var showsPinnedItemsReorder = false
     @State var showsSavedSearchEditor = false
     @State var savedSearchName = ""
     @State var savedSearchQuery = ""
@@ -75,6 +76,10 @@ struct MenuBarView: View {
     var pasteStackItemsInOrder: [ClipboardItem] {
         let itemsByID = Dictionary(uniqueKeysWithValues: store.items.map { ($0.id, $0) })
         return pasteStack.itemIDs.compactMap { itemsByID[$0] }
+    }
+
+    var pinnedItemsInOrder: [ClipboardItem] {
+        ClipboardHistoryOrdering.pinnedItems(store.items)
     }
 
     var listPreferredHeight: CGFloat {

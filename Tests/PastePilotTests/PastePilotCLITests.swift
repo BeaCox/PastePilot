@@ -43,6 +43,32 @@ struct PastePilotCLITests {
     }
 
     @Test
+    func historyIndexesFollowPersistedPinnedOrder() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = ClipboardItem(
+            content: "first pinned",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 100),
+            isPinned: true,
+            pinnedOrder: 0
+        )
+        let second = ClipboardItem(
+            content: "second pinned",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 200),
+            isPinned: true,
+            pinnedOrder: 1
+        )
+        try HistoryRepository(dataDirectoryURL: directory).save([second, first])
+
+        let history = PastePilotCLIHistory(dataDirectoryURL: directory)
+
+        #expect(try history.read("1").id == first.id.uuidString)
+        #expect(try history.read("2").id == second.id.uuidString)
+    }
+
+    @Test
     func readLoadsExternalTextAndCopyWritesToRequestedPasteboard() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

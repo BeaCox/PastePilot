@@ -336,6 +336,7 @@ struct ClipboardCaptureStorageTests {
             ).text,
             kind: .text,
             isPinned: true,
+            pinnedOrder: 3,
             contentFileName: oldFileName,
             contentDigest: ContentDigest.sha256Hex(for: originalContent),
             contentCharacterCount: originalContent.count,
@@ -358,6 +359,7 @@ struct ClipboardCaptureStorageTests {
         }
         #expect(store.items.count == 1)
         #expect(newItem.isPinned)
+        #expect(newItem.pinnedOrder == 3)
         #expect(newItem.userTitle == oldItem.userTitle)
         #expect(newItem.userNote == oldItem.userNote)
         #expect(newItem.tags == oldItem.tags)

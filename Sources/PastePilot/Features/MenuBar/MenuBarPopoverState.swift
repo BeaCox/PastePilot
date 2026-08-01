@@ -82,12 +82,41 @@ enum MenuBarPopoverState {
         return filteredItems.first { $0.id == selectedID } ?? filteredItems.first
     }
 
+    static func shortcutItem(
+        number: Int,
+        in filteredItems: [ClipboardItem],
+        searchText: String
+    ) -> ClipboardItem? {
+        guard (1...9).contains(number) else { return nil }
+        let candidates = hasActiveSearch(searchText)
+            ? filteredItems
+            : filteredItems.filter(\.isPinned)
+        let index = number - 1
+        return candidates.indices.contains(index) ? candidates[index] : nil
+    }
+
+    static func shortcutNumber(
+        for item: ClipboardItem,
+        at visibleIndex: Int,
+        searchText: String
+    ) -> Int? {
+        guard (0..<9).contains(visibleIndex) else { return nil }
+        if !hasActiveSearch(searchText), !item.isPinned {
+            return nil
+        }
+        return visibleIndex + 1
+    }
+
     static func previewedItem(
         in items: [ClipboardItem],
         previewedID: UUID?
     ) -> ClipboardItem? {
         guard let previewedID else { return nil }
         return items.first { $0.id == previewedID }
+    }
+
+    static func hasActiveSearch(_ searchText: String) -> Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     static func preferredSize(for filteredItems: [ClipboardItem]) -> CGSize {

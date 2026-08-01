@@ -261,6 +261,8 @@ private struct RowIconButton: View {
 struct HistorySectionHeader: View {
     let title: String
     let detail: String?
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 6) {
@@ -273,6 +275,13 @@ struct HistorySectionHeader: View {
                     .foregroundStyle(.secondary.opacity(0.8))
             }
             Spacer()
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.plain)
+                    .font(.caption2)
+                    .textCase(nil)
+                    .foregroundStyle(.tint)
+            }
         }
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)

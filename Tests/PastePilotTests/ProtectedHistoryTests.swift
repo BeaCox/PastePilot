@@ -146,6 +146,7 @@ struct ProtectedHistoryTests {
         #expect(try repository.matchingIDs(query: "protected-secret-417").isEmpty)
 
         locked.isPinned = true
+        locked.pinnedOrder = 3
         locked.updateUserMetadata(
             title: "Rotated production token",
             note: "Visible organizational note",
@@ -162,6 +163,7 @@ struct ProtectedHistoryTests {
         #expect(restored.userNote == "Visible organizational note")
         #expect(restored.tags == ["rotated", "credential"])
         #expect(restored.isPinned)
+        #expect(restored.pinnedOrder == 3)
         #expect(restored.protectionState == .unlocked)
     }
 

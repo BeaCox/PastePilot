@@ -286,12 +286,21 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         } else {
             tagsByItemID = [:]
         }
+        let hasPinnedOrder = try Row.fetchAll(
+            db,
+            sql: "PRAGMA table_info(items)"
+        ).contains { row in
+            row["name"] as String == "pinned_order"
+        }
+        let orderClause = hasPinnedOrder
+            ? "i.is_pinned DESC, i.pinned_order IS NULL, i.pinned_order, i.created_at DESC"
+            : "i.is_pinned DESC, i.created_at DESC"
         let rows = try Row.fetchAll(
             db,
             sql: """
                 SELECT i.*, \(searchColumn) AS cli_search_body
                 FROM items i \(searchJoin)
-                ORDER BY i.is_pinned DESC, i.created_at DESC
+                ORDER BY \(orderClause)
                 """
         )
         return rows.map { row in

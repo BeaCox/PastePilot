@@ -5,6 +5,55 @@ extension ClipboardStore {
         items = ClipboardHistoryOrdering.pinnedFirst(items)
     }
 
+    @discardableResult
+    func normalizePinnedOrder() -> Bool {
+        let pinnedIDs = ClipboardHistoryOrdering.pinnedItems(items).map(\.id)
+        var didChange = false
+        let orderByID = Dictionary(
+            uniqueKeysWithValues: pinnedIDs.enumerated().map { ($0.element, $0.offset) }
+        )
+        for index in items.indices {
+            let expectedOrder = items[index].isPinned ? orderByID[items[index].id] : nil
+            if items[index].pinnedOrder != expectedOrder {
+                items[index].pinnedOrder = expectedOrder
+                didChange = true
+            }
+        }
+        sortItems()
+        return didChange
+    }
+
+    func movePinnedItems(fromOffsets source: IndexSet, toOffset destination: Int) {
+        var pinnedIDs = ClipboardHistoryOrdering.pinnedItems(items).map(\.id)
+        let validSource = source.filter { pinnedIDs.indices.contains($0) }
+        guard !validSource.isEmpty else { return }
+
+        let movedIDs = validSource.sorted().map { pinnedIDs[$0] }
+        for index in validSource.sorted(by: >) {
+            pinnedIDs.remove(at: index)
+        }
+        let removedBeforeDestination = validSource.filter { $0 < destination }.count
+        let insertionIndex = min(
+            max(0, destination - removedBeforeDestination),
+            pinnedIDs.count
+        )
+        pinnedIDs.insert(contentsOf: movedIDs, at: insertionIndex)
+        applyPinnedOrder(pinnedIDs)
+        sortItems()
+        save()
+    }
+
+    func applyPinnedOrder(_ orderedIDs: [UUID]) {
+        let orderByID = Dictionary(
+            uniqueKeysWithValues: orderedIDs.enumerated().map { ($0.element, $0.offset) }
+        )
+        for index in items.indices {
+            items[index].pinnedOrder = items[index].isPinned
+                ? orderByID[items[index].id]
+                : nil
+        }
+    }
+
     func trimHistory(limit: Int) {
         let chronological = ClipboardHistoryOrdering.newestFirst(items)
         let pinned = chronological.filter(\.isPinned)
@@ -169,6 +218,9 @@ extension ClipboardStore {
             break
         }
         sortItems()
+        if normalizePinnedOrder() {
+            save()
+        }
         purgeExpired()
         applyStorageLimit()
     }

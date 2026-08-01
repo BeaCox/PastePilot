@@ -475,6 +475,7 @@ extension ClipboardStore {
         duplicateItems.forEach(deleteStoredResources)
         items.removeAll(where: duplicate)
         var item = make(wasPinned)
+        item.pinnedOrder = inheritedItem?.pinnedOrder
         item.inheritUserMetadata(from: inheritedItem)
         item.inheritEnrichment(from: inheritedItem)
         items.insert(item, at: 0)

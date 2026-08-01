@@ -181,6 +181,77 @@ struct ClipboardStorageLifecycleTests {
 
     @Test
     @MainActor
+    func pinnedManualOrderSurvivesPersistenceDuplicateRecaptureAndDeletion() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+        )
+        let first = ClipboardItem(
+            content: "first",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 1),
+            isPinned: true,
+            pinnedOrder: 0
+        )
+        let duplicate = ClipboardItem(
+            content: "duplicate",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 2),
+            isPinned: true,
+            pinnedOrder: 1
+        )
+        let third = ClipboardItem(
+            content: "third",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 3),
+            isPinned: true,
+            pinnedOrder: 2
+        )
+        let store = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        store.items = [first, duplicate, third]
+
+        store.insertCaptured(duplicate: { $0.content == "duplicate" }) { wasPinned in
+            ClipboardItem(
+                content: "replacement",
+                kind: .text,
+                createdAt: Date(timeIntervalSince1970: 4),
+                isPinned: wasPinned
+            )
+        }
+        let replacement = try #require(store.items.first { $0.content == "replacement" })
+        #expect(replacement.pinnedOrder == 1)
+        #expect(store.items.map(\.content) == ["first", "replacement", "third"])
+
+        store.movePinnedItems(fromOffsets: IndexSet(integer: 2), toOffset: 0)
+        #expect(store.items.map(\.content) == ["third", "first", "replacement"])
+        #expect(store.items.map(\.pinnedOrder) == [0, 1, 2])
+        store.flushHistoryWrites()
+
+        let reloadedStore = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        #expect(reloadedStore.items.map(\.content) == ["third", "first", "replacement"])
+
+        reloadedStore.delete(first.id)
+        reloadedStore.flushHistoryWrites()
+        let afterDeletion = ClipboardStore(
+            pasteboard: pasteboard,
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        #expect(afterDeletion.items.map(\.content) == ["third", "replacement"])
+        afterDeletion.flushHistoryWrites()
+    }
+
+    @Test
+    @MainActor
     func textExternalizationFailurePostsNoticeAndKeepsInlineContent() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -810,6 +881,7 @@ struct ClipboardStorageLifecycleTests {
                 content: "old image",
                 kind: .image,
                 isPinned: true,
+                pinnedOrder: 4,
                 imageFileName: "old.png",
                 imageDigest: "same-digest"
             )
@@ -834,6 +906,7 @@ struct ClipboardStorageLifecycleTests {
         let imageItem = try #require(store.items.first)
         #expect(imageItem.kind == .image)
         #expect(imageItem.isPinned)
+        #expect(imageItem.pinnedOrder == 4)
         #expect(imageItem.imageFileName == "new.png")
         #expect(imageItem.imageSourceURL == "https://example.com/image.png")
         #expect(

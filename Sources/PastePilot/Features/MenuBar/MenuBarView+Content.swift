@@ -60,6 +60,14 @@ extension MenuBarView {
                 done: { showsPasteStackReorder = false }
             )
         }
+        .sheet(isPresented: $showsPinnedItemsReorder) {
+            PinnedItemsReorderView(
+                items: pinnedItemsInOrder,
+                userSensitivePatterns: settings.userSensitivePatterns,
+                move: store.movePinnedItems,
+                done: { showsPinnedItemsReorder = false }
+            )
+        }
         .sheet(isPresented: $showsSavedSearchEditor) {
             SavedSearchEditor(
                 name: $savedSearchName,
@@ -345,7 +353,12 @@ extension MenuBarView {
                             if shouldShowPinnedHeader(at: index, in: items) {
                                 HistorySectionHeader(
                                     title: "Pinned".localized,
-                                    detail: "Always on top, kept when history is cleared".localized
+                                    detail: "Always on top, kept when history is cleared".localized,
+                                    actionTitle: !MenuBarPopoverState.hasActiveSearch(searchText)
+                                        && pinnedItemsInOrder.count > 1
+                                        ? "Reorder…".localized
+                                        : nil,
+                                    action: beginPinnedItemsReorder
                                 )
                             } else if shouldShowRecentHeader(at: index, in: items) {
                                 HistorySectionHeader(
@@ -358,7 +371,11 @@ extension MenuBarView {
                                 image: store.thumbnail(for: item),
                                 userSensitivePatterns: settings.userSensitivePatterns,
                                 showSourceAppIcon: settings.showSourceAppIconInHistory,
-                                shortcutNumber: index < 9 ? index + 1 : nil,
+                                shortcutNumber: MenuBarPopoverState.shortcutNumber(
+                                    for: item,
+                                    at: index,
+                                    searchText: searchText
+                                ),
                                 isSelected: selectedID == item.id,
                                 pasteStackPosition: pasteStack.position(of: item.id),
                                 select: { selectedID = item.id },

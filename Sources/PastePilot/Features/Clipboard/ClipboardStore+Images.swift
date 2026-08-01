@@ -128,6 +128,7 @@ extension ClipboardStore {
                 ),
                 kind: .image,
                 isPinned: wasPinned,
+                pinnedOrder: inheritedItem?.pinnedOrder,
                 sourceAppName: source.name,
                 sourceBundleIdentifier: source.bundleIdentifier,
                 imageFileName: processedImage.fileName,

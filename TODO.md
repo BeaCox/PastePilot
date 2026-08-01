@@ -60,7 +60,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
     plus user-created saved searches.
   - Keep collection membership deterministic across restarts and after history
     cleanup.
-- [ ] Make pinned items intentionally reusable.
+- [x] Make pinned items intentionally reusable.
   - Allow manual ordering within the pinned section.
   - Keep `Command-1` through `Command-9` stable for pinned items when search is
     empty, while preserving the current visible-result behavior during search.

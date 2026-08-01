@@ -160,6 +160,8 @@
 "Paste %d Items in Order" = "按顺序粘贴 %d 项";
 "Reorder…" = "调整顺序…";
 "Reorder Paste Stack" = "调整顺序粘贴队列";
+"Reorder Pinned Items" = "调整置顶项目顺序";
+"%d pinned" = "已置顶 %d 项";
 "Drag rows to reorder." = "拖拽行以调整顺序。";
 "Done" = "完成";
 "Cancel Paste Stack" = "取消顺序粘贴";

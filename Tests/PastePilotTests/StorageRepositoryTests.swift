@@ -194,6 +194,12 @@ struct StorageRepositoryTests {
         let reloadedItem = try #require(repository.load().items.first)
         #expect(reloadedItem.userTitle == "Migrated title")
         #expect(reloadedItem.userNote == "Migrated note")
+        let columns = try dbQueue.read { db in
+            try Row.fetchAll(db, sql: "PRAGMA table_info(items)").map { row in
+                row["name"] as String
+            }
+        }
+        #expect(columns.contains("pinned_order"))
     }
 
     @Test
@@ -242,6 +248,7 @@ struct StorageRepositoryTests {
             kind: .richText,
             createdAt: Date(timeIntervalSince1970: 1_725_000_000),
             isPinned: true,
+            pinnedOrder: 2,
             containsSensitiveData: true,
             sourceAppName: "Source App",
             sourceBundleIdentifier: "com.example.Source",
@@ -502,6 +509,39 @@ struct StorageRepositoryTests {
                 atPath: restoreResult.preRestoreBackupURL.path
             )
         )
+    }
+
+    @Test
+    func repositoryBackupPreservesPinnedManualOrder() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceDirectory = root.appendingPathComponent("source", isDirectory: true)
+        let restoredDirectory = root.appendingPathComponent("restored", isDirectory: true)
+        let first = ClipboardItem(
+            content: "first pinned",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 1),
+            isPinned: true,
+            pinnedOrder: 0
+        )
+        let second = ClipboardItem(
+            content: "second pinned",
+            kind: .text,
+            createdAt: Date(timeIntervalSince1970: 2),
+            isPinned: true,
+            pinnedOrder: 1
+        )
+        let sourceRepository = HistoryRepository(dataDirectoryURL: sourceDirectory)
+        try sourceRepository.save([second, first])
+
+        let archiveURL = root.appendingPathComponent("pinned-order.zip")
+        _ = try sourceRepository.exportBackup(to: archiveURL)
+        let restoredRepository = HistoryRepository(dataDirectoryURL: restoredDirectory)
+        _ = try restoredRepository.restoreBackup(from: archiveURL)
+        let restoredItems = restoredRepository.load().items
+
+        #expect(restoredItems.map(\.id) == [first.id, second.id])
+        #expect(restoredItems.map(\.pinnedOrder) == [0, 1])
     }
 
     @Test

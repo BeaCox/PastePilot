@@ -58,6 +58,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
     let kind: ContentKind
     let createdAt: Date
     var isPinned: Bool
+    var pinnedOrder: Int?
     var containsSensitiveData: Bool
     let sourceAppName: String?
     let sourceBundleIdentifier: String?
@@ -92,6 +93,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         kind: ContentKind,
         createdAt: Date = Date(),
         isPinned: Bool = false,
+        pinnedOrder: Int? = nil,
         containsSensitiveData: Bool = false,
         sourceAppName: String? = nil,
         sourceBundleIdentifier: String? = nil,
@@ -125,6 +127,7 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         self.kind = kind
         self.createdAt = createdAt
         self.isPinned = isPinned
+        self.pinnedOrder = isPinned ? pinnedOrder : nil
         self.containsSensitiveData = containsSensitiveData
         self.sourceAppName = sourceAppName
         self.sourceBundleIdentifier = sourceBundleIdentifier
@@ -257,13 +260,33 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
 
 enum ClipboardHistoryOrdering {
     static func newestFirst(_ items: [ClipboardItem]) -> [ClipboardItem] {
-        items.sorted { $0.createdAt > $1.createdAt }
+        items.sorted(by: isNewer)
     }
 
     static func pinnedFirst(_ items: [ClipboardItem]) -> [ClipboardItem] {
-        let chronological = newestFirst(items)
-        return chronological.filter(\.isPinned)
-            + chronological.filter { !$0.isPinned }
+        pinnedItems(items) + newestFirst(items.filter { !$0.isPinned })
+    }
+
+    static func pinnedItems(_ items: [ClipboardItem]) -> [ClipboardItem] {
+        items.filter(\.isPinned).sorted { lhs, rhs in
+            switch (lhs.pinnedOrder, rhs.pinnedOrder) {
+            case let (lhsOrder?, rhsOrder?) where lhsOrder != rhsOrder:
+                return lhsOrder < rhsOrder
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            default:
+                return isNewer(lhs, rhs)
+            }
+        }
+    }
+
+    private static func isNewer(_ lhs: ClipboardItem, _ rhs: ClipboardItem) -> Bool {
+        if lhs.createdAt != rhs.createdAt {
+            return lhs.createdAt > rhs.createdAt
+        }
+        return lhs.id.uuidString < rhs.id.uuidString
     }
 }
 
@@ -275,6 +298,7 @@ extension ClipboardItem {
             kind: kind,
             createdAt: createdAt,
             isPinned: isPinned,
+            pinnedOrder: pinnedOrder,
             containsSensitiveData: containsSensitiveData,
             sourceAppName: sourceAppName,
             sourceBundleIdentifier: sourceBundleIdentifier,
@@ -314,6 +338,7 @@ extension ClipboardItem {
             kind: kind,
             createdAt: createdAt,
             isPinned: isPinned,
+            pinnedOrder: pinnedOrder,
             containsSensitiveData: containsSensitiveData,
             sourceAppName: sourceAppName,
             sourceBundleIdentifier: sourceBundleIdentifier,

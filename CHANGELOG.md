@@ -14,6 +14,9 @@ All notable changes to PastePilot are documented in this file.
 - The menu bar search menu now includes local smart collections for recent,
   pinned, protected, image, and file history, plus saved searches that store a
   name and query without duplicating clipboard content.
+- Pinned history can be manually reordered, persists that order across
+  duplicate recapture, deletion, and backup restore, and owns stable
+  `Command-1` through `Command-9` shortcuts when search is empty.
 
 ### Changed
 

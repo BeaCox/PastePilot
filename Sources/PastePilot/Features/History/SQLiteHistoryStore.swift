@@ -207,6 +207,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 kind TEXT NOT NULL,
                 created_at REAL NOT NULL,
                 is_pinned INTEGER NOT NULL,
+                pinned_order INTEGER,
                 contains_sensitive_data INTEGER NOT NULL,
                 source_app_name TEXT,
                 source_bundle_identifier TEXT,
@@ -233,6 +234,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 protected_metadata_version INTEGER NOT NULL DEFAULT 0
             )
             """)
+        try ensureColumn(
+            "pinned_order",
+            definition: "pinned_order INTEGER",
+            in: "items",
+            db: db
+        )
         try ensureColumn(
             "image_perceptual_hash",
             definition: "image_perceptual_hash TEXT",
@@ -333,6 +340,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             ON items(is_pinned DESC, created_at DESC)
             """)
         try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS items_pinned_order_idx
+            ON items(is_pinned DESC, pinned_order, created_at DESC)
+            """)
+        try db.execute(sql: """
             CREATE INDEX IF NOT EXISTS items_kind_idx
             ON items(kind)
             """)
@@ -353,7 +364,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             try db.execute(sql: "DROP TABLE IF EXISTS search_index")
         }
         try setMetadataValue(
-            "9",
+            "10",
             for: MetadataKey.schemaVersion,
             db: db
         )
@@ -362,7 +373,10 @@ final class SQLiteHistoryStore: @unchecked Sendable {
     private func loadItems(db: Database) throws -> [ClipboardItem] {
         let rows = try Row.fetchAll(
             db,
-            sql: "SELECT * FROM items ORDER BY is_pinned DESC, created_at DESC"
+            sql: """
+                SELECT * FROM items
+                ORDER BY is_pinned DESC, pinned_order IS NULL, pinned_order, created_at DESC
+                """
         )
         return try rows.compactMap { row in
             guard let id = UUID(uuidString: row["id"]) else { return nil }
@@ -376,6 +390,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                    var item = try? JSONDecoder().decode(ClipboardItem.self, from: plaintext) {
                     item.protectionState = .unlocked
                     item.isPinned = (row["is_pinned"] as Int) != 0
+                    item.pinnedOrder = row["pinned_order"]
                     item.tags = tags.isEmpty ? nil : tags
                     let metadataVersion = row["protected_metadata_version"] as Int? ?? 0
                     if metadataVersion > 0 {
@@ -411,6 +426,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     kind: kind,
                     createdAt: Date(timeIntervalSince1970: row["created_at"]),
                     isPinned: (row["is_pinned"] as Int) != 0,
+                    pinnedOrder: row["pinned_order"],
                     containsSensitiveData: true,
                     userTitle: row["user_title"],
                     userNote: row["user_note"],
@@ -458,6 +474,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 kind: kind,
                 createdAt: Date(timeIntervalSince1970: row["created_at"]),
                 isPinned: (row["is_pinned"] as Int) != 0,
+                pinnedOrder: row["pinned_order"],
                 containsSensitiveData: (row["contains_sensitive_data"] as Int) != 0,
                 sourceAppName: row["source_app_name"],
                 sourceBundleIdentifier: row["source_bundle_identifier"],
@@ -549,12 +566,13 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 try db.execute(
                     sql: """
                         UPDATE items SET
-                            is_pinned = ?, created_at = ?, user_title = ?,
+                            is_pinned = ?, pinned_order = ?, created_at = ?, user_title = ?,
                             user_note = ?, protected_metadata_version = ?
                         WHERE id = ?
                         """,
                     arguments: [
                         item.isPinned ? 1 : 0,
+                        item.pinnedOrder,
                         item.createdAt.timeIntervalSince1970,
                         item.userTitle,
                         item.userNote,
@@ -611,7 +629,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         try db.execute(
             sql: """
                 INSERT INTO items (
-                    id, fingerprint, content, kind, created_at, is_pinned,
+                    id, fingerprint, content, kind, created_at, is_pinned, pinned_order,
                     contains_sensitive_data, source_app_name,
                     source_bundle_identifier, image_file_name, image_width,
                     image_height, image_byte_count, image_digest,
@@ -622,13 +640,14 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     content_line_count, content_byte_count, ocr_text,
                     user_title, user_note,
                     is_protected, protected_payload, protected_metadata_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     fingerprint = excluded.fingerprint,
                     content = excluded.content,
                     kind = excluded.kind,
                     created_at = excluded.created_at,
                     is_pinned = excluded.is_pinned,
+                    pinned_order = excluded.pinned_order,
                     contains_sensitive_data = excluded.contains_sensitive_data,
                     source_app_name = excluded.source_app_name,
                     source_bundle_identifier = excluded.source_bundle_identifier,
@@ -661,6 +680,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 item.kind.rawValue,
                 item.createdAt.timeIntervalSince1970,
                 item.isPinned ? 1 : 0,
+                item.pinnedOrder,
                 protected ? 1 : (item.containsSensitiveData ? 1 : 0),
                 protected ? nil : item.sourceAppName,
                 protected ? nil : item.sourceBundleIdentifier,
@@ -928,6 +948,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                     item.id.uuidString,
                     item.kind.rawValue,
                     item.isPinned ? "1" : "0",
+                    item.pinnedOrder.map(String.init) ?? "",
                     storedItem.protectedPayloadDigest ?? "locked",
                 ].joined(separator: "\u{1E}")
             )
@@ -939,6 +960,7 @@ final class SQLiteHistoryStore: @unchecked Sendable {
         parts.append(item.kind.rawValue)
         parts.append(String(item.createdAt.timeIntervalSince1970))
         parts.append(item.isPinned ? "1" : "0")
+        parts.append(item.pinnedOrder.map(String.init) ?? "")
         parts.append(item.containsSensitiveData ? "1" : "0")
         parts.append(item.sourceAppName ?? "")
         parts.append(item.sourceBundleIdentifier ?? "")
