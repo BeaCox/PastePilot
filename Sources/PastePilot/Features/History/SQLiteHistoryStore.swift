@@ -288,11 +288,6 @@ final class SQLiteHistoryStore: @unchecked Sendable {
             in: "items",
             db: db
         )
-        if try hasColumn("user_aliases_json", in: "items", db: db) {
-            try db.execute(sql: "UPDATE items SET fingerprint = ''")
-            try db.execute(sql: "ALTER TABLE items DROP COLUMN user_aliases_json")
-            try setMetadataValue("pending", for: MetadataKey.aliasRemoval, db: db)
-        }
         try db.execute(sql: """
             CREATE TABLE IF NOT EXISTS rich_text (
                 item_id TEXT PRIMARY KEY NOT NULL
@@ -327,6 +322,12 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 PRIMARY KEY (item_id, normalized_name)
             )
             """)
+        if try hasColumn("user_aliases_json", in: "items", db: db) {
+            try migrateLegacyAliasesToTags(db: db)
+            try db.execute(sql: "UPDATE items SET fingerprint = ''")
+            try db.execute(sql: "ALTER TABLE items DROP COLUMN user_aliases_json")
+            try setMetadataValue("pending", for: MetadataKey.aliasRemoval, db: db)
+        }
         try db.execute(sql: """
             CREATE INDEX IF NOT EXISTS item_tags_name_idx
             ON item_tags(normalized_name)
@@ -781,6 +782,49 @@ final class SQLiteHistoryStore: @unchecked Sendable {
                 """,
             arguments: [id.uuidString]
         )
+    }
+
+    private func migrateLegacyAliasesToTags(db: Database) throws {
+        let rows = try Row.fetchAll(
+            db,
+            sql: """
+                SELECT id, user_aliases_json FROM items
+                WHERE user_aliases_json IS NOT NULL
+                """
+        )
+        for row in rows {
+            let itemID: String = row["id"]
+            let aliasesJSON: String? = row["user_aliases_json"]
+            guard let aliases: [String] = Self.decodedJSON(from: aliasesJSON),
+                  let migratedTags = ClipboardItem.normalizedTags(aliases) else {
+                continue
+            }
+            var existingTags = Set(
+                try String.fetchAll(
+                    db,
+                    sql: "SELECT normalized_name FROM item_tags WHERE item_id = ?",
+                    arguments: [itemID]
+                )
+            )
+            var nextOrdinal = try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT COALESCE(MAX(ordinal) + 1, 0) FROM item_tags
+                    WHERE item_id = ?
+                    """,
+                arguments: [itemID]
+            ) ?? 0
+            for tag in migratedTags where existingTags.insert(tag).inserted {
+                try db.execute(
+                    sql: """
+                        INSERT INTO item_tags (item_id, ordinal, normalized_name)
+                        VALUES (?, ?, ?)
+                        """,
+                    arguments: [itemID, nextOrdinal, tag]
+                )
+                nextOrdinal += 1
+            }
+        }
     }
 
     private func replaceTags(for item: ClipboardItem, db: Database) throws {

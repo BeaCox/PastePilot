@@ -203,40 +203,130 @@ struct StorageRepositoryTests {
     }
 
     @Test
-    func repositoryMigrationRemovesLegacyAliasesAndRebuildsSearchIndex() throws {
+    func repositoryMigrationConvertsV0102AliasesToTagsAndRebuildsSearchIndex() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let item = ClipboardItem(content: "ordinary body", kind: .text)
-        do {
-            let repository = HistoryRepository(dataDirectoryURL: directory)
-            try repository.save([item])
-        }
-
+        let itemID = UUID()
         let databaseURL = directory.appendingPathComponent("history.sqlite")
-        try DatabaseQueue(path: databaseURL.path).write { db in
-            try db.execute(sql: "ALTER TABLE items ADD COLUMN user_aliases_json TEXT")
+        try DatabaseQueue(path: databaseURL.path).writeWithoutTransaction { db in
+            try db.execute(sql: """
+                CREATE TABLE metadata (
+                    key TEXT PRIMARY KEY NOT NULL,
+                    value TEXT NOT NULL
+                )
+                """)
+            try db.execute(sql: """
+                CREATE TABLE items (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    fingerprint TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    is_pinned INTEGER NOT NULL,
+                    contains_sensitive_data INTEGER NOT NULL,
+                    source_app_name TEXT,
+                    source_bundle_identifier TEXT,
+                    image_file_name TEXT,
+                    image_width INTEGER,
+                    image_height INTEGER,
+                    image_byte_count INTEGER,
+                    image_digest TEXT,
+                    image_perceptual_hash TEXT,
+                    image_source_url TEXT,
+                    image_original_path TEXT,
+                    link_metadata_json TEXT,
+                    detected_barcodes_json TEXT,
+                    content_file_name TEXT,
+                    content_digest TEXT,
+                    content_character_count INTEGER,
+                    content_line_count INTEGER,
+                    content_byte_count INTEGER,
+                    ocr_text TEXT,
+                    user_title TEXT,
+                    user_note TEXT,
+                    user_aliases_json TEXT,
+                    is_protected INTEGER NOT NULL DEFAULT 0,
+                    protected_payload BLOB,
+                    protected_metadata_version INTEGER NOT NULL DEFAULT 0
+                )
+                """)
+            try db.execute(sql: """
+                CREATE VIRTUAL TABLE search_index
+                USING fts5(item_id UNINDEXED, body, tokenize='trigram')
+                """)
             try db.execute(
-                sql: "UPDATE items SET user_aliases_json = ? WHERE id = ?",
-                arguments: [#"["legacy-search-alias"]"#, item.id.uuidString]
+                sql: """
+                    INSERT INTO metadata (key, value) VALUES
+                        ('schema_version', '7'),
+                        ('legacy_json_imported', 'primary')
+                    """
             )
             try db.execute(
-                sql: "UPDATE search_index SET body = body || ? WHERE item_id = ?",
-                arguments: ["\nlegacy-search-alias", item.id.uuidString]
+                sql: """
+                    INSERT INTO items (
+                        id, fingerprint, content, kind, created_at, is_pinned,
+                        contains_sensitive_data, user_title, user_note,
+                        user_aliases_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    itemID.uuidString,
+                    "v0.10.2-fingerprint",
+                    "ordinary body",
+                    ContentKind.text.rawValue,
+                    Date(timeIntervalSince1970: 1_725_000_000).timeIntervalSince1970,
+                    0,
+                    0,
+                    "Legacy item",
+                    "Created before tags existed",
+                    #"["Legacy Search Alias"," Shared ","legacy search alias"]"#,
+                ]
             )
             try db.execute(
-                sql: "UPDATE metadata SET value = '8' WHERE key = 'schema_version'"
+                sql: "INSERT INTO search_index (item_id, body) VALUES (?, ?)",
+                arguments: [
+                    itemID.uuidString,
+                    "ordinary body\nLegacy item\nlegacy search alias\nshared",
+                ]
             )
         }
 
         let repository = HistoryRepository(dataDirectoryURL: directory)
-        #expect(repository.load().items.map(\.id) == [item.id])
-        #expect(try repository.matchingIDs(query: "legacy-search-alias").isEmpty)
-        let columns = try DatabaseQueue(path: databaseURL.path).read { db in
-            try Row.fetchAll(db, sql: "PRAGMA table_info(items)").map { row in
+        let migratedItem = try #require(repository.load().items.first)
+        #expect(migratedItem.id == itemID)
+        #expect(migratedItem.tags == ["legacy search alias", "shared"])
+        #expect(try repository.matchingIDs(query: "legacy search alias") == Set([itemID]))
+
+        let migrationState = try DatabaseQueue(path: databaseURL.path).read { db in
+            let columns = try Row.fetchAll(db, sql: "PRAGMA table_info(items)").map { row in
                 row["name"] as String
             }
+            let tags = try String.fetchAll(
+                db,
+                sql: "SELECT normalized_name FROM item_tags ORDER BY ordinal"
+            )
+            let schemaVersion = try String.fetchOne(
+                db,
+                sql: "SELECT value FROM metadata WHERE key = 'schema_version'"
+            )
+            let aliasMigration = try String.fetchOne(
+                db,
+                sql: "SELECT value FROM metadata WHERE key = 'alias_removal'"
+            )
+            let fingerprint = try String.fetchOne(
+                db,
+                sql: "SELECT fingerprint FROM items WHERE id = ?",
+                arguments: [itemID.uuidString]
+            )
+            return (columns, tags, schemaVersion, aliasMigration, fingerprint)
         }
-        #expect(!columns.contains("user_aliases_json"))
+        #expect(!migrationState.0.contains("user_aliases_json"))
+        #expect(migrationState.1 == ["legacy search alias", "shared"])
+        #expect(migrationState.2 == "10")
+        #expect(migrationState.3 == "complete")
+        #expect(migrationState.4?.isEmpty == false)
+
+        #expect(repository.load().items.first?.tags == ["legacy search alias", "shared"])
     }
 
     @Test
