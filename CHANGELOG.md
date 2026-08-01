@@ -4,6 +4,8 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-01
+
 ### Added
 
 - Local declarative JSON plugins can define bounded custom content matchers and
@@ -11,6 +13,9 @@ All notable changes to PastePilot are documented in this file.
   available in the menu bar and App Intents without executing plugin code.
 - The Actions settings page can reveal a bundled example plugin and the version
   1 JSON Schema for manifest validation and editor completion.
+- Clipboard items support normalized tags that remain searchable across
+  duplicate recapture, work while protected history is locked, participate in
+  app and CLI filters, and are included in backup and restore.
 - The menu bar search menu now includes local smart collections for recent,
   pinned, protected, image, and file history, plus saved searches that store a
   name and query without duplicating clipboard content.
@@ -23,7 +28,10 @@ All notable changes to PastePilot are documented in this file.
 - Plugin reload errors now identify the invalid manifest field and include the
   name of an undefined content type referenced by an action.
 - Clipboard item aliases have been removed in favor of the clearer title and
-  tag organization model.
+  tag organization model. Existing aliases are normalized and migrated to tags
+  automatically the first time an existing history database is opened.
+- History rows no longer show a persistent preview arrow; Space and hover
+  previews remain available without adding a competing row control.
 
 ### Maintenance
 
