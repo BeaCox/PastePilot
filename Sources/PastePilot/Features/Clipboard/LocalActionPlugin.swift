@@ -130,22 +130,7 @@ enum LocalActionPluginLoader {
 
         for fileURL in files.prefix(maximumPluginCount) {
             do {
-                let values = try fileURL.resourceValues(
-                    forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]
-                )
-                guard values.isRegularFile == true,
-                      values.isSymbolicLink != true,
-                      values.fileSize.map({ $0 <= maximumFileByteCount }) == true else {
-                    throw ValidationError(field: "file", reason: .invalidFile)
-                }
-                let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
-                let manifest: Manifest
-                do {
-                    manifest = try JSONDecoder().decode(Manifest.self, from: data)
-                } catch let error as DecodingError {
-                    throw validationError(for: error)
-                }
-                let plugin = try validate(manifest, fileName: fileURL.lastPathComponent)
+                let plugin = try loadPlugin(at: fileURL)
                 guard identifiers.insert(plugin.id).inserted else {
                     throw ValidationError(
                         field: "identifier",
@@ -163,6 +148,29 @@ enum LocalActionPluginLoader {
             }
         }
         return LocalActionPluginCatalog(plugins: plugins, errors: errors)
+    }
+
+    static func loadPlugin(at fileURL: URL) throws -> LocalActionPlugin {
+        guard fileURL.pathExtension.lowercased() == "json",
+              !fileURL.lastPathComponent.hasPrefix(".") else {
+            throw ValidationError(field: "file", reason: .invalidFile)
+        }
+        let values = try fileURL.resourceValues(
+            forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]
+        )
+        guard values.isRegularFile == true,
+              values.isSymbolicLink != true,
+              values.fileSize.map({ $0 <= maximumFileByteCount }) == true else {
+            throw ValidationError(field: "file", reason: .invalidFile)
+        }
+        let data = try Data(contentsOf: fileURL, options: [.mappedIfSafe])
+        let manifest: Manifest
+        do {
+            manifest = try JSONDecoder().decode(Manifest.self, from: data)
+        } catch let error as DecodingError {
+            throw validationError(for: error)
+        }
+        return try validate(manifest, fileName: fileURL.lastPathComponent)
     }
 
     private static func validate(
@@ -291,7 +299,7 @@ enum LocalActionPluginLoader {
         )
     }
 
-    private static func isValidIdentifier(_ value: String) -> Bool {
+    static func isValidIdentifier(_ value: String) -> Bool {
         identifierExpression.firstMatch(
             in: value,
             range: NSRange(value.startIndex..., in: value)

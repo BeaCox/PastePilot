@@ -155,6 +155,7 @@ final class AppSettings: ObservableObject {
     static let defaultLinkMetadataFetchingEnabled = false
     static let defaultCustomClipboardActions = "[]"
     static let defaultSavedSearches = "[]"
+    static let defaultDisabledLocalActionPluginIdentifiers = "[]"
     static var defaultPluginsDirectoryURL: URL {
         FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -282,6 +283,10 @@ final class AppSettings: ObservableObject {
             "savedSearches",
             default: AppSettings.defaultSavedSearches
         )
+        static let disabledLocalActionPluginIdentifiers = AppSetting(
+            "disabledLocalActionPluginIdentifiers",
+            default: AppSettings.defaultDisabledLocalActionPluginIdentifiers
+        )
 
         static var registeredDefaults: [String: Any] {
             [
@@ -320,6 +325,8 @@ final class AppSettings: ObservableObject {
                     customClipboardActions.defaultValue,
                 savedSearches.key:
                     savedSearches.defaultValue,
+                disabledLocalActionPluginIdentifiers.key:
+                    disabledLocalActionPluginIdentifiers.defaultValue,
             ]
         }
     }
@@ -329,6 +336,9 @@ final class AppSettings: ObservableObject {
 
     @Published private(set) var localActionPlugins: [LocalActionPlugin] = []
     @Published private(set) var localActionPluginErrors: [String] = []
+    @Published private(set) var disabledLocalActionPluginIdentifiers: Set<String> {
+        didSet { persistDisabledLocalActionPluginIdentifiers() }
+    }
 
     @Published var monitoringEnabled: Bool {
         didSet { persist(monitoringEnabled, for: Setting.monitoringEnabled) }
@@ -716,15 +726,36 @@ final class AppSettings: ObservableObject {
         savedSearches = Self.decodeSavedSearches(
             Self.string(for: Setting.savedSearches, in: defaults)
         )
+        disabledLocalActionPluginIdentifiers =
+            Self.decodeDisabledLocalActionPluginIdentifiers(
+                Self.string(
+                    for: Setting.disabledLocalActionPluginIdentifiers,
+                    in: defaults
+                )
+            )
         reloadLocalActionPlugins()
         persistCurrentValues()
     }
 
     var availableCustomClipboardActions: [CustomClipboardAction] {
         CustomClipboardAction.normalized(
-            customClipboardActions + localActionPlugins.flatMap(\.actions),
+            customClipboardActions + localActionPlugins
+                .filter { isLocalActionPluginEnabled($0.id) }
+                .flatMap(\.actions),
             limit: CustomClipboardAction.maximumRuntimeCount
         )
+    }
+
+    func isLocalActionPluginEnabled(_ identifier: String) -> Bool {
+        !disabledLocalActionPluginIdentifiers.contains(identifier)
+    }
+
+    func setLocalActionPlugin(_ identifier: String, isEnabled: Bool) {
+        if isEnabled {
+            disabledLocalActionPluginIdentifiers.remove(identifier)
+        } else {
+            disabledLocalActionPluginIdentifiers.insert(identifier)
+        }
     }
 
     func reloadLocalActionPlugins() {
@@ -737,6 +768,25 @@ final class AppSettings: ObservableObject {
         try FileManager.default.createDirectory(
             at: pluginsDirectoryURL,
             withIntermediateDirectories: true
+        )
+    }
+
+    func importLocalActionPlugins(from sourceURLs: [URL]) throws {
+        try LocalActionPluginFileOperations.importPlugins(
+            from: sourceURLs,
+            into: pluginsDirectoryURL
+        )
+        reloadLocalActionPlugins()
+    }
+
+    func exportLocalActionPlugin(
+        _ plugin: LocalActionPlugin,
+        to destinationURL: URL
+    ) throws {
+        try LocalActionPluginFileOperations.exportPlugin(
+            plugin,
+            from: pluginsDirectoryURL,
+            to: destinationURL
         )
     }
 
@@ -819,6 +869,7 @@ final class AppSettings: ObservableObject {
         customSensitivePatterns = Setting.customSensitivePatterns.defaultValue
         customClipboardActions = []
         savedSearches = []
+        disabledLocalActionPluginIdentifiers = []
     }
 
     private static func supportedInteger(
@@ -1010,6 +1061,7 @@ final class AppSettings: ObservableObject {
         persist(customSensitivePatterns, for: Setting.customSensitivePatterns)
         persistCustomClipboardActions()
         persistSavedSearches()
+        persistDisabledLocalActionPluginIdentifiers()
     }
 
     private static func decodeCustomClipboardActions(
@@ -1052,6 +1104,29 @@ final class AppSettings: ObservableObject {
             return
         }
         persist(encoded, for: Setting.savedSearches)
+    }
+
+    private static func decodeDisabledLocalActionPluginIdentifiers(
+        _ encoded: String
+    ) -> Set<String> {
+        guard let data = encoded.data(using: .utf8),
+              let identifiers = try? JSONDecoder().decode([String].self, from: data) else {
+            return []
+        }
+        return Set(
+            identifiers
+                .filter(LocalActionPluginLoader.isValidIdentifier)
+                .prefix(LocalActionPluginLoader.maximumPluginCount * 5)
+        )
+    }
+
+    private func persistDisabledLocalActionPluginIdentifiers() {
+        guard let data = try? JSONEncoder().encode(
+            disabledLocalActionPluginIdentifiers.sorted()
+        ), let encoded = String(data: data, encoding: .utf8) else {
+            return
+        }
+        persist(encoded, for: Setting.disabledLocalActionPluginIdentifiers)
     }
 
     private static func bool(

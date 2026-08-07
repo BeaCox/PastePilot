@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct CustomActionsSettingsPage: View {
     @ObservedObject var settings: AppSettings
@@ -62,24 +63,44 @@ struct CustomActionsSettingsPage: View {
                 } else {
                     ForEach(settings.localActionPlugins) { plugin in
                         HStack(alignment: .firstTextBaseline) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(plugin.name)
-                                    .font(.body.weight(.medium))
-                                Text(
-                                    "%@ · %@ content types · %@ actions".localized(
-                                        plugin.version,
-                                        String(plugin.contentTypeNames.count),
-                                        String(plugin.actions.count)
-                                    )
+                            Toggle(
+                                isOn: Binding(
+                                    get: {
+                                        settings.isLocalActionPluginEnabled(plugin.id)
+                                    },
+                                    set: {
+                                        settings.setLocalActionPlugin(
+                                            plugin.id,
+                                            isEnabled: $0
+                                        )
+                                    }
                                 )
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            ) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(plugin.name)
+                                        .font(.body.weight(.medium))
+                                    Text(
+                                        "%@ · %@ content types · %@ actions".localized(
+                                            plugin.version,
+                                            String(plugin.contentTypeNames.count),
+                                            String(plugin.actions.count)
+                                        )
+                                    )
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                }
                             }
+                            .toggleStyle(.switch)
+                            .accessibilityLabel("Enable Plugin %@".localized(plugin.name))
                             Spacer()
-                            Text(plugin.fileName)
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(1)
+                            Button {
+                                exportPlugin(plugin)
+                            } label: {
+                                Label(
+                                    "Export…".localized,
+                                    systemImage: "square.and.arrow.up"
+                                )
+                            }
                         }
                     }
                 }
@@ -92,6 +113,9 @@ struct CustomActionsSettingsPage: View {
                 }
 
                 HStack {
+                    Button("Import Plugins…".localized) {
+                        importPlugins()
+                    }
                     Button("Open Plugins Folder".localized) {
                         openPluginsFolder()
                     }
@@ -125,6 +149,52 @@ struct CustomActionsSettingsPage: View {
     private func openPluginsFolder() {
         guard (try? settings.createPluginsDirectory()) != nil else { return }
         NSWorkspace.shared.open(settings.pluginsDirectoryURL)
+    }
+
+    private func importPlugins() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK else { return }
+        do {
+            try settings.importLocalActionPlugins(from: panel.urls)
+        } catch {
+            showPluginError(
+                title: "Plugins could not be imported".localized,
+                error: error
+            )
+        }
+    }
+
+    private func exportPlugin(_ plugin: LocalActionPlugin) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = plugin.fileName
+
+        guard panel.runModal() == .OK, let destinationURL = panel.url else {
+            return
+        }
+        do {
+            try settings.exportLocalActionPlugin(plugin, to: destinationURL)
+        } catch {
+            showPluginError(
+                title: "Plugin could not be exported".localized,
+                error: error
+            )
+        }
+    }
+
+    private func showPluginError(title: String, error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: "OK".localized)
+        alert.runModal()
     }
 
     private func revealBundledResource(_ url: URL?) {

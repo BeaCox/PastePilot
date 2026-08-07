@@ -144,12 +144,13 @@ templates are ignored.
 ### Local Action Plugins
 
 Declarative JSON plugins let a set of custom content matchers and actions be
-shared without loading executable code. Open **Preferences → Actions → Open
-Plugins Folder**, add one or more `.json` files, and click **Reload Plugins**.
-The default folder is `~/Library/Application Support/PastePilot/Plugins`.
-The same settings page can reveal a bundled working example and the version 1
-JSON Schema for editor completion and validation. Copy the example into the
-Plugins folder before editing it; bundled resources are read-only.
+shared without loading executable code. Open **Preferences → Actions** to
+import `.json` plugin files, enable or disable each installed plugin, or export
+an individual manifest. Advanced users can still open the Plugins folder and
+reload files directly; its default location is
+`~/Library/Application Support/PastePilot/Plugins`. The same settings page can
+reveal a bundled working example and the version 1 JSON Schema for editor
+completion and validation. Bundled resources are read-only.
 
 Each plugin declares named content types using bounded literal or regular
 expression matchers, then associates template actions with those types:

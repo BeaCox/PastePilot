@@ -68,7 +68,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 
 ## Later — Workflow Polish
 
-- [ ] Add plugin management controls for enabling, disabling, importing, and
+- [x] Add plugin management controls for enabling, disabling, importing, and
   exporting individual declarative plugins without editing Application Support
   manually.
 - [ ] Let users export selected history items in useful local formats such as

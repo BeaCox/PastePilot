@@ -115,6 +115,85 @@ struct LocalActionPluginTests {
     }
 
     @Test
+    func pluginEnablementPersistsAndControlsAvailableActions() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writePlugin(validLiteralPlugin, named: "commit.json", in: directory)
+
+        let defaultsName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defaults.removePersistentDomain(forName: defaultsName)
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+
+        let identifier = "dev.pastepilot.commit-tools"
+        let settings = AppSettings(
+            defaults: defaults,
+            pluginsDirectoryURL: directory
+        )
+        #expect(settings.isLocalActionPluginEnabled(identifier))
+        #expect(settings.availableCustomClipboardActions.count == 1)
+
+        settings.setLocalActionPlugin(identifier, isEnabled: false)
+        #expect(!settings.isLocalActionPluginEnabled(identifier))
+        #expect(settings.availableCustomClipboardActions.isEmpty)
+
+        let restored = AppSettings(
+            defaults: defaults,
+            pluginsDirectoryURL: directory
+        )
+        #expect(!restored.isLocalActionPluginEnabled(identifier))
+        #expect(restored.localActionPlugins.count == 1)
+        #expect(restored.availableCustomClipboardActions.isEmpty)
+
+        restored.setLocalActionPlugin(identifier, isEnabled: true)
+        #expect(restored.availableCustomClipboardActions.count == 1)
+    }
+
+    @Test
+    func settingsImportsAndExportsIndividualPlugins() throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceDirectory = root.appendingPathComponent("Source", isDirectory: true)
+        let pluginsDirectory = root.appendingPathComponent("Plugins", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: sourceDirectory,
+            withIntermediateDirectories: true
+        )
+        try writePlugin(validLiteralPlugin, named: "commit.json", in: sourceDirectory)
+        let sourceURL = sourceDirectory.appendingPathComponent("commit.json")
+
+        let defaultsName = "PastePilotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: defaultsName))
+        defaults.removePersistentDomain(forName: defaultsName)
+        defer { defaults.removePersistentDomain(forName: defaultsName) }
+        let settings = AppSettings(
+            defaults: defaults,
+            pluginsDirectoryURL: pluginsDirectory
+        )
+
+        try settings.importLocalActionPlugins(from: [sourceURL])
+        #expect(settings.localActionPlugins.map(\.id) == ["dev.pastepilot.commit-tools"])
+        #expect(
+            FileManager.default.fileExists(
+                atPath: pluginsDirectory.appendingPathComponent("commit.json").path
+            )
+        )
+
+        let exportURL = root.appendingPathComponent("Exported.json")
+        let plugin = try #require(settings.localActionPlugins.first)
+        try settings.exportLocalActionPlugin(plugin, to: exportURL)
+        #expect(try Data(contentsOf: exportURL) == Data(contentsOf: sourceURL))
+
+        #expect(
+            throws: LocalActionPluginFileOperations.OperationError
+                .fileNameAlreadyExists("commit.json")
+        ) {
+            try settings.importLocalActionPlugins(from: [sourceURL])
+        }
+        #expect(settings.localActionPlugins.count == 1)
+    }
+
+    @Test
     func invalidAndDuplicatePluginManifestsAreRejected() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

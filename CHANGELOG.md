@@ -4,6 +4,12 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- The Actions settings page can import and export declarative JSON plugins and
+  enable or disable each installed plugin without editing Application Support
+  manually. Disabled state persists without modifying plugin manifests.
+
 ## [0.11.0] - 2026-08-01
 
 ### Added
