@@ -34,6 +34,8 @@ you copied and turns it into useful developer actions.
   then search clipboard history by visible text.
 - **Organize history without changing the copied content.** Add titles, notes,
   and tags that stay searchable and survive duplicate recapture.
+- **Export reusable history locally.** Save the selected item as plain text or
+  JSON, copy cached images as PNG, or duplicate original files into a folder.
 - **Paste several fragments in one pass.** Queue up to 50 history items, choose
   the separator between them, and paste the stack into the active app in order.
 - **Build your own safe transforms.** Create local template actions for text or

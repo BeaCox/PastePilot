@@ -1,4 +1,6 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 extension MenuBarView {
     func selectFirstItem() {
@@ -344,6 +346,99 @@ extension MenuBarView {
         metadataTags = (item.tags ?? []).joined(separator: ", ")
         prepareForTopLevelPresentation()
         editingMetadataItemID = item.id
+    }
+
+    func beginExporting(
+        _ item: ClipboardItem,
+        as format: HistoryItemExportFormat
+    ) {
+        selectedID = item.id
+        guard item.protectionState != .locked else {
+            Task {
+                guard await store.unlockProtectedHistory(),
+                      let unlockedItem = store.items.first(where: {
+                          $0.id == item.id && $0.protectionState == .unlocked
+                      }) else {
+                    return
+                }
+                presentHistoryExport(unlockedItem, as: format)
+            }
+            return
+        }
+        presentHistoryExport(item, as: format)
+    }
+
+    private func presentHistoryExport(
+        _ item: ClipboardItem,
+        as format: HistoryItemExportFormat
+    ) {
+        let source = store.historyItemExportSource(for: item)
+        prepareForTopLevelPresentation()
+        guard let destinationURL = historyExportDestination(
+            for: source,
+            format: format
+        ) else {
+            previewClosesInstantly = false
+            return
+        }
+        previewClosesInstantly = false
+
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try HistoryItemExporter.export(
+                        [source],
+                        as: format,
+                        to: destinationURL
+                    )
+                }.value
+                let message = result.exportedURLs.count == 1
+                    ? "History item exported".localized
+                    : "%d files exported".localized(result.exportedURLs.count)
+                showNotice(PastePilotNotice(message))
+            } catch {
+                showHistoryExportError(error)
+            }
+        }
+    }
+
+    private func historyExportDestination(
+        for source: HistoryItemExportSource,
+        format: HistoryItemExportFormat
+    ) -> URL? {
+        if format == .originalFiles {
+            let panel = NSOpenPanel()
+            panel.allowsMultipleSelection = false
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.canCreateDirectories = true
+            panel.prompt = "Export".localized
+            panel.message = "Choose a folder for the exported files.".localized
+            return panel.runModal() == .OK ? panel.url : nil
+        }
+
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = HistoryItemExporter.suggestedFileName(
+            for: source,
+            format: format
+        ) ?? "PastePilot Item".localized
+        panel.allowedContentTypes = switch format {
+        case .plainText: [.plainText]
+        case .json: [.json]
+        case .image: [.png]
+        case .originalFiles: []
+        }
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func showHistoryExportError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "History item could not be exported".localized
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: "OK".localized)
+        alert.runModal()
     }
 
     func saveMetadataEdit() {

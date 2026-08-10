@@ -1,6 +1,14 @@
 import Foundation
 
 extension ClipboardStore {
+    func historyItemExportSource(for item: ClipboardItem) -> HistoryItemExportSource {
+        HistoryItemExportSource(
+            item: item,
+            textDirectoryURL: textStore.directoryURL,
+            imageDirectoryURL: imageStore.directoryURL
+        )
+    }
+
     func sortItems() {
         items = ClipboardHistoryOrdering.pinnedFirst(items)
     }

@@ -326,6 +326,23 @@
 "Cancel" = "取消";
 "Backup could not be exported" = "无法导出备份";
 "Backup could not be restored" = "无法恢复备份";
+
+/* History item export */
+"Export Selected Item" = "导出选中条目";
+"Plain Text…" = "纯文本…";
+"JSON…" = "JSON…";
+"Image…" = "图片…";
+"Original Files…" = "原始文件…";
+"Export" = "导出";
+"Choose a folder for the exported files." = "选择用于保存导出文件的文件夹。";
+"History item exported" = "历史条目已导出";
+"%d files exported" = "已导出 %d 个文件";
+"History item could not be exported" = "无法导出历史条目";
+"No history items were selected." = "未选择任何历史条目。";
+"Unlock protected history before exporting this item." = "请先解锁受保护历史记录，再导出此条目。";
+"Export one image at a time." = "请一次导出一张图片。";
+"PastePilot Item" = "PastePilot 条目";
+
 "History" = "历史记录";
 "Preferences" = "偏好设置";
 "Reset to Defaults…" = "恢复默认设置…";

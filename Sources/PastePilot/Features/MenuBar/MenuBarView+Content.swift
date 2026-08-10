@@ -142,6 +142,12 @@ extension MenuBarView {
                         }
                     }
                 }
+                if let selectedItem {
+                    Divider()
+                    Menu("Export Selected Item".localized) {
+                        historyItemExportButtons(for: selectedItem)
+                    }
+                }
                 Divider()
                 Button("Clear Unpinned".localized) {
                     beginClearUnpinnedConfirmation()
@@ -388,6 +394,9 @@ extension MenuBarView {
                                 editMetadata: {
                                     beginEditingMetadata(for: item)
                                 },
+                                export: { format in
+                                    beginExporting(item, as: format)
+                                },
                                 copy: {
                                     performPrimaryAction(for: item)
                                 },
@@ -524,6 +533,26 @@ extension MenuBarView {
     private var editingMetadataItem: ClipboardItem? {
         guard let editingMetadataItemID else { return nil }
         return store.items.first { $0.id == editingMetadataItemID }
+    }
+
+    @ViewBuilder
+    private func historyItemExportButtons(for item: ClipboardItem) -> some View {
+        Button("Plain Text…".localized) {
+            beginExporting(item, as: .plainText)
+        }
+        Button("JSON…".localized) {
+            beginExporting(item, as: .json)
+        }
+        if item.imageFileName != nil {
+            Button("Image…".localized) {
+                beginExporting(item, as: .image)
+            }
+        }
+        if item.kind == .file, !item.fileURLs.isEmpty {
+            Button("Original Files…".localized) {
+                beginExporting(item, as: .originalFiles)
+            }
+        }
     }
 }
 

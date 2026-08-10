@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum ContentKind: String, Codable, CaseIterable {
+enum ContentKind: String, Codable, CaseIterable, Sendable {
     case file
     case richText
     case image

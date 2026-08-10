@@ -9,6 +9,9 @@ All notable changes to PastePilot are documented in this file.
 - The Actions settings page can import and export declarative JSON plugins and
   enable or disable each installed plugin without editing Application Support
   manually. Disabled state persists without modifying plugin manifests.
+- Selected history items can be exported locally as plain text, structured
+  JSON, cached PNG images, or copies of their original files. Protected items
+  still require authentication before export.
 
 ## [0.11.0] - 2026-08-01
 

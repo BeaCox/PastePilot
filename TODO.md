@@ -71,7 +71,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 - [x] Add plugin management controls for enabling, disabling, importing, and
   exporting individual declarative plugins without editing Application Support
   manually.
-- [ ] Let users export selected history items in useful local formats such as
+- [x] Let users export selected history items in useful local formats such as
   plain text, JSON, original files, or images without turning export into an
   automatic sharing or network feature.
 - [ ] Audit keyboard and VoiceOver behavior across the menu bar, previews,

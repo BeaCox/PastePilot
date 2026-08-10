@@ -12,6 +12,7 @@ struct CompactHistoryItem: View {
     let hoverChanged: (Bool) -> Void
     let preview: () -> Void
     let editMetadata: () -> Void
+    let export: (HistoryItemExportFormat) -> Void
     let copy: () -> Void
     let togglePinned: () -> Void
     let toggleProtection: () -> Void
@@ -177,6 +178,7 @@ struct CompactHistoryItem: View {
                 action: togglePinned
             )
             Button("Edit Details…".localized, action: editMetadata)
+            exportMenu
             if item.kind != .image && item.kind != .file {
                 Divider()
                 if item.protectionState == .unlocked {
@@ -211,6 +213,28 @@ struct CompactHistoryItem: View {
             "Remove Protection".localized
         case nil:
             "Move to Protected Storage".localized
+        }
+    }
+
+    @ViewBuilder
+    private var exportMenu: some View {
+        Menu("Export…".localized) {
+            Button("Plain Text…".localized) {
+                export(.plainText)
+            }
+            Button("JSON…".localized) {
+                export(.json)
+            }
+            if item.imageFileName != nil {
+                Button("Image…".localized) {
+                    export(.image)
+                }
+            }
+            if item.kind == .file, !item.fileURLs.isEmpty {
+                Button("Original Files…".localized) {
+                    export(.originalFiles)
+                }
+            }
         }
     }
 
