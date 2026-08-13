@@ -13,6 +13,15 @@ All notable changes to PastePilot are documented in this file.
   JSON, cached PNG images, or copies of their original files. Protected items
   still require authentication before export.
 
+### Fixed
+
+- VoiceOver now announces history selection, pin, tag, privacy, paste-stack,
+  and shortcut state; preview content and actions have clearer descriptions.
+- Sensitive images remain masked in detail previews until explicitly revealed.
+- Settings pickers retain accessible labels, metadata editing receives initial
+  keyboard focus, and shortcut recorders can be activated by keyboard or
+  VoiceOver.
+
 ## [0.11.0] - 2026-08-01
 
 ### Added

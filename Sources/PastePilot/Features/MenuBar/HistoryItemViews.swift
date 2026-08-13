@@ -23,92 +23,7 @@ struct CompactHistoryItem: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            Button(action: copy) {
-                HStack(spacing: 7) {
-                    Group {
-                        if item.isProtected {
-                            ProtectedContentBadge(isLocked: !item.isProtectedContentAvailable)
-                        } else if item.containsSensitiveData {
-                            SensitiveContentBadge(size: 22)
-                        } else if let image {
-                            Image(nsImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 22, height: 22)
-                                .clipShape(RoundedRectangle(cornerRadius: 3))
-                        } else {
-                            ContentKindBadge(kind: item.kind, size: 22)
-                        }
-                    }
-                    .overlay(alignment: .bottomTrailing) {
-                        if showSourceAppIcon, let sourceAppIcon {
-                            Image(nsImage: sourceAppIcon)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 11, height: 11)
-                                .clipShape(Circle())
-                                .overlay(Circle().strokeBorder(.background, lineWidth: 1.5))
-                                .offset(x: 3, y: 3)
-                        }
-                    }
-
-                    Text(summary)
-                        .font(.system(size: 13, design: item.kind == .text ? .default : .monospaced))
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if let tags = item.tags, let firstTag = tags.first {
-                        HStack(spacing: 2) {
-                            Text("#\(firstTag)")
-                            if tags.count > 1 {
-                                Text("+\(tags.count - 1)")
-                            }
-                        }
-                        .font(.system(size: 9, design: .rounded).weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: 88)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(.quaternary, in: Capsule())
-                        .accessibilityLabel(
-                            "Tags: %@".localized(tags.joined(separator: ", "))
-                        )
-                    }
-
-                    if let pasteStackPosition {
-                        Text("#\(pasteStackPosition)")
-                            .font(.system(size: 10, design: .rounded).weight(.semibold))
-                            .foregroundStyle(.tint)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.12), in: Capsule())
-                            .accessibilityLabel(
-                                "Paste stack position %d".localized(pasteStackPosition)
-                            )
-                    } else if !showsActions, let shortcutNumber {
-                        Text("⌘\(shortcutNumber)")
-                            .font(.system(size: 11, design: .rounded).weight(.medium))
-                            .foregroundStyle(.secondary)
-                    } else if !showsActions {
-                        Text(item.createdAt, style: .relative)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary.opacity(0.8))
-                    }
-                }
-                .padding(.leading, 8)
-                .padding(.vertical, 6)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(item.kind.localizedTitle), \(summary)")
-            .accessibilityHint(
-                item.protectionState == .locked
-                    ? "Unlocks protected content.".localized
-                    : "Copies the original clipboard content.".localized
-            )
+            primaryButton
 
             if showsActions {
                 if item.protectionState == .unlocked {
@@ -241,6 +156,153 @@ struct CompactHistoryItem: View {
     private var showsActions: Bool {
         isHovering || isSelected
     }
+
+    private var primaryButton: some View {
+        let description = MenuBarPopoverState.accessibilityDescription(
+            for: item,
+            summary: summary,
+            isSelected: isSelected,
+            pasteStackPosition: pasteStackPosition,
+            shortcutNumber: shortcutNumber
+        )
+        return Button(action: copy) {
+            primaryLabel
+        }
+        .buttonStyle(.plain)
+        .modifier(HistoryItemAccessibilityModifier(
+            description: description,
+            isSelected: isSelected,
+            pasteStackTitle: pasteStackPosition == nil
+                ? "Add to Paste Stack".localized
+                : "Remove from Paste Stack".localized,
+            pinnedTitle: item.isPinned ? "Unpin".localized : "Pin to Top".localized,
+            preview: preview,
+            editMetadata: editMetadata,
+            togglePasteStack: togglePasteStack,
+            togglePinned: togglePinned,
+            delete: delete
+        ))
+    }
+
+    private var primaryLabel: some View {
+        HStack(spacing: 7) {
+            thumbnail
+
+            Text(summary)
+                .font(.system(
+                    size: 13,
+                    design: item.kind == .text ? .default : .monospaced
+                ))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            tagBadge
+            trailingStatus
+        }
+        .padding(.leading, 8)
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var thumbnail: some View {
+        Group {
+            if item.isProtected {
+                ProtectedContentBadge(isLocked: !item.isProtectedContentAvailable)
+            } else if item.containsSensitiveData {
+                SensitiveContentBadge(size: 22)
+            } else if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 22, height: 22)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+            } else {
+                ContentKindBadge(kind: item.kind, size: 22)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if showSourceAppIcon, let sourceAppIcon {
+                Image(nsImage: sourceAppIcon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 11, height: 11)
+                    .clipShape(Circle())
+                    .overlay(Circle().strokeBorder(.background, lineWidth: 1.5))
+                    .offset(x: 3, y: 3)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var tagBadge: some View {
+        if let tags = item.tags, let firstTag = tags.first {
+            HStack(spacing: 2) {
+                Text("#\(firstTag)")
+                if tags.count > 1 {
+                    Text("+\(tags.count - 1)")
+                }
+            }
+            .font(.system(size: 9, design: .rounded).weight(.medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: 88)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(.quaternary, in: Capsule())
+            .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private var trailingStatus: some View {
+        if let pasteStackPosition {
+            Text("#\(pasteStackPosition)")
+                .font(.system(size: 10, design: .rounded).weight(.semibold))
+                .foregroundStyle(.tint)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Color.accentColor.opacity(0.12), in: Capsule())
+                .accessibilityHidden(true)
+        } else if !showsActions, let shortcutNumber {
+            Text("⌘\(shortcutNumber)")
+                .font(.system(size: 11, design: .rounded).weight(.medium))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        } else if !showsActions {
+            Text(item.createdAt, style: .relative)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary.opacity(0.8))
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+private struct HistoryItemAccessibilityModifier: ViewModifier {
+    let description: HistoryItemAccessibilityDescription
+    let isSelected: Bool
+    let pasteStackTitle: String
+    let pinnedTitle: String
+    let preview: () -> Void
+    let editMetadata: () -> Void
+    let togglePasteStack: () -> Void
+    let togglePinned: () -> Void
+    let delete: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(description.label)
+            .accessibilityValue(description.value)
+            .accessibilityHint(description.hint)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityAction(named: Text("Preview".localized), preview)
+            .accessibilityAction(named: Text("Edit Details…".localized), editMetadata)
+            .accessibilityAction(named: Text(pasteStackTitle), togglePasteStack)
+            .accessibilityAction(named: Text(pinnedTitle), togglePinned)
+            .accessibilityAction(named: Text("Delete".localized), delete)
+    }
 }
 
 private struct RowIconButton: View {
@@ -311,6 +373,8 @@ struct HistorySectionHeader: View {
         .padding(.horizontal, 12)
         .padding(.top, 6)
         .padding(.bottom, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 

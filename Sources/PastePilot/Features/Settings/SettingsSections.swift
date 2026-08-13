@@ -99,7 +99,7 @@ struct StorageSettingsPage: View {
         SettingsPane(id: SettingsTab.storage) {
             SettingsGroup {
                 SettingsRow(title: "Keep up to".localized) {
-                    Picker("", selection: $settings.historyLimit) {
+                    Picker("Keep up to".localized, selection: $settings.historyLimit) {
                         ForEach(AppSettings.supportedHistoryLimits, id: \.self) { limit in
                             Text(historyLimitLabel(limit)).tag(limit)
                         }
@@ -108,7 +108,10 @@ struct StorageSettingsPage: View {
                     .frame(width: 130)
                 }
                 SettingsRow(title: "Auto-delete After".localized) {
-                    Picker("", selection: $settings.historyTimeoutSeconds) {
+                    Picker(
+                        "Auto-delete After".localized,
+                        selection: $settings.historyTimeoutSeconds
+                    ) {
                         ForEach(AppSettings.supportedHistoryTimeoutsSeconds, id: \.self) { timeout in
                             Text(historyTimeoutLabel(timeout)).tag(timeout)
                         }
@@ -117,7 +120,7 @@ struct StorageSettingsPage: View {
                     .frame(width: 130)
                 }
                 SettingsRow(title: "Storage Limit".localized) {
-                    Picker("", selection: $settings.storageLimitMB) {
+                    Picker("Storage Limit".localized, selection: $settings.storageLimitMB) {
                         ForEach(AppSettings.supportedStorageLimitsMB, id: \.self) { limit in
                             Text(storageLimitLabel(limit)).tag(limit)
                         }
@@ -134,7 +137,7 @@ struct StorageSettingsPage: View {
 
             SettingsGroup {
                 SettingsRow(title: "Image Size Limit".localized) {
-                    Picker("", selection: $settings.imageSizeLimitMB) {
+                    Picker("Image Size Limit".localized, selection: $settings.imageSizeLimitMB) {
                         ForEach(AppSettings.supportedImageSizeLimitsMB, id: \.self) { limit in
                             Text(imageSizeLimitLabel(limit)).tag(limit)
                         }
@@ -163,7 +166,10 @@ struct StorageSettingsPage: View {
 
             SettingsGroup(title: "Sensitive Content".localized) {
                 SettingsRow(title: "When Detected".localized) {
-                    Picker("", selection: $settings.sensitiveContentStoragePolicy) {
+                    Picker(
+                        "When Detected".localized,
+                        selection: $settings.sensitiveContentStoragePolicy
+                    ) {
                         ForEach(
                             SensitiveContentStoragePolicy.allCases,
                             id: \.rawValue
@@ -192,7 +198,10 @@ struct StorageSettingsPage: View {
                 SettingsNote("Use one literal match per line. Prefix regular expressions with regex:. Invalid regular expressions are ignored.".localized)
                 SettingsNote("Redacted or skipped sensitive clipboard content is not recoverable from history.".localized)
                 SettingsRow(title: "Protected Unlock Timeout".localized) {
-                    Picker("", selection: $settings.protectedHistoryUnlockTimeoutSeconds) {
+                    Picker(
+                        "Protected Unlock Timeout".localized,
+                        selection: $settings.protectedHistoryUnlockTimeoutSeconds
+                    ) {
                         ForEach(
                             AppSettings.supportedProtectedHistoryUnlockTimeoutsSeconds,
                             id: \.self
@@ -208,7 +217,7 @@ struct StorageSettingsPage: View {
 
             SettingsGroup(title: "Image Text Recognition".localized) {
                 SettingsRow(title: "OCR Mode".localized) {
-                    Picker("", selection: $settings.ocrRecognitionMode) {
+                    Picker("OCR Mode".localized, selection: $settings.ocrRecognitionMode) {
                         ForEach(OCRRecognitionMode.allCases, id: \.rawValue) { mode in
                             Text(mode.title).tag(mode.rawValue)
                         }
@@ -217,7 +226,7 @@ struct StorageSettingsPage: View {
                     .frame(width: 150)
                 }
                 SettingsRow(title: "OCR Languages".localized) {
-                    Picker("", selection: $settings.ocrLanguageMode) {
+                    Picker("OCR Languages".localized, selection: $settings.ocrLanguageMode) {
                         ForEach(OCRLanguageMode.allCases, id: \.rawValue) { mode in
                             Text(mode.title).tag(mode.rawValue)
                         }
@@ -293,7 +302,7 @@ struct AppearanceSettingsPage: View {
         SettingsPane(id: SettingsTab.appearance) {
             SettingsGroup {
                 SettingsRow(title: "Menu Bar Icon".localized) {
-                    Picker("", selection: $settings.menuBarIconStyle) {
+                    Picker("Menu Bar Icon".localized, selection: $settings.menuBarIconStyle) {
                         ForEach(MenuBarIconStyle.allCases, id: \.rawValue) { style in
                             Label {
                                 Text(style.displayName)
@@ -308,7 +317,7 @@ struct AppearanceSettingsPage: View {
                     .frame(width: 180)
                 }
                 SettingsRow(title: "Theme".localized) {
-                    Picker("", selection: $settings.appearanceMode) {
+                    Picker("Theme".localized, selection: $settings.appearanceMode) {
                         ForEach(AppAppearanceMode.allCases, id: \.rawValue) { mode in
                             Text(mode.title).tag(mode.rawValue)
                         }
@@ -338,7 +347,7 @@ struct AppearanceSettingsPage: View {
                 )
                 SettingsNote("After a successful copy, close the panel and press Command-V in the previous app.".localized)
                 SettingsRow(title: "After Copying".localized) {
-                    Picker("", selection: $settings.pasteCloseBehavior) {
+                    Picker("After Copying".localized, selection: $settings.pasteCloseBehavior) {
                         Text("Keep Panel Open".localized)
                             .tag(PasteCloseBehavior.keepOpen.rawValue)
                         Text("Close Preview".localized)
@@ -355,7 +364,7 @@ struct AppearanceSettingsPage: View {
 
             SettingsGroup(title: "Paste Stack".localized) {
                 SettingsRow(title: "Between Items".localized) {
-                    Picker("", selection: $settings.pasteStackSeparator) {
+                    Picker("Between Items".localized, selection: $settings.pasteStackSeparator) {
                         ForEach(PasteStackSeparator.allCases, id: \.rawValue) { separator in
                             Text(separator.title).tag(separator.rawValue)
                         }

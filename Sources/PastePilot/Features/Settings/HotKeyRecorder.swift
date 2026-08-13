@@ -90,7 +90,7 @@ final class HotKeyRecorderNSView: NSView {
     var shortcutText = "" {
         didSet { needsDisplay = true }
     }
-    private var isRecording = false
+    private(set) var isRecording = false
 
     override var acceptsFirstResponder: Bool { true }
     override var intrinsicContentSize: NSSize { NSSize(width: 190, height: 34) }
@@ -102,19 +102,36 @@ final class HotKeyRecorderNSView: NSView {
         setAccessibilityHelp(
             "Press to record a new shortcut. Press Delete to restore the default.".localized
         )
+        focusRingType = .exterior
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setAccessibilityElement(true)
         setAccessibilityRole(.button)
+        setAccessibilityHelp(
+            "Press to record a new shortcut. Press Delete to restore the default.".localized
+        )
+        focusRingType = .exterior
     }
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
-        isRecording = true
-        needsDisplay = true
-        setAccessibilityValue("Press a new shortcut…".localized)
+        beginRecording()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        window?.makeFirstResponder(self)
+        beginRecording()
+        return true
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let becameFirstResponder = super.becomeFirstResponder()
+        if becameFirstResponder {
+            needsDisplay = true
+        }
+        return becameFirstResponder
     }
 
     override func resignFirstResponder() -> Bool {
@@ -125,6 +142,15 @@ final class HotKeyRecorderNSView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if !isRecording {
+            if event.keyCode == UInt16(kVK_Space)
+                || event.keyCode == UInt16(kVK_Return) {
+                beginRecording()
+                return
+            }
+            super.keyDown(with: event)
+            return
+        }
         if event.keyCode == UInt16(kVK_Escape) {
             window?.makeFirstResponder(nil)
             return
@@ -141,6 +167,16 @@ final class HotKeyRecorderNSView: NSView {
         }
         onChange?(Int(event.keyCode), modifiers)
         window?.makeFirstResponder(nil)
+    }
+
+    override var focusRingMaskBounds: NSRect { bounds }
+
+    override func drawFocusRingMask() {
+        NSBezierPath(
+            roundedRect: bounds.insetBy(dx: 1, dy: 1),
+            xRadius: 8,
+            yRadius: 8
+        ).fill()
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -173,5 +209,11 @@ final class HotKeyRecorderNSView: NSView {
             ),
             withAttributes: attributes
         )
+    }
+
+    private func beginRecording() {
+        isRecording = true
+        needsDisplay = true
+        setAccessibilityValue("Press a new shortcut…".localized)
     }
 }

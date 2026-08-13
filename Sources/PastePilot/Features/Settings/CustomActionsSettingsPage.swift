@@ -227,7 +227,7 @@ private struct CustomActionEditorRow: View {
                     .accessibilityLabel("Enable Custom Action".localized)
                 TextField("Action Name".localized, text: $action.title)
                     .textFieldStyle(.roundedBorder)
-                Picker("", selection: $action.scope) {
+                Picker("Content Type".localized, selection: $action.scope) {
                     ForEach(CustomClipboardActionScope.allCases) { scope in
                         Text(scope.title).tag(scope)
                     }

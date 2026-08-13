@@ -21,17 +21,29 @@ struct ClipboardDetailPreview: View {
                         FileListPreview(urls: item.fileURLs)
                             .frame(minHeight: 60, maxHeight: 220)
                     } else if item.kind == .richText,
-                              (!item.requiresSensitiveContentReveal
-                                  || revealsSensitiveContent),
+                              !hidesSensitiveContent,
                               !TextPreview.shouldUsePlainTextFallback(forRichText: item) {
                         RichTextPreview(item: item)
                             .frame(minHeight: 80, maxHeight: 180)
                     } else if let image {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFit()
+                        if hidesSensitiveContent {
+                            VStack(spacing: 8) {
+                                SensitiveContentBadge(size: 40)
+                                Text("Sensitive content hidden".localized)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                             .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 240)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Sensitive content hidden".localized)
+                        } else {
+                            Image(nsImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 240)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                .accessibilityLabel("%@ preview".localized(item.kind.localizedTitle))
+                        }
                     } else {
                         PlainTextPreview(
                             item: item,
@@ -61,10 +73,19 @@ struct ClipboardDetailPreview: View {
         }
         .padding(16)
         .frame(width: 340, alignment: .topLeading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Clipboard preview".localized)
         .onHover(perform: hoverChanged)
         .onChange(of: item.id) {
             revealsSensitiveContent = false
         }
+    }
+
+    private var hidesSensitiveContent: Bool {
+        MenuBarPopoverState.hidesSensitivePreviewContent(
+            for: item,
+            revealsSensitiveContent: revealsSensitiveContent
+        )
     }
 
 }
@@ -80,7 +101,11 @@ private struct PlainTextPreview: View {
         VStack(alignment: .leading, spacing: 6) {
             TextKitPreview(
                 content: preview.content,
-                fontDesign: previewFontDesign
+                fontDesign: previewFontDesign,
+                accessibilityLabel: item.requiresSensitiveContentReveal
+                    && !revealsSensitiveContent
+                    ? "Sensitive content hidden".localized
+                    : "Clipboard content".localized
             )
 
             if preview.isTruncated {
@@ -165,6 +190,7 @@ private struct PlainTextPreview: View {
 private struct TextKitPreview: NSViewRepresentable {
     let content: AttributedString
     let fontDesign: Font.Design
+    let accessibilityLabel: String
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -186,6 +212,7 @@ private struct TextKitPreview: NSViewRepresentable {
         textView.allowsUndo = false
         textView.usesFindPanel = false
         textView.layoutManager?.allowsNonContiguousLayout = true
+        textView.setAccessibilityLabel(accessibilityLabel)
 
         scrollView.documentView = textView
         return scrollView
@@ -205,6 +232,7 @@ private struct TextKitPreview: NSViewRepresentable {
             textView.scrollRangeToVisible(NSRange(location: 0, length: 0))
         }
         textView.font = font
+        textView.setAccessibilityLabel(accessibilityLabel)
     }
 
     static func dismantleNSView(_ scrollView: NSScrollView, coordinator: ()) {
@@ -253,6 +281,11 @@ private struct FileListPreview: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("%@, %@".localized(
+                        url.lastPathComponent,
+                        fileDetail(for: url)
+                    ))
                     if url != urls.last {
                         Divider().padding(.leading, 48)
                     }
@@ -297,6 +330,7 @@ private struct RichTextPreview: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.autoresizingMask = [.width]
         textView.textContainer?.widthTracksTextView = true
+        textView.setAccessibilityLabel("Clipboard content".localized)
         scrollView.documentView = textView
         return scrollView
     }

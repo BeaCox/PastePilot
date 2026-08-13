@@ -7,6 +7,12 @@ struct MenuBarPopoverEmptyState: Equatable {
     let description: String
 }
 
+struct HistoryItemAccessibilityDescription: Equatable {
+    let label: String
+    let value: String
+    let hint: String
+}
+
 enum MenuBarPopoverState {
     static let preferredWidth: CGFloat = 400
     static let emptyHeight: CGFloat = 250
@@ -177,6 +183,56 @@ enum MenuBarPopoverState {
             systemImage: "magnifyingglass",
             description: "Try searching for other content or types.".localized
         )
+    }
+
+    static func accessibilityDescription(
+        for item: ClipboardItem,
+        summary: String,
+        isSelected: Bool,
+        pasteStackPosition: Int?,
+        shortcutNumber: Int?
+    ) -> HistoryItemAccessibilityDescription {
+        var values: [String] = []
+        if isSelected {
+            values.append("Selected".localized)
+        }
+        if item.isPinned {
+            values.append("Pinned".localized)
+        }
+        switch item.protectionState {
+        case .locked:
+            values.append("Protected item locked".localized)
+        case .unlocked:
+            values.append("Protected item unlocked".localized)
+        case nil where item.requiresSensitiveContentReveal:
+            values.append("Sensitive content hidden".localized)
+        case nil:
+            break
+        }
+        if let tags = item.tags, !tags.isEmpty {
+            values.append("Tags: %@".localized(tags.joined(separator: ", ")))
+        }
+        if let pasteStackPosition {
+            values.append("Paste stack position %d".localized(pasteStackPosition))
+        }
+        if let shortcutNumber {
+            values.append("Keyboard shortcut: Command-%d".localized(shortcutNumber))
+        }
+
+        return HistoryItemAccessibilityDescription(
+            label: "\(item.kind.localizedTitle), \(summary)",
+            value: values.joined(separator: ", "),
+            hint: item.protectionState == .locked
+                ? "Unlocks protected content.".localized
+                : "Copies the original clipboard content.".localized
+        )
+    }
+
+    static func hidesSensitivePreviewContent(
+        for item: ClipboardItem,
+        revealsSensitiveContent: Bool
+    ) -> Bool {
+        item.requiresSensitiveContentReveal && !revealsSensitiveContent
     }
 
     static func previewActions(

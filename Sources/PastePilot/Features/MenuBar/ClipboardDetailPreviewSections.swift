@@ -30,6 +30,14 @@ struct ClipboardPreviewHeader: View {
             .padding(.vertical, 3)
             .background(.quaternary, in: Capsule())
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "%@, %@".localized(
+                item.sourceAppName ?? "Unknown Source".localized,
+                item.kind.localizedTitle
+            )
+        )
+        .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder
@@ -122,6 +130,11 @@ struct ClipboardPreviewMetadata: View {
                         revealsSensitiveContent.toggle()
                     }
                     .buttonStyle(.link)
+                    .accessibilityHint(
+                        revealsSensitiveContent
+                            ? "Hides sensitive content in the preview.".localized
+                            : "Reveals sensitive content in the preview.".localized
+                    )
                 }
                 .font(.caption2)
                 .foregroundStyle(.orange)
@@ -267,6 +280,9 @@ struct ClipboardPreviewActionList: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PreviewActionButtonStyle())
+                .accessibilityHint(
+                    "Keyboard shortcut: Option-%d".localized(index + 1)
+                )
                 if index < actions.count - 1 {
                     Divider().padding(.leading, 34)
                 }

@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import Foundation
 import SwiftUI
 import Testing
@@ -177,6 +178,98 @@ struct MenuBarPopoverRegressionTests {
                     description: "Try searching for other content or types.".localized
                 )
         )
+    }
+
+    @Test
+    func historyRowsExposeSelectionOrganizationAndPrivacyToVoiceOver() {
+        let item = ClipboardItem(
+            content: "api token",
+            kind: .text,
+            isPinned: true,
+            containsSensitiveData: true,
+            tags: ["work", "urgent"]
+        )
+
+        let description = MenuBarPopoverState.accessibilityDescription(
+            for: item,
+            summary: "••• token",
+            isSelected: true,
+            pasteStackPosition: 2,
+            shortcutNumber: 1
+        )
+
+        #expect(description.label == "\(ContentKind.text.localizedTitle), ••• token")
+        #expect(description.value.contains("Selected".localized))
+        #expect(description.value.contains("Pinned".localized))
+        #expect(description.value.contains("Sensitive content hidden".localized))
+        #expect(description.value.contains("Tags: %@".localized("work, urgent")))
+        #expect(description.value.contains("Paste stack position %d".localized(2)))
+        #expect(description.value.contains("Keyboard shortcut: Command-%d".localized(1)))
+        #expect(description.hint == "Copies the original clipboard content.".localized)
+
+        var lockedItem = item
+        lockedItem.protectionState = .locked
+        let lockedDescription = MenuBarPopoverState.accessibilityDescription(
+            for: lockedItem,
+            summary: "Protected item".localized,
+            isSelected: false,
+            pasteStackPosition: nil,
+            shortcutNumber: nil
+        )
+        #expect(lockedDescription.value.contains("Protected item locked".localized))
+        #expect(!lockedDescription.value.contains("Sensitive content hidden".localized))
+        #expect(lockedDescription.hint == "Unlocks protected content.".localized)
+    }
+
+    @Test
+    func sensitiveImagePreviewStaysHiddenUntilExplicitlyRevealed() {
+        let sensitiveImage = ClipboardItem(
+            content: "screenshot",
+            kind: .image,
+            containsSensitiveData: true,
+            imageFileName: "sensitive.png"
+        )
+        let protectedImage = ClipboardItem(
+            content: "protected screenshot",
+            kind: .image,
+            containsSensitiveData: true,
+            imageFileName: "protected.png",
+            protectionState: .unlocked
+        )
+
+        #expect(MenuBarPopoverState.hidesSensitivePreviewContent(
+            for: sensitiveImage,
+            revealsSensitiveContent: false
+        ))
+        #expect(!MenuBarPopoverState.hidesSensitivePreviewContent(
+            for: sensitiveImage,
+            revealsSensitiveContent: true
+        ))
+        #expect(!MenuBarPopoverState.hidesSensitivePreviewContent(
+            for: protectedImage,
+            revealsSensitiveContent: false
+        ))
+    }
+
+    @Test
+    func shortcutRecorderSupportsKeyboardAndVoiceOverActivation() {
+        let recorder = HotKeyRecorderNSView()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 240, height: 80),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = recorder
+
+        #expect(window.makeFirstResponder(recorder))
+        recorder.keyDown(with: keyEvent(keyCode: UInt16(kVK_Space)))
+        #expect(recorder.isRecording)
+
+        _ = recorder.resignFirstResponder()
+        #expect(!recorder.isRecording)
+        #expect(recorder.accessibilityPerformPress())
+        #expect(recorder.isRecording)
     }
 
     @Test
@@ -430,6 +523,21 @@ struct MenuBarPopoverRegressionTests {
         let hostingView = NSHostingView(rootView: view)
         hostingView.layoutSubtreeIfNeeded()
         return hostingView.fittingSize
+    }
+
+    private func keyEvent(keyCode: UInt16) -> NSEvent {
+        NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: " ",
+            charactersIgnoringModifiers: " ",
+            isARepeat: false,
+            keyCode: keyCode
+        )!
     }
 
     private func filteredIDs(

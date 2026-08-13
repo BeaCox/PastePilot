@@ -74,7 +74,7 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 - [x] Let users export selected history items in useful local formats such as
   plain text, JSON, original files, or images without turning export into an
   automatic sharing or network feature.
-- [ ] Audit keyboard and VoiceOver behavior across the menu bar, previews,
+- [x] Audit keyboard and VoiceOver behavior across the menu bar, previews,
   metadata editing, protected-history authentication, and settings; add focused
   regression coverage for discovered gaps.
 

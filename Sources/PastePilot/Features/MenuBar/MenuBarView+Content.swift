@@ -557,12 +557,19 @@ extension MenuBarView {
 }
 
 private struct ClipboardMetadataEditor: View {
+    private enum Field: Hashable {
+        case title
+        case tags
+        case note
+    }
+
     let item: ClipboardItem?
     @Binding var title: String
     @Binding var note: String
     @Binding var tags: String
     let save: () -> Void
     let cancel: () -> Void
+    @FocusState private var focusedField: Field?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -586,11 +593,14 @@ private struct ClipboardMetadataEditor: View {
                 MetadataEditorField(title: "Title".localized, symbol: "textformat") {
                     TextField("Title".localized, text: $title)
                         .metadataEditorControl()
+                        .focused($focusedField, equals: .title)
                 }
 
                 MetadataEditorField(title: "Tags".localized, symbol: "number") {
                     TextField("Comma-separated tags".localized, text: $tags)
                         .metadataEditorControl()
+                        .accessibilityLabel("Tags".localized)
+                        .focused($focusedField, equals: .tags)
                 }
 
                 MetadataEditorField(title: "Note".localized, symbol: "note.text") {
@@ -607,6 +617,8 @@ private struct ClipboardMetadataEditor: View {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .strokeBorder(.quaternary, lineWidth: 0.5)
                         }
+                        .accessibilityLabel("Note".localized)
+                        .focused($focusedField, equals: .note)
                 }
             }
             .padding(14)
@@ -635,6 +647,9 @@ private struct ClipboardMetadataEditor: View {
             .frame(height: 52)
         }
         .frame(width: MenuBarPopoverState.preferredWidth)
+        .onAppear {
+            focusedField = .title
+        }
     }
 
     private var editorHeader: some View {
