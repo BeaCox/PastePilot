@@ -4,6 +4,8 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-17
+
 ### Added
 
 - The Actions settings page can import and export declarative JSON plugins and
@@ -21,6 +23,16 @@ All notable changes to PastePilot are documented in this file.
 - Settings pickers retain accessible labels, metadata editing receives initial
   keyboard focus, and shortcut recorders can be activated by keyboard or
   VoiceOver.
+
+### Maintenance
+
+- Split settings persistence, validation, and local plugin catalog state into
+  focused components while preserving the existing dependency-injection API.
+- Split SQLite history migrations, row encoding, full-text indexing, and
+  metadata access into focused files without changing the schema or transaction
+  boundaries.
+- Added representative performance fixtures for startup, filtered search,
+  externalized text search, and cleanup at every supported history limit.
 
 ## [0.11.0] - 2026-08-01
 
