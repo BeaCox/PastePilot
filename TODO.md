@@ -80,12 +80,12 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 
 ## Maintenance
 
-- [ ] Split `AppSettings` persistence, validation, and plugin catalog state into
+- [x] Split `AppSettings` persistence, validation, and plugin catalog state into
   focused components while retaining its existing dependency-injection seams.
-- [ ] Split `SQLiteHistoryStore` migrations, row encoding, FTS indexing, and
+- [x] Split `SQLiteHistoryStore` migrations, row encoding, FTS indexing, and
   metadata access into focused files without changing the storage schema or
   transaction boundaries.
-- [ ] Add representative performance fixtures for startup, filtered search,
+- [x] Add representative performance fixtures for startup, filtered search,
   externalized text search, and cleanup at the supported history limits.
 
 ## Completed Milestones

@@ -165,179 +165,25 @@ final class AppSettings: ObservableObject {
         .appendingPathComponent("Plugins", isDirectory: true)
     }
 
-    private struct AppSetting<Value: Sendable>: Sendable {
-        let key: String
-        let defaultValue: Value
+    private typealias Setting = AppSettingsPersistence.Setting
 
-        init(_ key: String, default defaultValue: Value) {
-            self.key = key
-            self.defaultValue = defaultValue
-        }
+    private let persistence: AppSettingsPersistence
+    @Published private var localActionPluginCatalog: LocalActionPluginCatalogState
+
+    var pluginsDirectoryURL: URL {
+        localActionPluginCatalog.directoryURL
     }
 
-    private enum Setting {
-        static let monitoringEnabled = AppSetting("monitoringEnabled", default: true)
-        static let hoverPreviewEnabled = AppSetting("hoverPreviewEnabled", default: true)
-        static let showSourceAppIconInHistory = AppSetting(
-            "showSourceAppIconInHistory",
-            default: true
-        )
-        static let historyLimit = AppSetting(
-            "historyLimit",
-            default: AppSettings.defaultHistoryLimit
-        )
-        static let launchAtLogin = AppSetting("launchAtLogin", default: false)
-        static let imageSizeLimitMB = AppSetting(
-            "imageSizeLimitMB",
-            default: AppSettings.defaultImageSizeLimitMB
-        )
-        static let perceptualImageDeduplicationEnabled = AppSetting(
-            "perceptualImageDeduplicationEnabled",
-            default: AppSettings.defaultPerceptualImageDeduplicationEnabled
-        )
-        static let linkMetadataFetchingEnabled = AppSetting(
-            "linkMetadataFetchingEnabled",
-            default: AppSettings.defaultLinkMetadataFetchingEnabled
-        )
-        static let storageLimitMB = AppSetting(
-            "storageLimitMB",
-            default: AppSettings.defaultStorageLimitMB
-        )
-        static let ignoredBundleIdentifiers = AppSetting(
-            "ignoredBundleIdentifiers",
-            default: ""
-        )
-        static let hotKeyCode = AppSetting(
-            "hotKeyCode",
-            default: AppSettings.defaultOpenHotKeyCode
-        )
-        static let hotKeyModifiers = AppSetting(
-            "hotKeyModifiers",
-            default: AppSettings.defaultOpenHotKeyModifiers
-        )
-        static let plainTextHotKeyCode = AppSetting(
-            "plainTextHotKeyCode",
-            default: AppSettings.defaultPlainTextHotKeyCode
-        )
-        static let plainTextHotKeyModifiers = AppSetting(
-            "plainTextHotKeyModifiers",
-            default: AppSettings.defaultPlainTextHotKeyModifiers
-        )
-        static let menuBarIconStyle = AppSetting(
-            "menuBarIconStyle",
-            default: MenuBarIconStyle.pastepilot.rawValue
-        )
-        static let historyTimeoutSeconds = AppSetting(
-            "historyTimeoutSeconds",
-            default: AppSettings.defaultHistoryTimeoutSeconds
-        )
-        static let protectedHistoryUnlockTimeoutSeconds = AppSetting(
-            "protectedHistoryUnlockTimeoutSeconds",
-            default: AppSettings.defaultProtectedHistoryUnlockTimeoutSeconds
-        )
-        static let pasteCloseBehavior = AppSetting(
-            "pasteCloseBehavior",
-            default: PasteCloseBehavior.closePreview.rawValue
-        )
-        static let pasteAfterCopying = AppSetting(
-            "pasteAfterCopying",
-            default: AppSettings.defaultPasteAfterCopying
-        )
-        static let pasteStackSeparator = AppSetting(
-            "pasteStackSeparator",
-            default: AppSettings.defaultPasteStackSeparator
-        )
-        static let customPasteStackSeparator = AppSetting(
-            "customPasteStackSeparator",
-            default: AppSettings.defaultCustomPasteStackSeparator
-        )
-        static let previewAnimationEnabled = AppSetting(
-            "previewAnimationEnabled",
-            default: true
-        )
-        static let appearanceMode = AppSetting(
-            "appearanceMode",
-            default: AppSettings.defaultAppearanceMode
-        )
-        static let ocrRecognitionMode = AppSetting(
-            "ocrRecognitionMode",
-            default: AppSettings.defaultOCRRecognitionMode
-        )
-        static let ocrLanguageMode = AppSetting(
-            "ocrLanguageMode",
-            default: AppSettings.defaultOCRLanguageMode
-        )
-        static let sensitiveContentStoragePolicy = AppSetting(
-            "sensitiveContentStoragePolicy",
-            default: AppSettings.defaultSensitiveContentStoragePolicy
-        )
-        static let customSensitivePatterns = AppSetting(
-            "customSensitivePatterns",
-            default: AppSettings.defaultCustomSensitivePatterns
-        )
-        static let customClipboardActions = AppSetting(
-            "customClipboardActions",
-            default: AppSettings.defaultCustomClipboardActions
-        )
-        static let savedSearches = AppSetting(
-            "savedSearches",
-            default: AppSettings.defaultSavedSearches
-        )
-        static let disabledLocalActionPluginIdentifiers = AppSetting(
-            "disabledLocalActionPluginIdentifiers",
-            default: AppSettings.defaultDisabledLocalActionPluginIdentifiers
-        )
-
-        static var registeredDefaults: [String: Any] {
-            [
-                monitoringEnabled.key: monitoringEnabled.defaultValue,
-                hoverPreviewEnabled.key: hoverPreviewEnabled.defaultValue,
-                showSourceAppIconInHistory.key: showSourceAppIconInHistory.defaultValue,
-                historyLimit.key: historyLimit.defaultValue,
-                launchAtLogin.key: launchAtLogin.defaultValue,
-                imageSizeLimitMB.key: imageSizeLimitMB.defaultValue,
-                perceptualImageDeduplicationEnabled.key:
-                    perceptualImageDeduplicationEnabled.defaultValue,
-                linkMetadataFetchingEnabled.key: linkMetadataFetchingEnabled.defaultValue,
-                storageLimitMB.key: storageLimitMB.defaultValue,
-                ignoredBundleIdentifiers.key: ignoredBundleIdentifiers.defaultValue,
-                hotKeyCode.key: hotKeyCode.defaultValue,
-                hotKeyModifiers.key: hotKeyModifiers.defaultValue,
-                plainTextHotKeyCode.key: plainTextHotKeyCode.defaultValue,
-                plainTextHotKeyModifiers.key: plainTextHotKeyModifiers.defaultValue,
-                menuBarIconStyle.key: menuBarIconStyle.defaultValue,
-                historyTimeoutSeconds.key: historyTimeoutSeconds.defaultValue,
-                protectedHistoryUnlockTimeoutSeconds.key:
-                    protectedHistoryUnlockTimeoutSeconds.defaultValue,
-                pasteCloseBehavior.key: pasteCloseBehavior.defaultValue,
-                pasteAfterCopying.key: pasteAfterCopying.defaultValue,
-                pasteStackSeparator.key: pasteStackSeparator.defaultValue,
-                customPasteStackSeparator.key: customPasteStackSeparator.defaultValue,
-                previewAnimationEnabled.key: previewAnimationEnabled.defaultValue,
-                appearanceMode.key: appearanceMode.defaultValue,
-                ocrRecognitionMode.key: ocrRecognitionMode.defaultValue,
-                ocrLanguageMode.key: ocrLanguageMode.defaultValue,
-                sensitiveContentStoragePolicy.key:
-                    sensitiveContentStoragePolicy.defaultValue,
-                customSensitivePatterns.key:
-                    customSensitivePatterns.defaultValue,
-                customClipboardActions.key:
-                    customClipboardActions.defaultValue,
-                savedSearches.key:
-                    savedSearches.defaultValue,
-                disabledLocalActionPluginIdentifiers.key:
-                    disabledLocalActionPluginIdentifiers.defaultValue,
-            ]
-        }
+    var localActionPlugins: [LocalActionPlugin] {
+        localActionPluginCatalog.plugins
     }
 
-    private let defaults: UserDefaults
-    let pluginsDirectoryURL: URL
+    var localActionPluginErrors: [String] {
+        localActionPluginCatalog.errors
+    }
 
-    @Published private(set) var localActionPlugins: [LocalActionPlugin] = []
-    @Published private(set) var localActionPluginErrors: [String] = []
-    @Published private(set) var disabledLocalActionPluginIdentifiers: Set<String> {
-        didSet { persistDisabledLocalActionPluginIdentifiers() }
+    var disabledLocalActionPluginIdentifiers: Set<String> {
+        localActionPluginCatalog.disabledIdentifiers
     }
 
     @Published var monitoringEnabled: Bool {
@@ -602,137 +448,128 @@ final class AppSettings: ObservableObject {
         defaults: UserDefaults = .standard,
         pluginsDirectoryURL: URL? = nil
     ) {
-        self.defaults = defaults
-        self.pluginsDirectoryURL = pluginsDirectoryURL
+        let persistence = AppSettingsPersistence(defaults: defaults)
+        self.persistence = persistence
+        let pluginsDirectoryURL = pluginsDirectoryURL
             ?? Self.defaultPluginsDirectoryURL
-        defaults.register(defaults: Setting.registeredDefaults)
-        monitoringEnabled = Self.bool(for: Setting.monitoringEnabled, in: defaults)
-        hoverPreviewEnabled = Self.bool(for: Setting.hoverPreviewEnabled, in: defaults)
-        showSourceAppIconInHistory = Self.bool(
-            for: Setting.showSourceAppIconInHistory,
-            in: defaults
+        monitoringEnabled = persistence.bool(for: Setting.monitoringEnabled)
+        hoverPreviewEnabled = persistence.bool(for: Setting.hoverPreviewEnabled)
+        showSourceAppIconInHistory = persistence.bool(
+            for: Setting.showSourceAppIconInHistory
         )
-        historyLimit = Self.supportedInteger(
+        historyLimit = AppSettingsValidation.supportedInteger(
             for: Setting.historyLimit,
-            in: defaults,
+            in: persistence,
             supportedValues: Self.supportedHistoryLimits
         )
-        launchAtLogin = Self.bool(for: Setting.launchAtLogin, in: defaults)
-        imageSizeLimitMB = Self.supportedInteger(
+        launchAtLogin = persistence.bool(for: Setting.launchAtLogin)
+        imageSizeLimitMB = AppSettingsValidation.supportedInteger(
             for: Setting.imageSizeLimitMB,
-            in: defaults,
+            in: persistence,
             supportedValues: Self.supportedImageSizeLimitsMB
         )
-        perceptualImageDeduplicationEnabled = Self.bool(
-            for: Setting.perceptualImageDeduplicationEnabled,
-            in: defaults
+        perceptualImageDeduplicationEnabled = persistence.bool(
+            for: Setting.perceptualImageDeduplicationEnabled
         )
-        linkMetadataFetchingEnabled = Self.bool(
-            for: Setting.linkMetadataFetchingEnabled,
-            in: defaults
+        linkMetadataFetchingEnabled = persistence.bool(
+            for: Setting.linkMetadataFetchingEnabled
         )
-        storageLimitMB = Self.supportedInteger(
+        storageLimitMB = AppSettingsValidation.supportedInteger(
             for: Setting.storageLimitMB,
-            in: defaults,
+            in: persistence,
             supportedValues: Self.supportedStorageLimitsMB
         )
-        ignoredBundleIdentifiers = Self.string(
-            for: Setting.ignoredBundleIdentifiers,
-            in: defaults
+        ignoredBundleIdentifiers = persistence.string(
+            for: Setting.ignoredBundleIdentifiers
         )
-        let openHotKey = Self.validatedHotKey(
-            keyCode: Self.integer(for: Setting.hotKeyCode, in: defaults),
-            modifiers: Self.uint32(for: Setting.hotKeyModifiers, in: defaults),
+        let openHotKey = AppSettingsValidation.validatedHotKey(
+            keyCode: persistence.integer(for: Setting.hotKeyCode),
+            modifiers: persistence.uint32(for: Setting.hotKeyModifiers),
             defaultKeyCode: Setting.hotKeyCode.defaultValue,
             defaultModifiers: Setting.hotKeyModifiers.defaultValue
         )
         hotKeyCode = openHotKey.keyCode
         hotKeyModifiers = openHotKey.modifiers
-        let plainTextHotKey = Self.validatedHotKey(
-            keyCode: Self.integer(for: Setting.plainTextHotKeyCode, in: defaults),
-            modifiers: Self.uint32(
-                for: Setting.plainTextHotKeyModifiers,
-                in: defaults
+        let plainTextHotKey = AppSettingsValidation.validatedHotKey(
+            keyCode: persistence.integer(for: Setting.plainTextHotKeyCode),
+            modifiers: persistence.uint32(
+                for: Setting.plainTextHotKeyModifiers
             ),
             defaultKeyCode: Setting.plainTextHotKeyCode.defaultValue,
             defaultModifiers: Setting.plainTextHotKeyModifiers.defaultValue
         )
         plainTextHotKeyCode = plainTextHotKey.keyCode
         plainTextHotKeyModifiers = plainTextHotKey.modifiers
-        menuBarIconStyle = Self.supportedRawValue(
+        menuBarIconStyle = AppSettingsValidation.supportedRawValue(
             for: Setting.menuBarIconStyle,
-            in: defaults,
+            in: persistence,
             as: MenuBarIconStyle.self
         )
-        historyTimeoutSeconds = Self.supportedInteger(
+        historyTimeoutSeconds = AppSettingsValidation.supportedInteger(
             for: Setting.historyTimeoutSeconds,
-            in: defaults,
+            in: persistence,
             supportedValues: Self.supportedHistoryTimeoutsSeconds
         )
-        protectedHistoryUnlockTimeoutSeconds = Self.supportedInteger(
+        protectedHistoryUnlockTimeoutSeconds = AppSettingsValidation.supportedInteger(
             for: Setting.protectedHistoryUnlockTimeoutSeconds,
-            in: defaults,
+            in: persistence,
             supportedValues: Self.supportedProtectedHistoryUnlockTimeoutsSeconds
         )
-        pasteCloseBehavior = Self.supportedRawValue(
+        pasteCloseBehavior = AppSettingsValidation.supportedRawValue(
             for: Setting.pasteCloseBehavior,
-            in: defaults,
+            in: persistence,
             as: PasteCloseBehavior.self
         )
-        pasteAfterCopying = Self.bool(
-            for: Setting.pasteAfterCopying,
-            in: defaults
+        pasteAfterCopying = persistence.bool(
+            for: Setting.pasteAfterCopying
         )
-        pasteStackSeparator = Self.supportedRawValue(
+        pasteStackSeparator = AppSettingsValidation.supportedRawValue(
             for: Setting.pasteStackSeparator,
-            in: defaults,
+            in: persistence,
             as: PasteStackSeparator.self
         )
         customPasteStackSeparator = String(
-            Self.string(for: Setting.customPasteStackSeparator, in: defaults)
+            persistence.string(for: Setting.customPasteStackSeparator)
                 .prefix(256)
         )
-        previewAnimationEnabled = Self.bool(
-            for: Setting.previewAnimationEnabled,
-            in: defaults
+        previewAnimationEnabled = persistence.bool(
+            for: Setting.previewAnimationEnabled
         )
-        appearanceMode = Self.supportedRawValue(
+        appearanceMode = AppSettingsValidation.supportedRawValue(
             for: Setting.appearanceMode,
-            in: defaults,
+            in: persistence,
             as: AppAppearanceMode.self
         )
-        ocrRecognitionMode = Self.supportedRawValue(
+        ocrRecognitionMode = AppSettingsValidation.supportedRawValue(
             for: Setting.ocrRecognitionMode,
-            in: defaults,
+            in: persistence,
             as: OCRRecognitionMode.self
         )
-        ocrLanguageMode = Self.supportedRawValue(
+        ocrLanguageMode = AppSettingsValidation.supportedRawValue(
             for: Setting.ocrLanguageMode,
-            in: defaults,
+            in: persistence,
             as: OCRLanguageMode.self
         )
-        sensitiveContentStoragePolicy = Self.supportedRawValue(
+        sensitiveContentStoragePolicy = AppSettingsValidation.supportedRawValue(
             for: Setting.sensitiveContentStoragePolicy,
-            in: defaults,
+            in: persistence,
             as: SensitiveContentStoragePolicy.self
         )
-        customSensitivePatterns = Self.string(
-            for: Setting.customSensitivePatterns,
-            in: defaults
+        customSensitivePatterns = persistence.string(
+            for: Setting.customSensitivePatterns
         )
         customClipboardActions = Self.decodeCustomClipboardActions(
-            Self.string(for: Setting.customClipboardActions, in: defaults)
+            persistence.string(for: Setting.customClipboardActions)
         )
         savedSearches = Self.decodeSavedSearches(
-            Self.string(for: Setting.savedSearches, in: defaults)
+            persistence.string(for: Setting.savedSearches)
         )
-        disabledLocalActionPluginIdentifiers =
-            Self.decodeDisabledLocalActionPluginIdentifiers(
-                Self.string(
-                    for: Setting.disabledLocalActionPluginIdentifiers,
-                    in: defaults
-                )
+        localActionPluginCatalog = LocalActionPluginCatalogState(
+            directoryURL: pluginsDirectoryURL,
+            disabledIdentifiers: Self.decodeDisabledLocalActionPluginIdentifiers(
+                persistence.string(for: Setting.disabledLocalActionPluginIdentifiers)
             )
+        )
         reloadLocalActionPlugins()
         persistCurrentValues()
     }
@@ -751,43 +588,27 @@ final class AppSettings: ObservableObject {
     }
 
     func setLocalActionPlugin(_ identifier: String, isEnabled: Bool) {
-        if isEnabled {
-            disabledLocalActionPluginIdentifiers.remove(identifier)
-        } else {
-            disabledLocalActionPluginIdentifiers.insert(identifier)
-        }
+        localActionPluginCatalog.setPlugin(identifier, isEnabled: isEnabled)
+        persistDisabledLocalActionPluginIdentifiers()
     }
 
     func reloadLocalActionPlugins() {
-        let catalog = LocalActionPluginLoader.load(from: pluginsDirectoryURL)
-        localActionPlugins = catalog.plugins
-        localActionPluginErrors = catalog.errors
+        localActionPluginCatalog.reload()
     }
 
     func createPluginsDirectory() throws {
-        try FileManager.default.createDirectory(
-            at: pluginsDirectoryURL,
-            withIntermediateDirectories: true
-        )
+        try localActionPluginCatalog.createDirectory()
     }
 
     func importLocalActionPlugins(from sourceURLs: [URL]) throws {
-        try LocalActionPluginFileOperations.importPlugins(
-            from: sourceURLs,
-            into: pluginsDirectoryURL
-        )
-        reloadLocalActionPlugins()
+        try localActionPluginCatalog.importPlugins(from: sourceURLs)
     }
 
     func exportLocalActionPlugin(
         _ plugin: LocalActionPlugin,
         to destinationURL: URL
     ) throws {
-        try LocalActionPluginFileOperations.exportPlugin(
-            plugin,
-            from: pluginsDirectoryURL,
-            to: destinationURL
-        )
+        try localActionPluginCatalog.exportPlugin(plugin, to: destinationURL)
     }
 
     @discardableResult
@@ -869,88 +690,19 @@ final class AppSettings: ObservableObject {
         customSensitivePatterns = Setting.customSensitivePatterns.defaultValue
         customClipboardActions = []
         savedSearches = []
-        disabledLocalActionPluginIdentifiers = []
-    }
-
-    private static func supportedInteger(
-        _ value: Int,
-        for setting: AppSetting<Int>,
-        supportedValues: [Int]
-    ) -> Int {
-        supportedValues.contains(value) ? value : setting.defaultValue
-    }
-
-    private static func supportedInteger(
-        for setting: AppSetting<Int>,
-        in defaults: UserDefaults,
-        supportedValues: [Int]
-    ) -> Int {
-        supportedInteger(
-            integer(for: setting, in: defaults),
-            for: setting,
-            supportedValues: supportedValues
-        )
-    }
-
-    private static func validatedHotKey(
-        keyCode: Int,
-        modifiers: UInt32,
-        defaultKeyCode: Int,
-        defaultModifiers: UInt32
-    ) -> (keyCode: Int, modifiers: UInt32) {
-        let modifiersAreSupported = modifiers != 0
-            && modifiers & ~supportedHotKeyModifierMask == 0
-        guard supportedHotKeyCodes.contains(keyCode), modifiersAreSupported else {
-            return (defaultKeyCode, defaultModifiers)
-        }
-        return (keyCode, modifiers)
-    }
-
-    private static func supportedHotKeyCode(
-        _ keyCode: Int,
-        default defaultKeyCode: Int = defaultOpenHotKeyCode
-    ) -> Int {
-        supportedHotKeyCodes.contains(keyCode) ? keyCode : defaultKeyCode
-    }
-
-    private static func supportedHotKeyModifiers(
-        _ modifiers: UInt32,
-        default defaultModifiers: UInt32 = defaultOpenHotKeyModifiers
-    ) -> UInt32 {
-        let modifiersAreSupported = modifiers != 0
-            && modifiers & ~supportedHotKeyModifierMask == 0
-        return modifiersAreSupported ? modifiers : defaultModifiers
-    }
-
-    private static func supportedRawValue<Value: RawRepresentable>(
-        _ value: String,
-        for setting: AppSetting<String>,
-        as type: Value.Type
-    ) -> String where Value.RawValue == String {
-        type.init(rawValue: value)?.rawValue ?? setting.defaultValue
-    }
-
-    private static func supportedRawValue<Value: RawRepresentable>(
-        for setting: AppSetting<String>,
-        in defaults: UserDefaults,
-        as type: Value.Type
-    ) -> String where Value.RawValue == String {
-        supportedRawValue(
-            string(for: setting, in: defaults),
-            for: setting,
-            as: type
-        )
+        localActionPluginCatalog.removeAllDisabledIdentifiers()
+        persistDisabledLocalActionPluginIdentifiers()
     }
 
     private func persistSupportedInteger(
         _ value: Int,
-        for setting: AppSetting<Int>,
+        for setting: AppSettingsPersistence.Key<Int>,
         supportedValues: [Int],
         assign: (Int) -> Void
     ) {
         persistSupportedValue(
             value,
-            supportedValue: Self.supportedInteger(
+            supportedValue: AppSettingsValidation.supportedInteger(
                 value,
                 for: setting,
                 supportedValues: supportedValues
@@ -962,13 +714,13 @@ final class AppSettings: ObservableObject {
 
     private func persistSupportedHotKeyCode(
         _ value: Int,
-        for setting: AppSetting<Int>,
+        for setting: AppSettingsPersistence.Key<Int>,
         default defaultValue: Int = defaultOpenHotKeyCode,
         assign: (Int) -> Void
     ) {
         persistSupportedValue(
             value,
-            supportedValue: Self.supportedHotKeyCode(value, default: defaultValue),
+            supportedValue: AppSettingsValidation.supportedHotKeyCode(value, default: defaultValue),
             assign: assign,
             persist: { persist($0, for: setting) }
         )
@@ -976,13 +728,13 @@ final class AppSettings: ObservableObject {
 
     private func persistSupportedHotKeyModifiers(
         _ value: UInt32,
-        for setting: AppSetting<UInt32>,
+        for setting: AppSettingsPersistence.Key<UInt32>,
         default defaultValue: UInt32 = defaultOpenHotKeyModifiers,
         assign: (UInt32) -> Void
     ) {
         persistSupportedValue(
             value,
-            supportedValue: Self.supportedHotKeyModifiers(
+            supportedValue: AppSettingsValidation.supportedHotKeyModifiers(
                 value,
                 default: defaultValue
             ),
@@ -993,13 +745,13 @@ final class AppSettings: ObservableObject {
 
     private func persistSupportedRawValue<Value: RawRepresentable>(
         _ value: String,
-        for setting: AppSetting<String>,
+        for setting: AppSettingsPersistence.Key<String>,
         as type: Value.Type,
         assign: (String) -> Void
     ) where Value.RawValue == String {
         persistSupportedValue(
             value,
-            supportedValue: Self.supportedRawValue(value, for: setting, as: type),
+            supportedValue: AppSettingsValidation.supportedRawValue(value, for: setting, as: type),
             assign: assign,
             persist: { persist($0, for: setting) }
         )
@@ -1129,47 +881,31 @@ final class AppSettings: ObservableObject {
         persist(encoded, for: Setting.disabledLocalActionPluginIdentifiers)
     }
 
-    private static func bool(
-        for setting: AppSetting<Bool>,
-        in defaults: UserDefaults
-    ) -> Bool {
-        defaults.bool(forKey: setting.key)
+    private func persist(
+        _ value: Bool,
+        for setting: AppSettingsPersistence.Key<Bool>
+    ) {
+        persistence.set(value, for: setting)
     }
 
-    private static func integer(
-        for setting: AppSetting<Int>,
-        in defaults: UserDefaults
-    ) -> Int {
-        defaults.integer(forKey: setting.key)
+    private func persist(
+        _ value: Int,
+        for setting: AppSettingsPersistence.Key<Int>
+    ) {
+        persistence.set(value, for: setting)
     }
 
-    private static func uint32(
-        for setting: AppSetting<UInt32>,
-        in defaults: UserDefaults
-    ) -> UInt32 {
-        UInt32(defaults.integer(forKey: setting.key))
+    private func persist(
+        _ value: UInt32,
+        for setting: AppSettingsPersistence.Key<UInt32>
+    ) {
+        persistence.set(value, for: setting)
     }
 
-    private static func string(
-        for setting: AppSetting<String>,
-        in defaults: UserDefaults
-    ) -> String {
-        defaults.string(forKey: setting.key) ?? setting.defaultValue
-    }
-
-    private func persist(_ value: Bool, for setting: AppSetting<Bool>) {
-        defaults.set(value, forKey: setting.key)
-    }
-
-    private func persist(_ value: Int, for setting: AppSetting<Int>) {
-        defaults.set(value, forKey: setting.key)
-    }
-
-    private func persist(_ value: UInt32, for setting: AppSetting<UInt32>) {
-        defaults.set(Int(value), forKey: setting.key)
-    }
-
-    private func persist(_ value: String, for setting: AppSetting<String>) {
-        defaults.set(value, forKey: setting.key)
+    private func persist(
+        _ value: String,
+        for setting: AppSettingsPersistence.Key<String>
+    ) {
+        persistence.set(value, for: setting)
     }
 }
