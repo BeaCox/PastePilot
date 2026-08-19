@@ -1,8 +1,7 @@
 # PastePilot Roadmap
 
-This roadmap lists the next meaningful product and maintenance work. It is
-ordered by priority rather than by a promised release date. Completed release
-history belongs in `CHANGELOG.md` instead of accumulating here.
+This file contains only open, actionable work, ordered by priority rather than
+by a promised release date. Completed release history belongs in `CHANGELOG.md`.
 
 ## Product Principles
 
@@ -13,86 +12,68 @@ history belongs in `CHANGELOG.md` instead of accumulating here.
 - Preserve useful pasteboard representations only within strict type and size
   limits, and continue to ignore concealed or transient clipboard data before
   capture.
-- Keep capture, persistence, image processing, OCR, and enrichment work off the
+- Keep expensive capture, persistence, image, OCR, and enrichment work off the
   main actor while preserving cancellation and stale-result guards.
-- Extend bounded declarative actions instead of loading executable plugins.
+- Prefer native macOS controls and stable layouts; custom styling should clarify
+  hierarchy without turning every surface into a card.
 
-## Current Baseline
+## Now — macOS UI Consistency
 
-- Content-aware capture and actions for developer text, structured data, rich
-  text, images, and files, with high-fidelity replay when safe.
-- SQLite/FTS history with externalized large text, image storage, OCR, source
-  application metadata, filters, pinned items, titles, notes, and tags.
-- Local privacy controls including pause/ignore-next-copy, sensitive-content
-  policies, custom patterns, encrypted protected history, and backup/restore.
-- A declarative action registry, safe template actions, local JSON action
-  plugins, App Intents, and the `pastepilot` command-line tool.
-- The largest remaining product gap is organization beyond recency, pinned
-  state, and free-form searchable metadata.
+- [ ] Unify the About experience.
+  - Make the application menu and menu-bar popover open the same About surface.
+  - Prefer the standard macOS About panel; if the branded window remains,
+    replace the system app-info command so there is still only one route.
+  - Present the same localized title, version, build, and app identity from
+    every entry point.
+- [ ] Separate history selection from inline editing actions.
+  - Keep keyboard selection and its highlight without permanently revealing
+    stack, pin, and delete buttons on the selected row.
+  - Reveal inline controls on pointer hover while retaining context-menu,
+    keyboard, and VoiceOver access.
+  - Keep trailing timestamps and shortcuts geometrically stable so selection
+    changes do not make row text jump or truncate unnecessarily.
+- [ ] Reduce persistent chrome in the history popover.
+  - Remove the repeated accent-colored pin rail when the Pinned section already
+    communicates state, or render passive pin state more quietly.
+  - Keep only the most useful keyboard hints in the footer, such as Return to
+    copy and Space to preview; move advanced shortcuts to menus or help.
+  - Verify the 400-point popover in English and Simplified Chinese with item
+    counts and an active paste stack.
 
-## Now — Finish and Ship Local Action Plugins
+## Next — Settings Polish
 
-- [x] Add a bundled example plugin and a machine-readable JSON Schema for the
-  version 1 manifest. Make both easy to reveal from the Actions settings page.
-- [x] Improve plugin validation errors so they identify the invalid field or
-  referenced content type, while keeping file, matcher, and action limits
-  enforced.
-- [x] Add regression coverage that exercises plugin actions through the menu
-  bar action list and App Intents, not only the manifest loader.
-- [x] Complete release QA for the plugin feature: run `make app`, verify plugin
-  discovery/reload in the packaged app, and prepare the next version notes.
+- [ ] Simplify settings hierarchy.
+  - Reduce nested full-width rounded backgrounds, especially where a settings
+    group already provides containment.
+  - Preserve clear grouping with native spacing, dividers, `GroupBox`, or form
+    conventions rather than adding another card for every subsection.
+- [ ] Consolidate local plugin management controls.
+  - Keep Import as the primary action and move folder, reload, example, and
+    schema utilities into a compact management menu or row toolbar.
+  - Ensure long Simplified Chinese labels do not create a two-row button wall.
+- [ ] Use a conventional selection control for ignored applications.
+  - Replace the orange eye/eye-slash state with a checkbox, switch, or checkmark
+    whose selected meaning is unambiguous.
+  - Keep whole-row activation, keyboard navigation, and VoiceOver state clear.
+- [ ] Stabilize settings window geometry.
+  - Use a fixed height or a narrower resizing range so switching between short
+    and scrollable panes does not move the window dramatically.
+  - Preserve scroll position where appropriate and verify every pane at the
+    minimum supported display size.
 
-## Next — Organize Reusable History
+## UI Verification
 
-- [x] Add tags to clipboard items.
-  - Persist normalized tags separately from captured content and keep them when
-    duplicate content moves to the top.
-  - Add tag editing and compact tag indicators without making history rows
-    visually noisy.
-  - Support `tag:<name>` and `has:tag` in app and CLI search, including backup
-    and restore coverage.
-  - Treat tags on protected items as user-authored visible metadata, matching
-    titles and notes, and document that boundary in the UI.
-- [x] Add saved searches as local smart collections.
-  - Store a name and existing search query instead of duplicating clipboard
-    payloads.
-  - Provide built-in views for recent, pinned, protected, images, and files,
-    plus user-created saved searches.
-  - Keep collection membership deterministic across restarts and after history
-    cleanup.
-- [x] Make pinned items intentionally reusable.
-  - Allow manual ordering within the pinned section.
-  - Keep `Command-1` through `Command-9` stable for pinned items when search is
-    empty, while preserving the current visible-result behavior during search.
-  - Persist ordering and cover duplicate recapture, deletion, and restore.
+- [ ] Exercise the menu-bar popover, preview, sheets, About, welcome flow, and
+  every settings pane in light, dark, and system appearances.
+- [ ] Verify normal, hover, keyboard-selected, disabled, destructive, empty,
+  loading, protected, and sensitive-content states.
+- [ ] Run the focused UI/state tests, `make test`, `make app`, and
+  `git diff --check` before marking this pass complete.
 
-## Later — Workflow Polish
+## Completed Baseline
 
-- [x] Add plugin management controls for enabling, disabling, importing, and
-  exporting individual declarative plugins without editing Application Support
-  manually.
-- [x] Let users export selected history items in useful local formats such as
-  plain text, JSON, original files, or images without turning export into an
-  automatic sharing or network feature.
-- [x] Audit keyboard and VoiceOver behavior across the menu bar, previews,
-  metadata editing, protected-history authentication, and settings; add focused
-  regression coverage for discovered gaps.
-
-## Maintenance
-
-- [x] Split `AppSettings` persistence, validation, and plugin catalog state into
-  focused components while retaining its existing dependency-injection seams.
-- [x] Split `SQLiteHistoryStore` migrations, row encoding, FTS indexing, and
-  metadata access into focused files without changing the storage schema or
-  transaction boundaries.
-- [x] Add representative performance fixtures for startup, filtered search,
-  externalized text search, and cleanup at the supported history limits.
-
-## Completed Milestones
-
-The project already includes signed release packaging, automatic update checks,
-high-fidelity pasteboard replay, sensitive-content policies, encrypted protected
-history, backup/restore, advanced search, metadata editing, OCR and local barcode
-analysis, perceptual image deduplication, paste stack, App Intents, CLI
-automation, safe custom actions, and declarative local action plugins. See
-`CHANGELOG.md` for versioned details.
+PastePilot already includes high-fidelity clipboard replay, SQLite/FTS history,
+metadata and saved searches, ordered pinned items, OCR and barcode analysis,
+encrypted protected history, backup/restore, paste stack, App Intents, CLI
+automation, export, safe custom actions, and declarative local action plugins.
+See `CHANGELOG.md` for versioned milestones.
