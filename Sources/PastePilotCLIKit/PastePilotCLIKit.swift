@@ -104,11 +104,11 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         return try withDatabase { db in
             let rows = try loadRows(db: db)
             return try rows.enumerated().filter { _, row in
-                try query.matches(row, filePaths: filePaths(for: row.id, db: db))
+                query.matches(row)
             }
             .prefix(limit)
             .map { offset, row in
-                try item(from: row, index: offset + 1, db: db)
+                try item(from: row, index: offset + 1)
             }
         }
     }
@@ -117,7 +117,7 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         try withDatabase { db in
             let rows = try loadRows(db: db)
             let (row, index) = try selectedRow(selector, from: rows)
-            return try item(from: row, index: index, db: db)
+            return try item(from: row, index: index)
         }
     }
 
@@ -129,9 +129,14 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         guard !item.isProtected else { throw PastePilotCLIError.protectedItem }
 
         if item.kind == "file", !item.filePaths.isEmpty {
-            let urls = item.filePaths.map { NSURL(fileURLWithPath: $0) }
+            let existingURLs = item.filePaths
+                .filter { fileManager.fileExists(atPath: $0) }
+                .map { NSURL(fileURLWithPath: $0) }
+            guard !existingURLs.isEmpty else {
+                throw PastePilotCLIError.unsupportedCopy(item.kind)
+            }
             pasteboard.clearContents()
-            guard pasteboard.writeObjects(urls) else {
+            guard pasteboard.writeObjects(existingURLs) else {
                 throw PastePilotCLIError.unsupportedCopy(item.kind)
             }
             return
@@ -256,6 +261,7 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         let linkMetadataJSON: String?
         let detectedBarcodesJSON: String?
         let tags: [String]
+        let filePaths: [String]
         let searchBody: String
     }
 
@@ -286,6 +292,21 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         } else {
             tagsByItemID = [:]
         }
+        let hasFilePaths = try Bool.fetchOne(
+            db,
+            sql: "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'file_paths')"
+        ) ?? false
+        let filePathsByItemID: [String: [String]]
+        if hasFilePaths {
+            let filePathRows = try Row.fetchAll(
+                db,
+                sql: "SELECT item_id, path FROM file_paths ORDER BY item_id, ordinal"
+            )
+            filePathsByItemID = Dictionary(grouping: filePathRows, by: { $0["item_id"] as String })
+                .mapValues { rows in rows.map { $0["path"] as String } }
+        } else {
+            filePathsByItemID = [:]
+        }
         let hasPinnedOrder = try Row.fetchAll(
             db,
             sql: "PRAGMA table_info(items)"
@@ -304,8 +325,9 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
                 """
         )
         return rows.map { row in
-            StoredRow(
-                id: row["id"],
+            let id: String = row["id"]
+            return StoredRow(
+                id: id,
                 content: row["content"],
                 kind: row["kind"],
                 createdAt: Date(timeIntervalSince1970: row["created_at"]),
@@ -321,7 +343,8 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
                 userNote: row["user_note"],
                 linkMetadataJSON: row["link_metadata_json"],
                 detectedBarcodesJSON: row["detected_barcodes_json"],
-                tags: tagsByItemID[row["id"] as String] ?? [],
+                tags: tagsByItemID[id] ?? [],
+                filePaths: filePathsByItemID[id] ?? [],
                 searchBody: row["cli_search_body"]
             )
         }
@@ -344,8 +367,7 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         return (match.element, match.offset + 1)
     }
 
-    private func item(from row: StoredRow, index: Int, db: Database) throws -> PastePilotCLIItem {
-        let paths = try filePaths(for: row.id, db: db)
+    private func item(from row: StoredRow, index: Int) throws -> PastePilotCLIItem {
         return PastePilotCLIItem(
             index: index,
             id: row.id,
@@ -360,7 +382,7 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
             tags: row.tags,
             content: try effectiveContent(for: row),
             imagePath: try imagePath(for: row),
-            filePaths: row.isProtected ? [] : paths
+            filePaths: row.isProtected ? [] : row.filePaths
         )
     }
 
@@ -387,14 +409,6 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         return dataDirectoryURL
             .appendingPathComponent(directory, isDirectory: true)
             .appendingPathComponent(fileName)
-    }
-
-    private func filePaths(for id: String, db: Database) throws -> [String] {
-        try String.fetchAll(
-            db,
-            sql: "SELECT path FROM file_paths WHERE item_id = ? ORDER BY ordinal",
-            arguments: [id]
-        )
     }
 
     private func writeManifest(to root: URL) throws {
@@ -440,15 +454,17 @@ public final class PastePilotCLIHistory: @unchecked Sendable {
         process.standardError = stderrPipe
         do {
             try process.run()
+            let data = stderrPipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
+            guard process.terminationStatus == 0 else {
+                let message = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                throw PastePilotCLIError.archiveFailed(message ?? "ditto exited with status \(process.terminationStatus)")
+            }
+        } catch let error as PastePilotCLIError {
+            throw error
         } catch {
             throw PastePilotCLIError.archiveFailed(error.localizedDescription)
-        }
-        guard process.terminationStatus == 0 else {
-            let data = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            throw PastePilotCLIError.archiveFailed(message ?? "ditto exited with status \(process.terminationStatus)")
         }
     }
 
@@ -516,7 +532,7 @@ private struct CLIQuery {
             && has.isEmpty && tags.isEmpty
     }
 
-    func matches(_ row: PastePilotCLIHistory.StoredRow, filePaths: [String]) throws -> Bool {
+    func matches(_ row: PastePilotCLIHistory.StoredRow) -> Bool {
         if !terms.allSatisfy({ row.searchBody.localizedCaseInsensitiveContains($0) }) { return false }
         if !kinds.isEmpty && !kinds.contains(where: { row.kind.lowercased().contains($0) }) { return false }
         if let pinned, row.isPinned != pinned { return false }
@@ -528,8 +544,9 @@ private struct CLIQuery {
             switch filter {
             case "ocr": if row.ocrText?.isEmpty != false { return false }
             case "image": if row.kind != "image" { return false }
-            case "file", "files": if filePaths.isEmpty { return false }
+            case "file", "files": if row.filePaths.isEmpty { return false }
             case "sensitive": if !row.containsSensitiveData { return false }
+            case "protected": if !row.isProtected { return false }
             case "title": if row.userTitle?.isEmpty != false { return false }
             case "note", "notes": if row.userNote?.isEmpty != false { return false }
             case "tag", "tags": if row.tags.isEmpty { return false }

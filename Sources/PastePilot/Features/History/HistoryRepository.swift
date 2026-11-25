@@ -114,14 +114,35 @@ struct HistoryRepository: Sendable {
     }
 
     func estimatedHistoryByteCount(for items: [ClipboardItem]) -> Int64 {
-        let document = HistoryDocument(
-            schemaVersion: HistoryDocument.currentSchemaVersion,
-            items: items
-        )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.sortedKeys]
-        return Int64((try? encoder.encode(document).count) ?? 0)
+        items.reduce(Int64(0)) { total, item in
+            total + Self.estimatedItemByteCount(for: item)
+        }
+    }
+
+    static func estimatedItemByteCount(for item: ClipboardItem) -> Int64 {
+        var total: Int64 = 256
+        total += Int64(item.content.utf8.count)
+        total += Int64(item.richTextRTFBase64?.utf8.count ?? 0)
+        total += Int64(item.richTextHTML?.utf8.count ?? 0)
+        total += Int64(item.ocrText?.utf8.count ?? 0)
+        total += Int64(item.userTitle?.utf8.count ?? 0)
+        total += Int64(item.userNote?.utf8.count ?? 0)
+        total += Int64(item.sourceAppName?.utf8.count ?? 0)
+        total += Int64(item.sourceBundleIdentifier?.utf8.count ?? 0)
+        total += Int64(item.imageSourceURL?.utf8.count ?? 0)
+        total += Int64(item.imageOriginalPath?.utf8.count ?? 0)
+        if let tags = item.tags {
+            total += tags.reduce(Int64(0)) { $0 + Int64($1.utf8.count) }
+        }
+        if let filePaths = item.filePaths {
+            total += filePaths.reduce(Int64(0)) { $0 + Int64($1.utf8.count) }
+        }
+        if let representations = item.pasteboardRepresentations {
+            total += representations.reduce(Int64(0)) {
+                $0 + Int64($1.data.count + $1.typeIdentifier.utf8.count)
+            }
+        }
+        return total
     }
 
     func dataDirectoryByteCount() -> Int64 {

@@ -47,15 +47,7 @@ struct SettingsView: View {
     @State private var showsClearHistoryConfirmation = false
     @State private var accessibilityGranted = EventPostingPermission.isGranted
     @State private var accessibilityPollTimer: Timer?
-    @State private var pageHeights: [SettingsTab: CGFloat] = [:]
-
-    // Fit the window to the selected page's measured content, clamped so it
-    // never gets tiny or taller than a comfortable on-screen size (beyond
-    // which the page scrolls).
-    private var preferredHeight: CGFloat {
-        let measured = pageHeights[selectedTab] ?? 360
-        return min(640, max(240, measured))
-    }
+    @State private var storageByteCount: Int64 = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -71,7 +63,7 @@ struct SettingsView: View {
 
             StorageSettingsPage(
                 settings: settings,
-                storageByteCount: store.localStorageByteCount(),
+                storageByteCount: storageByteCount,
                 rerunOCR: store.rerunOCRForImages,
                 rerunBarcodeDetection: store.rerunBarcodeDetectionForImages
             )
@@ -115,9 +107,7 @@ struct SettingsView: View {
                 }
                 .tag(SettingsTab.advanced)
         }
-        .frame(width: 620, height: preferredHeight)
-        .onPreferenceChange(SettingsHeightKey.self) { pageHeights = $0 }
-        .animation(.easeInOut(duration: 0.18), value: preferredHeight)
+        .frame(width: 620, height: 520)
         .onAppear {
             refreshAccessibilityStatus()
             accessibilityPollTimer?.invalidate()
@@ -133,6 +123,15 @@ struct SettingsView: View {
         .onDisappear {
             accessibilityPollTimer?.invalidate()
             accessibilityPollTimer = nil
+        }
+        .task(id: "\(selectedTab.rawValue)-\(store.items.count)") {
+            guard selectedTab == .storage else { return }
+            let repository = store.historyRepository
+            let bytes = await Task.detached(priority: .utility) {
+                repository.dataDirectoryByteCount()
+            }.value
+            guard !Task.isCancelled else { return }
+            storageByteCount = bytes
         }
         .confirmationDialog(
             "Reset to Defaults?".localized,

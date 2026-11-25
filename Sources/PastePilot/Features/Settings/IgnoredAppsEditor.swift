@@ -1,12 +1,18 @@
 import AppKit
 import SwiftUI
 
+private struct DiscoveredApp: Sendable {
+    let id: String
+    let name: String
+    let path: String
+}
+
 private struct InstalledApp: Identifiable {
     let id: String
     let name: String
     let icon: NSImage
 
-    static func discover() -> [InstalledApp] {
+    static func discoverMetadata() -> [DiscoveredApp] {
         let fm = FileManager.default
         let searchDirs = [
             "/Applications",
@@ -14,7 +20,7 @@ private struct InstalledApp: Identifiable {
             NSHomeDirectory() + "/Applications",
         ]
         var seen = Set<String>()
-        var apps: [InstalledApp] = []
+        var apps: [DiscoveredApp] = []
 
         for dir in searchDirs {
             guard let urls = try? fm.contentsOfDirectory(
@@ -30,8 +36,7 @@ private struct InstalledApp: Identifiable {
                 let name = (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
                     ?? (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
                     ?? url.deletingPathExtension().lastPathComponent
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
-                apps.append(InstalledApp(id: bundleID, name: name, icon: icon))
+                apps.append(DiscoveredApp(id: bundleID, name: name, path: url.path))
             }
         }
 
@@ -115,9 +120,18 @@ struct IgnoredAppsEditor: View {
 
             SettingsNote("Ignore rules only affect new copies and won't delete existing history.".localized)
         }
-        .onAppear {
-            if installedApps.isEmpty {
-                installedApps = InstalledApp.discover()
+        .task {
+            guard installedApps.isEmpty else { return }
+            let metadata = await Task.detached(priority: .userInitiated) {
+                InstalledApp.discoverMetadata()
+            }.value
+            guard !Task.isCancelled else { return }
+            installedApps = metadata.map { entry in
+                InstalledApp(
+                    id: entry.id,
+                    name: entry.name,
+                    icon: NSWorkspace.shared.icon(forFile: entry.path)
+                )
             }
         }
     }
@@ -159,9 +173,9 @@ private struct AppToggleRow: View {
 
                 Spacer()
 
-                Image(systemName: isIgnored ? "eye.slash.fill" : "eye")
-                    .font(.system(size: 13))
-                    .foregroundStyle(isIgnored ? Color.orange : Color.secondary.opacity(0.4))
+                Image(systemName: isIgnored ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 14))
+                    .foregroundStyle(isIgnored ? Color.accentColor : Color.secondary.opacity(0.6))
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 10)

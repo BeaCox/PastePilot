@@ -163,14 +163,21 @@ extension ClipboardStore {
         let limit = Int64(settings.storageLimitMB) * 1_024 * 1_024
         guard limit > 0 else { return false }
 
-        removeOrphanedImages()
-        removeOrphanedText()
-
         let imageByteCounts = imageByteCounts(for: items)
         let textByteCounts = textByteCounts(for: items)
-        var retainedItems = items
+        var imageRefCounts: [String: Int] = [:]
+        var textRefCounts: [String: Int] = [:]
+        for item in items {
+            if let fileName = item.imageFileName {
+                imageRefCounts[fileName, default: 0] += 1
+            }
+            if let fileName = item.contentFileName {
+                textRefCounts[fileName, default: 0] += 1
+            }
+        }
+
         var retainedByteCount = estimatedStorageByteCount(
-            for: retainedItems,
+            for: items,
             imageByteCounts: imageByteCounts,
             textByteCounts: textByteCounts
         )
@@ -182,24 +189,38 @@ extension ClipboardStore {
         for item in removableItems {
             guard retainedByteCount > limit else { break }
             removedIDs.insert(item.id)
-            retainedItems.removeAll { $0.id == item.id }
-            retainedByteCount = estimatedStorageByteCount(
-                for: retainedItems,
-                imageByteCounts: imageByteCounts,
-                textByteCounts: textByteCounts
-            )
+            retainedByteCount -= HistoryRepository.estimatedItemByteCount(for: item)
+            if let fileName = item.imageFileName, let count = imageRefCounts[fileName] {
+                if count <= 1 {
+                    imageRefCounts.removeValue(forKey: fileName)
+                    retainedByteCount -= imageByteCounts[fileName] ?? 0
+                } else {
+                    imageRefCounts[fileName] = count - 1
+                }
+            }
+            if let fileName = item.contentFileName, let count = textRefCounts[fileName] {
+                if count <= 1 {
+                    textRefCounts.removeValue(forKey: fileName)
+                    retainedByteCount -= textByteCounts[fileName] ?? 0
+                } else {
+                    textRefCounts[fileName] = count - 1
+                }
+            }
         }
 
         guard !removedIDs.isEmpty else { return false }
         let removedItems = items.filter { removedIDs.contains($0.id) }
         cancelOCR(for: removedItems)
         removedItems.forEach(deleteStoredResources)
-        items = retainedItems
+        items.removeAll { removedIDs.contains($0.id) }
         sortItems()
         return true
     }
 
     func applyStorageLimit() {
+        guard settings.storageLimitMB > 0 else { return }
+        removeOrphanedImages()
+        removeOrphanedText()
         guard enforceStorageLimit() else { return }
         save()
     }
@@ -264,15 +285,19 @@ extension ClipboardStore {
     }
 
     func removeOrphanedImages() {
-        imageStore.removeOrphans(
-            retaining: Set(items.compactMap(\.imageFileName))
+        let retained = Set(
+            items.compactMap(\.imageFileName)
+                + pendingDeletions.values.compactMap(\.item.imageFileName)
         )
+        imageStore.removeOrphans(retaining: retained)
     }
 
     func removeOrphanedText() {
-        textStore.removeOrphans(
-            retaining: Set(items.compactMap(\.contentFileName))
+        let retained = Set(
+            items.compactMap(\.contentFileName)
+                + pendingDeletions.values.compactMap(\.item.contentFileName)
         )
+        textStore.removeOrphans(retaining: retained)
     }
 
     func save() {
@@ -331,6 +356,8 @@ extension ClipboardStore {
     }
 
     func cancelAllOCRTasks() {
+        batchOCRTask?.cancel()
+        batchOCRTask = nil
         ocrTasksByItemID.values.forEach { $0.cancel() }
         ocrTasksByItemID.removeAll()
         ocrTaskTokensByItemID.removeAll()

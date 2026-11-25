@@ -116,24 +116,25 @@ struct CustomActionsSettingsPage: View {
                     Button("Import Plugins…".localized) {
                         importPlugins()
                     }
-                    Button("Open Plugins Folder".localized) {
-                        openPluginsFolder()
-                    }
-                    Button("Reload Plugins".localized) {
-                        settings.reloadLocalActionPlugins()
-                    }
-                }
+                    Menu("Manage…".localized) {
+                        Button("Open Plugins Folder".localized) {
+                            openPluginsFolder()
+                        }
+                        Button("Reload Plugins".localized) {
+                            settings.reloadLocalActionPlugins()
+                        }
+                        Divider()
+                        Button("Reveal Example Plugin".localized) {
+                            revealBundledResource(LocalActionPluginResources.examplePluginURL)
+                        }
+                        .disabled(LocalActionPluginResources.examplePluginURL == nil)
 
-                HStack {
-                    Button("Reveal Example Plugin".localized) {
-                        revealBundledResource(LocalActionPluginResources.examplePluginURL)
+                        Button("Reveal Manifest Schema".localized) {
+                            revealBundledResource(LocalActionPluginResources.manifestSchemaURL)
+                        }
+                        .disabled(LocalActionPluginResources.manifestSchemaURL == nil)
                     }
-                    .disabled(LocalActionPluginResources.examplePluginURL == nil)
-
-                    Button("Reveal Manifest Schema".localized) {
-                        revealBundledResource(LocalActionPluginResources.manifestSchemaURL)
-                    }
-                    .disabled(LocalActionPluginResources.manifestSchemaURL == nil)
+                    .fixedSize()
                 }
 
                 Label(

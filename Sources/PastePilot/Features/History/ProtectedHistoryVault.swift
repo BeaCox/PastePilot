@@ -112,8 +112,7 @@ final class ProtectedHistoryVault: @unchecked Sendable {
 
     func lockVault() {
         lock.withLock {
-            keyData = nil
-            expiresAt = nil
+            zeroAndClearKeyData()
         }
     }
 
@@ -146,8 +145,15 @@ final class ProtectedHistoryVault: @unchecked Sendable {
 
     private func discardExpiredKey() {
         guard let expiresAt, expiresAt <= Date() else { return }
+        zeroAndClearKeyData()
+    }
+
+    private func zeroAndClearKeyData() {
+        if var data = keyData, !data.isEmpty {
+            data.resetBytes(in: 0..<data.count)
+        }
         keyData = nil
-        self.expiresAt = nil
+        expiresAt = nil
     }
 }
 

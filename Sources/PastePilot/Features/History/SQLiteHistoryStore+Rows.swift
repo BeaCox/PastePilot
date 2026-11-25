@@ -8,8 +8,18 @@ extension SQLiteHistoryStore {
         let richTextRTFBase64: String?
         let richTextHTML: String?
         let pasteboardRepresentations: [ClipboardPasteboardRepresentation]
-        let protectedPayload: Data?
+        let encodedProtectedPayload: Data?
         let protectedPayloadDigest: String?
+    }
+
+    private struct LockedRowState: Equatable {
+        let isPinned: Bool
+        let pinnedOrder: Int?
+        let createdAt: TimeInterval
+        let userTitle: String?
+        let userNote: String?
+        let metadataVersion: Int
+        let tags: [String]
     }
 
     func loadItems(db: Database) throws -> [ClipboardItem] {
@@ -20,11 +30,68 @@ extension SQLiteHistoryStore {
                 ORDER BY is_pinned DESC, pinned_order IS NULL, pinned_order, created_at DESC
                 """
         )
+        guard !rows.isEmpty else { return [] }
+
+        let tagsByItemID = Dictionary(
+            grouping: try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT item_id, normalized_name FROM item_tags
+                    ORDER BY item_id, ordinal
+                    """
+            ),
+            by: { $0["item_id"] as String }
+        ).mapValues { $0.map { $0["normalized_name"] as String } }
+
+        let filePathsByItemID = Dictionary(
+            grouping: try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT item_id, path FROM file_paths
+                    ORDER BY item_id, ordinal
+                    """
+            ),
+            by: { $0["item_id"] as String }
+        ).mapValues { $0.map { $0["path"] as String } }
+
+        let richTextByItemID = Dictionary(
+            uniqueKeysWithValues: try Row.fetchAll(
+                db,
+                sql: "SELECT item_id, rtf_base64, html FROM rich_text"
+            ).map { row in
+                (
+                    row["item_id"] as String,
+                    (rtfBase64: row["rtf_base64"] as String?, html: row["html"] as String?)
+                )
+            }
+        )
+
+        let representationsByItemID = Dictionary(
+            grouping: try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT item_id, item_index, type_identifier, data
+                    FROM pasteboard_representations
+                    ORDER BY item_id, item_index, ordinal
+                    """
+            ),
+            by: { $0["item_id"] as String }
+        ).mapValues { repRows in
+            repRows.map { representationRow in
+                ClipboardPasteboardRepresentation(
+                    itemIndex: representationRow["item_index"],
+                    typeIdentifier: representationRow["type_identifier"],
+                    data: representationRow["data"]
+                )
+            }
+        }
+
         return try rows.compactMap { row in
-            guard let id = UUID(uuidString: row["id"]) else { return nil }
+            let idString: String = row["id"]
+            guard let id = UUID(uuidString: idString) else { return nil }
             let kindRaw: String = row["kind"]
             let kind = ContentKind(rawValue: kindRaw) ?? .text
-            let tags = try tags(for: id, db: db)
+            let tags = tagsByItemID[idString] ?? []
             let isProtected = (row["is_protected"] as Int? ?? 0) != 0
             if isProtected {
                 if let encryptedPayload: Data = row["protected_payload"],
@@ -51,7 +118,7 @@ extension SQLiteHistoryStore {
                             arguments: [
                                 item.userTitle,
                                 item.userNote,
-                                id.uuidString,
+                                idString,
                             ]
                         )
                         try replaceSearchIndexEntry(
@@ -76,39 +143,9 @@ extension SQLiteHistoryStore {
                     protectionState: .locked
                 )
             }
-            let filePaths = try String.fetchAll(
-                db,
-                sql: """
-                    SELECT path FROM file_paths
-                    WHERE item_id = ?
-                    ORDER BY ordinal
-                    """,
-                arguments: [id.uuidString]
-            )
-            let richText = try Row.fetchOne(
-                db,
-                sql: """
-                    SELECT rtf_base64, html FROM rich_text
-                    WHERE item_id = ?
-                    """,
-                arguments: [id.uuidString]
-            )
-            let pasteboardRepresentations = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT item_index, type_identifier, data
-                    FROM pasteboard_representations
-                    WHERE item_id = ?
-                    ORDER BY item_index, ordinal
-                    """,
-                arguments: [id.uuidString]
-            ).map { representationRow in
-                ClipboardPasteboardRepresentation(
-                    itemIndex: representationRow["item_index"],
-                    typeIdentifier: representationRow["type_identifier"],
-                    data: representationRow["data"]
-                )
-            }
+            let filePaths = filePathsByItemID[idString] ?? []
+            let richText = richTextByItemID[idString]
+            let pasteboardRepresentations = representationsByItemID[idString] ?? []
 
             return ClipboardItem(
                 id: id,
@@ -133,8 +170,8 @@ extension SQLiteHistoryStore {
                     from: row["detected_barcodes_json"]
                 ),
                 filePaths: filePaths.isEmpty ? nil : filePaths,
-                richTextRTFBase64: richText?["rtf_base64"],
-                richTextHTML: richText?["html"],
+                richTextRTFBase64: richText?.rtfBase64,
+                richTextHTML: richText?.html,
                 pasteboardRepresentations: pasteboardRepresentations.isEmpty
                     ? nil
                     : pasteboardRepresentations,
@@ -153,14 +190,14 @@ extension SQLiteHistoryStore {
 
     func save(_ items: [ClipboardItem], db: Database) throws {
         let storedItems = try items.map { item in
-            let protectedPayload: Data?
+            let encodedProtectedPayload: Data?
             let protectedPayloadDigest: String?
             if item.protectionState == .unlocked {
                 let encodedItem = try Self.encodedProtectedPayload(item)
-                protectedPayload = try protectedHistoryVault.encrypt(encodedItem)
+                encodedProtectedPayload = encodedItem
                 protectedPayloadDigest = ContentDigest.sha256Hex(for: encodedItem)
             } else {
-                protectedPayload = nil
+                encodedProtectedPayload = nil
                 protectedPayloadDigest = nil
             }
             return StoredItem(
@@ -171,7 +208,7 @@ extension SQLiteHistoryStore {
                 pasteboardRepresentations: item.isProtected
                     ? []
                     : item.pasteboardRepresentations ?? [],
-                protectedPayload: protectedPayload,
+                encodedProtectedPayload: encodedProtectedPayload,
                 protectedPayloadDigest: protectedPayloadDigest
             )
         }
@@ -191,39 +228,91 @@ extension SQLiteHistoryStore {
             db: db
         )
 
+        let hasLockedItems = storedItems.contains { $0.item.protectionState == .locked }
+        let existingLockedStates: [String: LockedRowState]
+        if hasLockedItems {
+            let lockedTagsByID = Dictionary(
+                grouping: try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT item_id, normalized_name FROM item_tags
+                        WHERE item_id IN (SELECT id FROM items WHERE is_protected = 1)
+                        ORDER BY item_id, ordinal
+                        """
+                ),
+                by: { $0["item_id"] as String }
+            ).mapValues { $0.map { $0["normalized_name"] as String } }
+
+            existingLockedStates = try Dictionary(
+                uniqueKeysWithValues: Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT id, is_pinned, pinned_order, created_at, user_title,
+                            user_note, protected_metadata_version
+                        FROM items WHERE is_protected = 1
+                        """
+                ).map { row in
+                    let id: String = row["id"]
+                    return (
+                        id,
+                        LockedRowState(
+                            isPinned: (row["is_pinned"] as Int) != 0,
+                            pinnedOrder: row["pinned_order"],
+                            createdAt: row["created_at"],
+                            userTitle: row["user_title"],
+                            userNote: row["user_note"],
+                            metadataVersion: row["protected_metadata_version"] as Int? ?? 0,
+                            tags: lockedTagsByID[id] ?? []
+                        )
+                    )
+                }
+            )
+        } else {
+            existingLockedStates = [:]
+        }
+
         for storedItem in storedItems {
             let item = storedItem.item
             let itemID = item.id.uuidString
             if item.protectionState == .locked {
-                let existingMetadataVersion = try Int.fetchOne(
-                    db,
-                    sql: """
-                        SELECT protected_metadata_version FROM items WHERE id = ?
-                        """,
-                    arguments: [itemID]
-                ) ?? 0
+                let existingState = existingLockedStates[itemID]
+                let existingMetadataVersion = existingState?.metadataVersion ?? 0
                 let metadataVersion = existingMetadataVersion > 0 || item.hasUserMetadata
                     ? 1
                     : 0
-                try db.execute(
-                    sql: """
-                        UPDATE items SET
-                            is_pinned = ?, pinned_order = ?, created_at = ?, user_title = ?,
-                            user_note = ?, protected_metadata_version = ?
-                        WHERE id = ?
-                        """,
-                    arguments: [
-                        item.isPinned ? 1 : 0,
-                        item.pinnedOrder,
-                        item.createdAt.timeIntervalSince1970,
-                        item.userTitle,
-                        item.userNote,
-                        metadataVersion,
-                        itemID,
-                    ]
+                let desiredState = LockedRowState(
+                    isPinned: item.isPinned,
+                    pinnedOrder: item.pinnedOrder,
+                    createdAt: item.createdAt.timeIntervalSince1970,
+                    userTitle: item.userTitle,
+                    userNote: item.userNote,
+                    metadataVersion: metadataVersion,
+                    tags: item.tags ?? []
                 )
-                try replaceTags(for: item, db: db)
-                try refreshSearchIndex(for: storedItem, db: db)
+                let needsSearchRefresh = indexedIDs.map { !$0.contains(itemID) } ?? false
+                if existingState != desiredState {
+                    try db.execute(
+                        sql: """
+                            UPDATE items SET
+                                is_pinned = ?, pinned_order = ?, created_at = ?, user_title = ?,
+                                user_note = ?, protected_metadata_version = ?
+                            WHERE id = ?
+                            """,
+                        arguments: [
+                            item.isPinned ? 1 : 0,
+                            item.pinnedOrder,
+                            item.createdAt.timeIntervalSince1970,
+                            item.userTitle,
+                            item.userNote,
+                            metadataVersion,
+                            itemID,
+                        ]
+                    )
+                    try replaceTags(for: item, db: db)
+                    try refreshSearchIndex(for: storedItem, db: db)
+                } else if needsSearchRefresh {
+                    try refreshSearchIndex(for: storedItem, db: db)
+                }
                 continue
             }
             let fingerprint = Self.fingerprint(for: storedItem)
@@ -233,7 +322,15 @@ extension SQLiteHistoryStore {
                 continue
             }
             if needsItemRefresh {
-                try upsert(storedItem, fingerprint: fingerprint, db: db)
+                let encryptedPayload = try storedItem.encodedProtectedPayload.map {
+                    try protectedHistoryVault.encrypt($0)
+                }
+                try upsert(
+                    storedItem,
+                    fingerprint: fingerprint,
+                    encryptedProtectedPayload: encryptedPayload,
+                    db: db
+                )
                 try refreshChildren(for: storedItem, db: db)
             }
             try refreshSearchIndex(for: storedItem, db: db)
@@ -264,6 +361,7 @@ extension SQLiteHistoryStore {
     func upsert(
         _ storedItem: StoredItem,
         fingerprint: String,
+        encryptedProtectedPayload: Data?,
         db: Database
     ) throws {
         let item = storedItem.item
@@ -345,7 +443,7 @@ extension SQLiteHistoryStore {
                 item.userTitle,
                 item.userNote,
                 protected ? 1 : 0,
-                storedItem.protectedPayload,
+                encryptedProtectedPayload,
                 protected ? 1 : 0
             ]
         )

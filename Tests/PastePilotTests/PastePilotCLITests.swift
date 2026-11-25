@@ -156,7 +156,29 @@ struct PastePilotCLITests {
             try history.copy("1", to: NSPasteboard(name: .init("PastePilotCLIProtectedTest")))
         }
         #expect(try history.search("tag:credential has:tag").count == 1)
+        #expect(try history.search("has:protected").count == 1)
         #expect(try history.search("must not escape").isEmpty)
+    }
+
+    @Test
+    func copyingFileItemWithOnlyMissingFilesFailsWithoutClearingPasteboard() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let missingPath = directory.appendingPathComponent("does-not-exist.txt").path
+        let item = ClipboardItem(
+            content: "does-not-exist.txt",
+            kind: .file,
+            filePaths: [missingPath]
+        )
+        try HistoryRepository(dataDirectoryURL: directory).save([item])
+        let pasteboard = NSPasteboard(name: .init("PastePilotCLIMissingFileCopyTest"))
+        pasteboard.clearContents()
+        pasteboard.setString("preserve", forType: .string)
+
+        #expect(throws: PastePilotCLIError.unsupportedCopy("file")) {
+            try PastePilotCLIHistory(dataDirectoryURL: directory).copy("1", to: pasteboard)
+        }
+        #expect(pasteboard.string(forType: .string) == "preserve")
     }
 
     @Test

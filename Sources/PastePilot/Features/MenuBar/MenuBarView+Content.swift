@@ -102,19 +102,9 @@ extension MenuBarView {
                 pasteStackMenu
             }
             Spacer()
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) {
-                    Text("↩ \("Copy".localized)")
-                    Text("␣ \("Preview".localized)")
-                    Text("⌥1-9 \("Actions".localized)")
-                    Text("⌘P \("Pin".localized)")
-                    Text("⌘F \("Search".localized)")
-                }
-                HStack(spacing: 6) {
-                    Text("↩ \("Copy".localized)")
-                    Text("␣ \("Preview".localized)")
-                    Text("⌥1-9 \("Actions".localized)")
-                }
+            HStack(spacing: 8) {
+                Text("↩ \("Copy".localized)")
+                Text("␣ \("Preview".localized)")
             }
             .font(.caption2)
             .foregroundStyle(.tertiary)

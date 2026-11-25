@@ -73,16 +73,78 @@ extension ClipboardStore {
 
     func rerunBarcodeDetectionForImages() {
         cancelAllBarcodeDetectionTasks()
-        for item in items where item.isImage {
-            guard let image = image(for: item)?.cgImage(
-                forProposedRect: nil,
-                context: nil,
-                hints: nil
-            ) else {
-                continue
-            }
-            performBarcodeDetection(on: image, itemID: item.id)
+        let targets: [(id: UUID, url: URL)] = items.compactMap { item in
+            guard item.isImage, let fileName = item.imageFileName else { return nil }
+            return (item.id, imageStore.fileURL(fileName: fileName))
         }
+        guard !targets.isEmpty else { return }
+
+        let service = barcodeDetectionService
+        batchBarcodeTask = Task { [weak self] in
+            let maxConcurrent = 3
+            await withTaskGroup(of: (UUID, [DetectedBarcode]).self) { group in
+                var iterator = targets.makeIterator()
+                for _ in 0..<maxConcurrent {
+                    guard let target = iterator.next() else { break }
+                    group.addTask {
+                        let barcodes = await Self.detectBarcodes(at: target.url, service: service)
+                        return (target.id, barcodes)
+                    }
+                }
+                while let (itemID, detectedBarcodes) = await group.next() {
+                    if Task.isCancelled {
+                        group.cancelAll()
+                        break
+                    }
+                    self?.applyDetectedBarcodes(detectedBarcodes, to: itemID)
+                    if let nextTarget = iterator.next() {
+                        group.addTask {
+                            let barcodes = await Self.detectBarcodes(at: nextTarget.url, service: service)
+                            return (nextTarget.id, barcodes)
+                        }
+                    }
+                }
+            }
+            if let self {
+                self.batchBarcodeTask = nil
+            }
+        }
+    }
+
+    nonisolated private static func detectBarcodes(
+        at url: URL,
+        service: any BarcodeDetectionService
+    ) async -> [DetectedBarcode] {
+        guard !Task.isCancelled,
+              let cgImage = ClipboardImageStore.cgImage(at: url) else {
+            return []
+        }
+        return await service.detectBarcodes(in: cgImage)
+    }
+
+    private func applyDetectedBarcodes(
+        _ detectedBarcodes: [DetectedBarcode],
+        to itemID: UUID
+    ) {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else {
+            return
+        }
+        let retainedBarcodes = DetectedBarcodePolicy.retained(detectedBarcodes)
+        let storageResult = barcodeStorageResult(retainedBarcodes)
+        let storedBarcodes = storageResult.barcodes.isEmpty
+            ? nil
+            : storageResult.barcodes
+        let becomesSensitive = storageResult.containsSensitiveData
+            && !items[index].containsSensitiveData
+        guard items[index].detectedBarcodes != storedBarcodes
+                || becomesSensitive else {
+            return
+        }
+        items[index].detectedBarcodes = storedBarcodes
+        if storageResult.containsSensitiveData {
+            items[index].containsSensitiveData = true
+        }
+        save()
     }
 
     func cancelLinkMetadata(for itemID: UUID) {
@@ -110,6 +172,8 @@ extension ClipboardStore {
     }
 
     private func cancelAllBarcodeDetectionTasks() {
+        batchBarcodeTask?.cancel()
+        batchBarcodeTask = nil
         barcodeTasksByItemID.values.forEach { $0.cancel() }
         barcodeTasksByItemID.removeAll()
         barcodeTaskTokensByItemID.removeAll()

@@ -26,10 +26,12 @@ final class ClipboardStore: ObservableObject {
     var pendingCaptureChangeCount: Int?
     var ocrTasksByItemID: [UUID: Task<Void, Never>] = [:]
     var ocrTaskTokensByItemID: [UUID: UUID] = [:]
+    var batchOCRTask: Task<Void, Never>?
     var linkMetadataTasksByItemID: [UUID: Task<Void, Never>] = [:]
     var linkMetadataTaskTokensByItemID: [UUID: UUID] = [:]
     var barcodeTasksByItemID: [UUID: Task<Void, Never>] = [:]
     var barcodeTaskTokensByItemID: [UUID: UUID] = [:]
+    var batchBarcodeTask: Task<Void, Never>?
     var ignoredContent: String?
     var ignoreNextCopyBaselineChangeCount: Int?
     var lastPurgeCheck: Date = .distantPast
@@ -86,13 +88,17 @@ final class ClipboardStore: ObservableObject {
         self.noticePoster = noticePoster
         self.logger = logger
         self.lastChangeCount = pasteboard.changeCount
+        thumbnailCache.countLimit = 200
+        thumbnailCache.totalCostLimit = 20 * 1_024 * 1_024
         load()
     }
 
     deinit {
         timer?.invalidate()
+        batchOCRTask?.cancel()
         ocrTasksByItemID.values.forEach { $0.cancel() }
         linkMetadataTasksByItemID.values.forEach { $0.cancel() }
+        batchBarcodeTask?.cancel()
         barcodeTasksByItemID.values.forEach { $0.cancel() }
         protectedHistoryLockTask?.cancel()
         protectedHistoryAuthenticationTask?.cancel()

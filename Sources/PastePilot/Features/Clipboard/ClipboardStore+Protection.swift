@@ -68,15 +68,23 @@ extension ClipboardStore {
             }
             historyWriteQueue.flush()
             items[index] = original.preparedForProtection(content: fullContent)
+            let itemsToSave = items
+            let repository = historyRepository
             do {
-                try historyRepository.save(items)
+                try await Task.detached(priority: .userInitiated) {
+                    try repository.save(itemsToSave)
+                }.value
             } catch {
-                items[index] = original
+                if let rollbackIndex = items.firstIndex(where: { $0.id == id }) {
+                    items[rollbackIndex] = original
+                }
                 throw error
             }
             deleteTextFile(for: original)
             do {
-                try historyRepository.securelyCompactDatabase()
+                try await Task.detached(priority: .utility) {
+                    try repository.securelyCompactDatabase()
+                }.value
             } catch {
                 logger.log(
                     "PastePilot protected an item but could not compact old database pages: \(error)"

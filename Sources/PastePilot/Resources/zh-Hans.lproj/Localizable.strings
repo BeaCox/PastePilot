@@ -140,7 +140,6 @@
 "Clear Unpinned History?" = "清除未固定的历史记录？";
 "Pinned items will be kept. This action cannot be undone." = "固定项目会被保留，此操作无法撤销。";
 "Unpin" = "取消置顶";
-"Pin" = "置顶";
 "Pin to Top" = "固定到顶部";
 "Delete" = "删除";
 "Deleted" = "已删除";
@@ -149,7 +148,6 @@
 "Preview" = "预览";
 "Copy" = "复制";
 "Actions" = "操作";
-"Search" = "搜索";
 "Paste Stack" = "顺序粘贴";
 "Add to Paste Stack" = "加入顺序粘贴";
 "Remove from Paste Stack" = "移出顺序粘贴";
@@ -486,3 +484,4 @@
 "Unlock protected PastePilot history" = "解锁 PastePilot 受保护历史记录";
 "Unlock protected history before adding this item." = "请先解锁受保护历史记录，再添加此条目。";
 "Titles, notes, and tags stay visible and searchable while protected. Keep secrets in the content itself." = "受保护时，标题、备注和标签仍可见且可搜索。请只将秘密信息放在正文内容中。";
+"Manage…" = "管理…";

@@ -672,6 +672,50 @@ struct StorageRepositoryTests {
     }
 
     @Test
+    func repositoryRestoreRejectsCorruptSQLiteDatabaseWithoutReplacingLiveData() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let directory = root.appendingPathComponent("target", isDirectory: true)
+        let repository = HistoryRepository(dataDirectoryURL: directory)
+        let existingItem = ClipboardItem(content: "live-record", kind: .text)
+        try repository.save([existingItem])
+
+        let invalidRoot = root.appendingPathComponent("corrupt-db-root", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: invalidRoot.appendingPathComponent("images", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: invalidRoot.appendingPathComponent("text", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try Data(
+            """
+            {
+              "kind": "PastePilotBackup",
+              "schemaVersion": 1,
+              "createdAt": "2026-01-01T00:00:00Z"
+            }
+            """.utf8
+        ).write(to: invalidRoot.appendingPathComponent("manifest.json"))
+        try Data("not a sqlite database".utf8).write(
+            to: invalidRoot.appendingPathComponent("history.sqlite")
+        )
+        let invalidArchive = root.appendingPathComponent("corrupt-db.zip")
+        try zipDirectory(invalidRoot, to: invalidArchive)
+
+        var didThrow = false
+        do {
+            _ = try repository.restoreBackup(from: invalidArchive)
+        } catch {
+            didThrow = true
+        }
+
+        #expect(didThrow)
+        #expect(repository.load().items.map(\.id) == [existingItem.id])
+    }
+
+    @Test
     func repositoryDistinguishesMissingAndUnrecoverableLegacyHistory() throws {
         let emptyDirectory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: emptyDirectory) }

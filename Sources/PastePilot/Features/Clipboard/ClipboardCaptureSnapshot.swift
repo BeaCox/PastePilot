@@ -221,10 +221,15 @@ final class ClipboardCaptureQueue: @unchecked Sendable {
         let html = pasteboardData.html
         guard rtfData != nil || html != nil else { return nil }
 
-        guard let plainText = plainText(
-            rtfData: rtfData,
-            html: html
-        ),
+        let resolvedPlainText: String?
+        if let text = pasteboardData.text,
+           !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            resolvedPlainText = text
+        } else {
+            resolvedPlainText = plainText(rtfData: rtfData, html: html)
+        }
+
+        guard let plainText = resolvedPlainText,
               !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
         }
@@ -232,24 +237,19 @@ final class ClipboardCaptureQueue: @unchecked Sendable {
     }
 
     private static func plainText(rtfData: Data?, html: String?) -> String? {
-        let attributedString: NSAttributedString?
         if let rtfData {
-            attributedString = try? NSAttributedString(
+            let attributedString = try? NSAttributedString(
                 data: rtfData,
                 options: [.documentType: NSAttributedString.DocumentType.rtf],
                 documentAttributes: nil
             )
-        } else if let html,
-                  let data = html.data(using: .utf8) {
-            attributedString = try? NSAttributedString(
-                data: data,
-                options: [.documentType: NSAttributedString.DocumentType.html],
-                documentAttributes: nil
-            )
-        } else {
-            attributedString = nil
+            return attributedString?.string
         }
-        return attributedString?.string
+        if let html {
+            let extracted = HTMLPlainTextExtractor.extractPlainText(from: html)
+            return extracted.isEmpty ? nil : extracted
+        }
+        return nil
     }
 
     private static func textPayload(

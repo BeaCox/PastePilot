@@ -844,4 +844,20 @@ struct ContentBehaviorTests {
             ) == .active(style: .clipboard, filled: true)
         )
     }
+
+    @Test
+    func htmlPlainTextExtractorStripsScriptsStylesAndDecodesEntities() {
+        let html = """
+        <html>
+          <head><title>Ignored Title</title><style>.x { color: red; }</style></head>
+          <body>
+            <script>alert('xss')</script>
+            <p><strong>HTML</strong> &amp; Plain&#x2014;Text</p>
+            <p>Line 1<br/>Line 2 &nbsp; &#39;quoted&#39;</p>
+          </body>
+        </html>
+        """
+        let extracted = HTMLPlainTextExtractor.extractPlainText(from: html)
+        #expect(extracted == "HTML & Plain—Text\nLine 1\nLine 2 'quoted'")
+    }
 }

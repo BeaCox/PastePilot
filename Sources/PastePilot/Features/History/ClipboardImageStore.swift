@@ -14,31 +14,40 @@ struct ClipboardImageStore {
         NSImage(contentsOf: url(fileName: fileName))
     }
 
-    func thumbnail(fileName: String, pointSize: CGFloat) -> NSImage? {
-        guard let image = image(fileName: fileName) else { return nil }
-        let size = NSSize(width: pointSize, height: pointSize)
-        let thumbnail = NSImage(size: size)
-        thumbnail.lockFocus()
-        NSGraphicsContext.current?.imageInterpolation = .high
+    func fileURL(fileName: String) -> URL {
+        url(fileName: fileName)
+    }
 
-        let sourceSize = image.size
-        let scale = max(
-            size.width / max(sourceSize.width, 1),
-            size.height / max(sourceSize.height, 1)
+    static func cgImage(at url: URL) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return nil
+        }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    }
+
+    func thumbnail(fileName: String, pointSize: CGFloat) -> NSImage? {
+        let fileURL = url(fileName: fileName)
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil) else {
+            return nil
+        }
+        let maxPixelSize = max(Int(ceil(pointSize * 2)), 1)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            options as CFDictionary
+        ) else {
+            return nil
+        }
+        return NSImage(
+            cgImage: cgImage,
+            size: NSSize(width: pointSize, height: pointSize)
         )
-        let drawSize = NSSize(
-            width: sourceSize.width * scale,
-            height: sourceSize.height * scale
-        )
-        let drawRect = NSRect(
-            x: (size.width - drawSize.width) / 2,
-            y: (size.height - drawSize.height) / 2,
-            width: drawSize.width,
-            height: drawSize.height
-        )
-        image.draw(in: drawRect)
-        thumbnail.unlockFocus()
-        return thumbnail
     }
 
     func path(fileName: String) -> String {

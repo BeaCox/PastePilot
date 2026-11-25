@@ -149,14 +149,9 @@ final class PlainTextPasteService {
            ) {
             return value.string
         }
-        if let html = pasteboard.string(forType: .html),
-           let data = html.data(using: .utf8),
-           let value = try? NSAttributedString(
-               data: data,
-               options: [.documentType: NSAttributedString.DocumentType.html],
-               documentAttributes: nil
-           ) {
-            return value.string
+        if let html = pasteboard.string(forType: .html) {
+            let extracted = HTMLPlainTextExtractor.extractPlainText(from: html)
+            return extracted.isEmpty ? nil : extracted
         }
         return nil
     }

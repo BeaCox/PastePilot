@@ -32,22 +32,31 @@ struct ContentEnrichmentTests {
     }
 
     @Test
-    func linkMetadataOnlyAllowsCredentialFreeWebURLs() throws {
+    func linkMetadataOnlyAllowsCredentialFreePublicWebURLs() throws {
         #expect(
             URLSessionLinkMetadataService.isEligible(
                 try #require(URL(string: "https://example.com/path"))
             )
         )
-        #expect(
-            !URLSessionLinkMetadataService.isEligible(
-                try #require(URL(string: "ftp://example.com/file"))
+        let disallowedURLs = [
+            "ftp://example.com/file",
+            "https://user:secret@example.com/private",
+            "http://localhost:3000",
+            "http://127.0.0.1/admin",
+            "http://169.254.169.254/latest/meta-data",
+            "http://10.0.0.1",
+            "http://192.168.1.1",
+            "http://[::1]:8080",
+            "http://printer.local",
+            "https://example.com/reset?token=abc"
+        ]
+        for rawURL in disallowedURLs {
+            #expect(
+                !URLSessionLinkMetadataService.isEligible(
+                    try #require(URL(string: rawURL))
+                )
             )
-        )
-        #expect(
-            !URLSessionLinkMetadataService.isEligible(
-                try #require(URL(string: "https://user:secret@example.com/private"))
-            )
-        )
+        }
     }
 
     @Test

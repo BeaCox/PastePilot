@@ -8,6 +8,7 @@ enum LocalPluginMatchType: String, Codable {
 struct LocalPluginContentMatcher: Codable, Equatable {
     static let maximumPatternLength = 512
     static let maximumMatchedContentLength = 100_000
+    private static let regexCache = BoundedRegexCache(capacity: 256)
 
     let type: LocalPluginMatchType
     let pattern: String
@@ -43,7 +44,7 @@ struct LocalPluginContentMatcher: Codable, Equatable {
             return content.range(of: pattern, options: options) != nil
         case .regularExpression:
             let options: NSRegularExpression.Options = caseSensitive ? [] : [.caseInsensitive]
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
+            guard let regex = Self.regexCache.regex(for: pattern, options: options) else {
                 return false
             }
             return regex.firstMatch(

@@ -59,10 +59,14 @@ extension AppDelegate {
         if aboutWindow == nil {
             let version = Bundle.main.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
-            ) as? String ?? "0.5.0"
+            ) as? String ?? "dev"
+            let build = Bundle.main.object(
+                forInfoDictionaryKey: "CFBundleVersion"
+            ) as? String
             let view = AboutView(
                 settings: settings,
                 version: version,
+                build: build,
                 openDataFolder: { [weak self] in self?.openDataFolder() },
                 checkForUpdates: { [weak self] in
                     self?.updateController.checkForUpdates()

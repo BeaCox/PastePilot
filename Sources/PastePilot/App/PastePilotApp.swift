@@ -17,5 +17,12 @@ struct PastePilotApp: App {
             )
             .pastePilotAppearance(appDelegate.settings)
         }
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About PastePilot".localized) {
+                    appDelegate.showAbout()
+                }
+            }
+        }
     }
 }

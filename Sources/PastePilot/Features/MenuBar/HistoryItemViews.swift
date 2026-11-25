@@ -55,12 +55,6 @@ struct CompactHistoryItem: View {
                     isDestructive: true,
                     action: delete
                 )
-            } else if item.isPinned {
-                Image(systemName: "pin.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.tint)
-                    .frame(width: 24, height: 24)
-                    .accessibilityLabel("Pinned".localized)
             }
         }
         .background(
@@ -154,7 +148,7 @@ struct CompactHistoryItem: View {
     }
 
     private var showsActions: Bool {
-        isHovering || isSelected
+        isHovering
     }
 
     private var primaryButton: some View {

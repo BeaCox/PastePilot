@@ -1,4 +1,5 @@
 import Foundation
+import GRDB
 
 struct HistoryBackupResult: Equatable {
     let archiveURL: URL
@@ -108,16 +109,19 @@ struct HistoryBackupService {
             to: backupRoot.appendingPathComponent(Path.text, isDirectory: true)
         )
 
-        if fileManager.fileExists(atPath: archiveURL.path) {
-            try fileManager.removeItem(at: archiveURL)
-        }
+        let stagedArchiveURL = temporaryDirectory.appendingPathComponent("backup.zip")
         try runDitto(arguments: [
             "-c",
             "-k",
             "--norsrc",
             backupRoot.path,
-            archiveURL.path
+            stagedArchiveURL.path
         ])
+        if fileManager.fileExists(atPath: archiveURL.path) {
+            _ = try fileManager.replaceItemAt(archiveURL, withItemAt: stagedArchiveURL)
+        } else {
+            try fileManager.moveItem(at: stagedArchiveURL, to: archiveURL)
+        }
         return HistoryBackupResult(archiveURL: archiveURL)
     }
 
@@ -189,32 +193,77 @@ struct HistoryBackupService {
             at: dataDirectoryURL,
             withIntermediateDirectories: true
         )
-        let removablePaths = [
+
+        let stagingDirectory = dataDirectoryURL.appendingPathComponent(
+            ".restore-staging-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let rollbackDirectory = dataDirectoryURL.appendingPathComponent(
+            ".restore-rollback-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        defer {
+            try? fileManager.removeItem(at: stagingDirectory)
+            try? fileManager.removeItem(at: rollbackDirectory)
+        }
+
+        try fileManager.createDirectory(
+            at: stagingDirectory,
+            withIntermediateDirectories: true
+        )
+        try fileManager.createDirectory(
+            at: rollbackDirectory,
+            withIntermediateDirectories: true
+        )
+
+        let replacementEntries = [Path.database, Path.images, Path.text]
+        for entry in replacementEntries {
+            try fileManager.copyItem(
+                at: backupRoot.appendingPathComponent(entry),
+                to: stagingDirectory.appendingPathComponent(entry)
+            )
+        }
+
+        let livePaths = [
             Path.database,
             Path.sqliteWAL,
             Path.sqliteSHM,
             Path.images,
             Path.text
         ]
-        for path in removablePaths {
-            let url = dataDirectoryURL.appendingPathComponent(path)
-            if fileManager.fileExists(atPath: url.path) {
-                try fileManager.removeItem(at: url)
+        var movedLiveEntries: [String] = []
+        do {
+            for entry in livePaths {
+                let source = dataDirectoryURL.appendingPathComponent(entry)
+                guard fileManager.fileExists(atPath: source.path) else { continue }
+                try fileManager.moveItem(
+                    at: source,
+                    to: rollbackDirectory.appendingPathComponent(entry)
+                )
+                movedLiveEntries.append(entry)
             }
+            for entry in replacementEntries {
+                try fileManager.moveItem(
+                    at: stagingDirectory.appendingPathComponent(entry),
+                    to: dataDirectoryURL.appendingPathComponent(entry)
+                )
+            }
+        } catch {
+            for entry in replacementEntries {
+                let destination = dataDirectoryURL.appendingPathComponent(entry)
+                if fileManager.fileExists(atPath: destination.path) {
+                    try? fileManager.removeItem(at: destination)
+                }
+            }
+            for entry in movedLiveEntries {
+                let backup = rollbackDirectory.appendingPathComponent(entry)
+                let destination = dataDirectoryURL.appendingPathComponent(entry)
+                if fileManager.fileExists(atPath: backup.path) {
+                    try? fileManager.moveItem(at: backup, to: destination)
+                }
+            }
+            throw error
         }
-
-        try fileManager.copyItem(
-            at: backupRoot.appendingPathComponent(Path.database),
-            to: dataDirectoryURL.appendingPathComponent(Path.database)
-        )
-        try fileManager.copyItem(
-            at: backupRoot.appendingPathComponent(Path.images, isDirectory: true),
-            to: dataDirectoryURL.appendingPathComponent(Path.images, isDirectory: true)
-        )
-        try fileManager.copyItem(
-            at: backupRoot.appendingPathComponent(Path.text, isDirectory: true),
-            to: dataDirectoryURL.appendingPathComponent(Path.text, isDirectory: true)
-        )
     }
 
     private func makePreRestoreBackupURL(
@@ -310,7 +359,9 @@ struct HistoryBackupService {
             )
         }
 
-        try requireRegularFile(root.appendingPathComponent(Path.database))
+        let databaseURL = root.appendingPathComponent(Path.database)
+        try requireRegularFile(databaseURL)
+        try validateSQLiteDatabase(at: databaseURL)
         try requireDirectory(root.appendingPathComponent(Path.images, isDirectory: true))
         try requireDirectory(root.appendingPathComponent(Path.text, isDirectory: true))
         try requireFlatRegularFiles(
@@ -319,6 +370,37 @@ struct HistoryBackupService {
         try requireFlatRegularFiles(
             in: root.appendingPathComponent(Path.text, isDirectory: true)
         )
+    }
+
+    private func validateSQLiteDatabase(at databaseURL: URL) throws {
+        var configuration = Configuration()
+        configuration.prepareDatabase { db in
+            try db.execute(sql: "PRAGMA query_only = ON")
+        }
+        let isValid: Bool
+        do {
+            let dbQueue = try DatabaseQueue(
+                path: databaseURL.path,
+                configuration: configuration
+            )
+            isValid = try dbQueue.read { db in
+                let integrity = try String.fetchOne(db, sql: "PRAGMA quick_check")
+                let hasItemsTable = try Bool.fetchOne(
+                    db,
+                    sql: "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'items')"
+                ) ?? false
+                return integrity == "ok" && hasItemsTable
+            }
+        } catch {
+            throw HistoryBackupError.invalidArchiveLayout(
+                "history.sqlite is not a valid PastePilot database"
+            )
+        }
+        guard isValid else {
+            throw HistoryBackupError.invalidArchiveLayout(
+                "history.sqlite is not a valid PastePilot database"
+            )
+        }
     }
 
     private func requireRegularFile(_ url: URL) throws {
@@ -412,10 +494,10 @@ struct HistoryBackupService {
         process.standardError = outputPipe
 
         try process.run()
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
-            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
             let message = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let details: String

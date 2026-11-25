@@ -64,6 +64,10 @@ swift build \
   --scratch-path "$BUILD_ROOT" \
   --triple "$ARCH-apple-macosx14.0"
 
+if [ ! -x "$RELEASE/PastePilot" ] && [ -x "$BUILD_ROOT/release/PastePilot" ]; then
+  RELEASE="$BUILD_ROOT/release"
+fi
+
 rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$FRAMEWORKS"
 cp "$RELEASE/PastePilot" "$CONTENTS/MacOS/PastePilot"
@@ -81,6 +85,9 @@ if [ -d "$BUNDLE" ]; then
 fi
 
 PLUGIN_RESOURCE_DIR="$CONTENTS/Resources/PastePilot_PastePilot.bundle/LocalActionPlugins"
+if [ ! -d "$PLUGIN_RESOURCE_DIR" ] && [ -d "$CONTENTS/Resources/PastePilot_PastePilot.bundle/Contents/Resources/LocalActionPlugins" ]; then
+  PLUGIN_RESOURCE_DIR="$CONTENTS/Resources/PastePilot_PastePilot.bundle/Contents/Resources/LocalActionPlugins"
+fi
 for RESOURCE_NAME in \
   ExampleIssueTools.json \
   LocalActionPluginManifest.v1.schema.json; do

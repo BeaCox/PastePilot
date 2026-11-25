@@ -4,6 +4,60 @@ All notable changes to PastePilot are documented in this file.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-26
+
+### Changed
+
+- Unified the About experience so both the application menu and the menu-bar
+  popover open the same About window with version and build information.
+- Separated keyboard selection from inline row actions in the history popover:
+  row action buttons now appear only on pointer hover, keeping trailing
+  timestamps and shortcut badges stable while navigating with the keyboard.
+- Reduced persistent popover chrome by removing duplicate pin icons in the
+  Pinned section and simplifying footer keyboard hints.
+- Consolidated local action plugin controls in Preferences → Actions into an
+  Import button and a compact Manage menu, and updated Ignored Apps rows to use
+  an explicit checkbox indicator.
+- Stabilized the Settings window to a fixed height so switching tabs no longer
+  resizes the window.
+
+### Security
+
+- Hardened optional link metadata fetching against SSRF and sensitive URL
+  leakage by blocking loopback, private, link-local, `.local`/`.internal`, and
+  credential/token-bearing URLs (including HTTP redirects), and enforced a
+  streaming response size cap that stops once `</head>` is received.
+- Zeroed the in-memory `ProtectedHistoryVault` encryption key bytes on lock and
+  unlock timeout.
+- Replaced background `NSAttributedString` HTML parsing with local-only
+  `HTMLPlainTextExtractor` so capturing or plain-text-pasting HTML never invokes
+  WebKit off the main thread or triggers implicit resource loads.
+
+### Fixed
+
+- Protected files referenced by pending delete-undo items from being removed by
+  orphan cleanup during the undo grace period.
+- Made backup export and restore rollback-safe with atomic staging, SQLite
+  `PRAGMA quick_check` and table validation before replacement, and pipe
+  deadlock fixes in `ditto` invocations.
+- Aligned `pastepilot` CLI search (`has:protected`) and file-copy existence
+  filtering with the main app.
+
+### Performance
+
+- Replaced O(N²) full-history JSON encoding and per-capture orphan scans in
+  `enforceStorageLimit()` with incremental O(N) byte accounting.
+- Eliminated N+1 queries when loading SQLite history rows (in both the app and
+  CLI) and skipped redundant writes and re-encryption for unchanged protected
+  items.
+- Precompiled and cached `ContentAnalyzer` and local plugin regular expressions,
+  avoided duplicate YAML/XML/SQL checks, and capped user regex inspection
+  length.
+- Switched list thumbnails to `2x` Retina `CGImageSource` downsampling with
+  bounded `NSCache` limits, moved Settings storage usage and Ignored Apps
+  discovery off the main actor, bounded batch OCR/barcode concurrency to 3
+  workers, and moved protection save/`VACUUM` work off the main actor.
+
 ## [0.12.0] - 2026-08-17
 
 ### Added

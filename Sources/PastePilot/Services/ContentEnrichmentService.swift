@@ -1,4 +1,5 @@
 import CoreGraphics
+import Darwin
 import Foundation
 import Vision
 
@@ -13,8 +14,31 @@ protocol LinkMetadataService: Sendable {
     func metadata(for url: URL) async -> LinkMetadata?
 }
 
+private final class LinkMetadataRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        if let targetURL = request.url,
+           URLSessionLinkMetadataService.isEligible(targetURL) {
+            completionHandler(request)
+        } else {
+            completionHandler(nil)
+        }
+    }
+}
+
 final class URLSessionLinkMetadataService: LinkMetadataService, @unchecked Sendable {
     private static let maximumResponseByteCount = 1_048_576
+    private static let redirectDelegate = LinkMetadataRedirectDelegate()
+    private static let sensitiveQueryParameterNames: Set<String> = [
+        "token", "access_token", "auth", "key", "api_key", "apikey",
+        "secret", "password", "passwd", "sig", "signature",
+        "x-amz-signature", "x-amz-credential"
+    ]
     private let session: URLSession
 
     init(session: URLSession? = nil) {
@@ -41,42 +65,163 @@ final class URLSessionLinkMetadataService: LinkMetadataService, @unchecked Senda
             forHTTPHeaderField: "Range"
         )
 
-        guard let (data, response) = try? await session.data(for: request),
-              data.count <= Self.maximumResponseByteCount,
+        guard let (bytes, response) = try? await session.bytes(
+            for: request,
+            delegate: Self.redirectDelegate
+        ),
               let response = response as? HTTPURLResponse,
               (200..<400).contains(response.statusCode),
-              response.mimeType?.lowercased().contains("html") == true,
-              let html = String(data: data, encoding: .utf8)
+              response.mimeType?.lowercased().contains("html") == true else {
+            return nil
+        }
+
+        var data = Data()
+        data.reserveCapacity(min(16_384, Self.maximumResponseByteCount))
+        do {
+            for try await byte in bytes {
+                guard data.count < Self.maximumResponseByteCount else {
+                    return nil
+                }
+                data.append(byte)
+                if byte == UInt8(ascii: ">"),
+                   data.count >= 7,
+                   String(decoding: data.suffix(12), as: UTF8.self)
+                    .lowercased()
+                    .contains("</head>") {
+                    break
+                }
+            }
+        } catch {
+            return nil
+        }
+
+        guard let html = String(data: data, encoding: .utf8)
                 ?? String(data: data, encoding: .isoLatin1) else {
             return nil
         }
 
         let resolvedURL = response.url ?? url
+        guard Self.isEligible(resolvedURL) else { return nil }
         return LinkMetadataHTMLParser.metadata(from: html, resolvedURL: resolvedURL)
     }
 
     static func isEligible(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(),
               scheme == "https" || scheme == "http",
-              url.host?.isEmpty == false,
+              let rawHost = url.host,
+              !rawHost.isEmpty,
               url.user == nil,
-              url.password == nil else {
+              url.password == nil,
+              !isPrivateOrLocalHost(rawHost),
+              !hasSensitiveQueryParameter(url) else {
             return false
         }
         return true
     }
+
+    private static func hasSensitiveQueryParameter(_ url: URL) -> Bool {
+        guard let queryItems = URLComponents(
+            url: url,
+            resolvingAgainstBaseURL: false
+        )?.queryItems else {
+            return false
+        }
+        return queryItems.contains { item in
+            sensitiveQueryParameterNames.contains(item.name.lowercased())
+        }
+    }
+
+    private static func isPrivateOrLocalHost(_ rawHost: String) -> Bool {
+        var host = rawHost.lowercased()
+        while host.hasSuffix(".") {
+            host.removeLast()
+        }
+        if host.hasPrefix("[") && host.hasSuffix("]") {
+            host = String(host.dropFirst().dropLast())
+        }
+        if let zoneIndex = host.firstIndex(of: "%") {
+            host = String(host[..<zoneIndex])
+        }
+
+        if host.isEmpty
+            || host == "localhost"
+            || host.hasSuffix(".localhost")
+            || host.hasSuffix(".local")
+            || host.hasSuffix(".internal") {
+            return true
+        }
+
+        var ipv4 = in_addr()
+        if inet_pton(AF_INET, host, &ipv4) == 1 {
+            return isDisallowedIPv4(UInt32(bigEndian: ipv4.s_addr))
+        }
+
+        var ipv6 = in6_addr()
+        if inet_pton(AF_INET6, host, &ipv6) == 1 {
+            return isDisallowedIPv6(ipv6)
+        }
+
+        return false
+    }
+
+    private static func isDisallowedIPv4(_ ip: UInt32) -> Bool {
+        if (ip & 0xFF00_0000) == 0x0000_0000 { return true } // 0.0.0.0/8
+        if (ip & 0xFF00_0000) == 0x0A00_0000 { return true } // 10.0.0.0/8
+        if (ip & 0xFFC0_0000) == 0x6440_0000 { return true } // 100.64.0.0/10
+        if (ip & 0xFF00_0000) == 0x7F00_0000 { return true } // 127.0.0.0/8
+        if (ip & 0xFFFF_0000) == 0xA9FE_0000 { return true } // 169.254.0.0/16
+        if (ip & 0xFFF0_0000) == 0xAC10_0000 { return true } // 172.16.0.0/12
+        if (ip & 0xFFFF_0000) == 0xC0A8_0000 { return true } // 192.168.0.0/16
+        if ip >= 0xE000_0000 { return true }                 // 224.0.0.0/4+
+        return false
+    }
+
+    private static func isDisallowedIPv6(_ address: in6_addr) -> Bool {
+        var copy = address
+        return withUnsafeBytes(of: &copy) { bytes -> Bool in
+            let isAllZeroPrefix = (0..<15).allSatisfy { bytes[$0] == 0 }
+            if isAllZeroPrefix && (bytes[15] == 0 || bytes[15] == 1) {
+                return true // :: and ::1
+            }
+            if (bytes[0] & 0xFE) == 0xFC { return true } // fc00::/7 unique local
+            if bytes[0] == 0xFE && (bytes[1] & 0xC0) == 0x80 { return true } // fe80::/10 link-local
+            if bytes[0] == 0xFF { return true } // ff00::/8 multicast
+
+            let isIPv4Mapped = (0..<10).allSatisfy { bytes[$0] == 0 }
+                && bytes[10] == 0xFF && bytes[11] == 0xFF
+            if isIPv4Mapped {
+                let ipv4 = (UInt32(bytes[12]) << 24)
+                    | (UInt32(bytes[13]) << 16)
+                    | (UInt32(bytes[14]) << 8)
+                    | UInt32(bytes[15])
+                return isDisallowedIPv4(ipv4)
+            }
+            return false
+        }
+    }
 }
 
 enum LinkMetadataHTMLParser {
+    private static let metaExpression = RegexFactory.make(
+        #"<meta\b[^>]*>"#,
+        options: [.caseInsensitive]
+    )
+    private static let attributeExpression = RegexFactory.make(
+        #"([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*([\"'])(.*?)\2"#,
+        options: [.dotMatchesLineSeparators]
+    )
+    private static let titleExpression = RegexFactory.make(
+        #"<title\b[^>]*>(.*?)</title\s*>"#,
+        options: [.caseInsensitive, .dotMatchesLineSeparators]
+    )
+    private static let stripTagsExpression = RegexFactory.make(#"<[^>]+>"#)
+
     static func metadata(from html: String, resolvedURL: URL) -> LinkMetadata? {
         let meta = metaAttributes(in: html)
         let title = normalized(
             meta["property:og:title"]
                 ?? meta["name:twitter:title"]
-                ?? firstMatch(
-                    in: html,
-                    pattern: #"<title\b[^>]*>(.*?)</title\s*>"#
-                ),
+                ?? firstMatch(in: html, expression: titleExpression),
             limit: 300
         )
         let summary = normalized(
@@ -97,13 +242,7 @@ enum LinkMetadataHTMLParser {
     }
 
     private static func metaAttributes(in html: String) -> [String: String] {
-        guard let metaExpression = try? NSRegularExpression(
-            pattern: #"<meta\b[^>]*>"#,
-            options: [.caseInsensitive]
-        ), let attributeExpression = try? NSRegularExpression(
-            pattern: #"([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*([\"'])(.*?)\2"#,
-            options: [.dotMatchesLineSeparators]
-        ) else {
+        guard let metaExpression, let attributeExpression else {
             return [:]
         }
 
@@ -135,13 +274,11 @@ enum LinkMetadataHTMLParser {
         return values
     }
 
-    private static func firstMatch(in text: String, pattern: String) -> String? {
-        guard let expression = try? NSRegularExpression(
-            pattern: pattern,
-            options: [.caseInsensitive, .dotMatchesLineSeparators]
-        ) else {
-            return nil
-        }
+    private static func firstMatch(
+        in text: String,
+        expression: NSRegularExpression?
+    ) -> String? {
+        guard let expression else { return nil }
         let nsText = text as NSString
         guard let match = expression.firstMatch(
             in: text,
@@ -154,54 +291,24 @@ enum LinkMetadataHTMLParser {
 
     private static func normalized(_ value: String?, limit: Int) -> String? {
         guard let value else { return nil }
-        let withoutTags = value.replacingOccurrences(
-            of: #"<[^>]+>"#,
-            with: " ",
-            options: .regularExpression
-        )
-        let decoded = decodeHTMLEntities(in: withoutTags)
+        let withoutTags: String
+        if let stripTagsExpression {
+            let range = NSRange(value.startIndex..., in: value)
+            withoutTags = stripTagsExpression.stringByReplacingMatches(
+                in: value,
+                range: range,
+                withTemplate: " "
+            )
+        } else {
+            withoutTags = value
+        }
+        let decoded = HTMLPlainTextExtractor.decodeHTMLEntities(in: withoutTags)
         let collapsed = decoded
             .components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .joined(separator: " ")
         guard !collapsed.isEmpty else { return nil }
         return String(collapsed.prefix(limit))
-    }
-
-    private static func decodeHTMLEntities(in value: String) -> String {
-        var decoded = value
-        let namedEntities = [
-            "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"",
-            "&#39;": "'", "&apos;": "'", "&nbsp;": " "
-        ]
-        for (entity, replacement) in namedEntities {
-            decoded = decoded.replacingOccurrences(of: entity, with: replacement)
-        }
-
-        guard let expression = try? NSRegularExpression(
-            pattern: #"&#(x[0-9A-Fa-f]+|[0-9]+);"#
-        ) else {
-            return decoded
-        }
-        let matches = expression.matches(
-            in: decoded,
-            range: NSRange(decoded.startIndex..., in: decoded)
-        ).reversed()
-        for match in matches {
-            guard let wholeRange = Range(match.range(at: 0), in: decoded),
-                  let valueRange = Range(match.range(at: 1), in: decoded) else {
-                continue
-            }
-            let encodedValue = String(decoded[valueRange])
-            let radix = encodedValue.lowercased().hasPrefix("x") ? 16 : 10
-            let digits = radix == 16 ? String(encodedValue.dropFirst()) : encodedValue
-            guard let scalarValue = UInt32(digits, radix: radix),
-                  let scalar = UnicodeScalar(scalarValue) else {
-                continue
-            }
-            decoded.replaceSubrange(wholeRange, with: String(Character(scalar)))
-        }
-        return decoded
     }
 }
 

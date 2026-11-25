@@ -1087,4 +1087,65 @@ struct ClipboardStorageLifecycleTests {
         )
         store.flushHistoryWrites()
     }
+
+    @Test
+    @MainActor
+    func pendingDeletionProtectsImageAndExternalTextFilesFromOrphanCleanup() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let imageStore = ClipboardImageStore(
+            directoryURL: directory.appendingPathComponent("images", isDirectory: true)
+        )
+        let textStore = ClipboardTextStore(
+            directoryURL: directory.appendingPathComponent("text", isDirectory: true)
+        )
+        let imageFileName = "undo-image.png"
+        let textFileName = "undo-text.txt"
+        let testImage = try makeTestImage(width: 4, height: 4)
+        let imageData = try #require(
+            NSBitmapImageRep(cgImage: testImage).representation(
+                using: .png,
+                properties: [:]
+            )
+        )
+        let externalText = String(repeating: "undoable external text ", count: 100)
+        try imageStore.save(imageData, fileName: imageFileName)
+        try textStore.save(externalText, fileName: textFileName)
+
+        let store = ClipboardStore(
+            pasteboard: NSPasteboard(
+                name: NSPasteboard.Name("PastePilotTests.\(UUID().uuidString)")
+            ),
+            dataDirectoryURL: directory,
+            ocrService: StubOCRService()
+        )
+        let imageItem = ClipboardItem(
+            content: "Image 4 × 4",
+            kind: .image,
+            imageFileName: imageFileName
+        )
+        let textItem = ClipboardItem(
+            content: "undoable external text",
+            kind: .text,
+            contentFileName: textFileName
+        )
+        store.items = [imageItem, textItem]
+
+        store.delete(imageItem.id)
+        store.delete(textItem.id)
+        store.removeOrphanedImages()
+        store.removeOrphanedText()
+
+        #expect(FileManager.default.fileExists(atPath: imageStore.path(fileName: imageFileName)))
+        #expect(textStore.content(fileName: textFileName) == externalText)
+
+        store.restoreDeletedItem(imageItem.id)
+        store.restoreDeletedItem(textItem.id)
+
+        #expect(store.items.count == 2)
+        #expect(store.image(for: imageItem) != nil)
+        #expect(store.content(for: textItem) == externalText)
+        store.flushPendingDeletions()
+        store.flushHistoryWrites()
+    }
 }

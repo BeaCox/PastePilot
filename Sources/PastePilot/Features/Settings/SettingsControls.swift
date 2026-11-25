@@ -1,18 +1,5 @@
 import SwiftUI
 
-/// Reports the natural content height of each settings page, keyed by page id,
-/// so the window can size itself to exactly fit the selected page.
-struct SettingsHeightKey: PreferenceKey {
-    static let defaultValue: [SettingsTab: CGFloat] = [:]
-
-    static func reduce(
-        value: inout [SettingsTab: CGFloat],
-        nextValue: () -> [SettingsTab: CGFloat]
-    ) {
-        value.merge(nextValue()) { _, latest in latest }
-    }
-}
-
 struct SettingsPane<Content: View>: View {
     let id: SettingsTab
     @ViewBuilder let content: Content
@@ -29,14 +16,6 @@ struct SettingsPane<Content: View>: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 22)
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(
-                        key: SettingsHeightKey.self,
-                        value: [id: proxy.size.height]
-                    )
-                }
-            )
         }
     }
 }

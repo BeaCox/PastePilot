@@ -82,7 +82,49 @@ enum ContentAnalyzer {
     private struct SensitivePattern {
         let regex: NSRegularExpression
         let replacementTemplate: String
+        let isUserRegularExpression: Bool
+
+        init(
+            regex: NSRegularExpression,
+            replacementTemplate: String,
+            isUserRegularExpression: Bool = false
+        ) {
+            self.regex = regex
+            self.replacementTemplate = replacementTemplate
+            self.isUserRegularExpression = isUserRegularExpression
+        }
     }
+
+    static let maximumUserRegexInspectionLength = 100_000
+    private static let userRegexCache = BoundedRegexCache(capacity: 256)
+
+    private static let colorRegex = RegexFactory.make(
+        #"^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\([^)]+\)|hsla?\([^)]+\))$"#
+    )
+    private static let errorTypeRegex = RegexFactory.make(#"\b[A-Z][A-Za-z]+Error\b"#)
+    private static let markdownBlockRegex = RegexFactory.make(#"(?m)^(#{1,6}\s|[-*]\s|\d+\.\s|>\s|```)"#)
+    private static let markdownLinkRegex = RegexFactory.make(#"\[[^\]]+\]\([^)]+\)"#)
+    private static let yamlKeyValueRegex = RegexFactory.make(#"^[A-Za-z0-9_.-]+\s*:\s+.+$"#)
+    private static let xmlDeclarationRegex = RegexFactory.make(#"^\s*<\?xml\b[\s\S]*\?>[\s\S]*<[/A-Za-z]"#)
+    private static let xmlTagRegex = RegexFactory.make(
+        #"^\s*<([A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>[\s\S]*</\1>\s*$"#
+    )
+    private static let sqlRegex = RegexFactory.make(
+        #"(?is)^\s*(SELECT|WITH|INSERT\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE)\b[\s\S]*(\bFROM\b|\bSET\b|\bVALUES\b|\bTABLE\b|;)"#
+    )
+    private static let base64TokenRegex = RegexFactory.make(#"^[A-Za-z0-9+/]+={0,2}$"#)
+    private static let emailRegex = RegexFactory.make(
+        #"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#,
+        options: [.caseInsensitive]
+    )
+    private static let uuidRegex = RegexFactory.make(
+        #"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b"#,
+        options: [.caseInsensitive]
+    )
+    private static let jwtRegex = RegexFactory.make(
+        #"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"#
+    )
+    private static let sentenceEndRegex = RegexFactory.make(#"[.!?]\s*$"#)
 
     private static let redactionToken = "••••••••"
     private static let sensitiveAssignmentKeyPattern =
@@ -181,6 +223,10 @@ enum ContentAnalyzer {
             )
         }
 
+        let isXML = looksLikeXML(text)
+        let isSQL = looksLikeSQL(text)
+        let isYAML = looksLikeYAML(text)
+
         var candidates = [
             DetectionCandidate(
                 kind: .text,
@@ -197,11 +243,16 @@ enum ContentAnalyzer {
             errorCandidate(for: text),
             commandCandidate(for: text),
             markdownCandidate(for: text),
-            codeCandidate(for: text)
+            codeCandidate(for: text, isXML: isXML, isSQL: isSQL, isYAML: isYAML)
         ].compactMap(\.self).forEach { candidates.append($0) }
 
         var traits = Set(candidates.flatMap(\.traits))
-        let secondaryMatches = secondaryTraitMatches(in: text)
+        let secondaryMatches = secondaryTraitMatches(
+            in: text,
+            isXML: isXML,
+            isSQL: isSQL,
+            isYAML: isYAML
+        )
         secondaryMatches.forEach { traits.insert($0.trait) }
 
         var selected = candidates.max {
@@ -221,9 +272,18 @@ enum ContentAnalyzer {
         _ text: String,
         userPatterns: [UserSensitivePattern] = []
     ) -> Bool {
-        let range = NSRange(text.startIndex..., in: text)
-        return allSensitivePatterns(userPatterns: userPatterns).contains {
-            $0.regex.firstMatch(in: text, range: range) != nil
+        let fullRange = NSRange(text.startIndex..., in: text)
+        lazy var cappedRange: NSRange = {
+            if text.count <= maximumUserRegexInspectionLength {
+                return fullRange
+            }
+            let end = text.index(text.startIndex, offsetBy: maximumUserRegexInspectionLength)
+            return NSRange(text.startIndex..<end, in: text)
+        }()
+
+        return allSensitivePatterns(userPatterns: userPatterns).contains { pattern in
+            let range = pattern.isUserRegularExpression ? cappedRange : fullRange
+            return pattern.regex.firstMatch(in: text, range: range) != nil
         }
     }
 
@@ -232,7 +292,14 @@ enum ContentAnalyzer {
         userPatterns: [UserSensitivePattern] = []
     ) -> String {
         allSensitivePatterns(userPatterns: userPatterns).reduce(text) { result, pattern in
-            let range = NSRange(result.startIndex..., in: result)
+            let range: NSRange
+            if pattern.isUserRegularExpression,
+               result.count > maximumUserRegexInspectionLength {
+                let end = result.index(result.startIndex, offsetBy: maximumUserRegexInspectionLength)
+                range = NSRange(result.startIndex..<end, in: result)
+            } else {
+                range = NSRange(result.startIndex..., in: result)
+            }
             return pattern.regex.stringByReplacingMatches(
                 in: result,
                 range: range,
@@ -253,15 +320,24 @@ enum ContentAnalyzer {
     ) -> SensitivePattern? {
         switch userPattern.kind {
         case .literal:
-            makeSensitivePattern(
-                NSRegularExpression.escapedPattern(for: userPattern.value),
-                replacementTemplate: redactionToken,
+            guard let regex = userRegexCache.regex(
+                for: NSRegularExpression.escapedPattern(for: userPattern.value),
                 options: .caseInsensitive
+            ) else {
+                return nil
+            }
+            return SensitivePattern(
+                regex: regex,
+                replacementTemplate: redactionToken
             )
         case .regularExpression:
-            makeSensitivePattern(
-                userPattern.value,
-                replacementTemplate: redactionToken
+            guard let regex = userRegexCache.regex(for: userPattern.value) else {
+                return nil
+            }
+            return SensitivePattern(
+                regex: regex,
+                replacementTemplate: redactionToken,
+                isUserRegularExpression: true
             )
         }
     }
@@ -314,10 +390,7 @@ enum ContentAnalyzer {
     }
 
     private static func colorCandidate(for text: String) -> DetectionCandidate? {
-        guard matches(
-            #"^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\([^)]+\)|hsla?\([^)]+\))$"#,
-            in: text
-        ) else {
+        guard matches(colorRegex, in: text) else {
             return nil
         }
         return DetectionCandidate(
@@ -344,7 +417,7 @@ enum ContentAnalyzer {
                 traits: [.error]
             )
         }
-        guard matches(#"\b[A-Z][A-Za-z]+Error\b"#, in: text) else {
+        guard matches(errorTypeRegex, in: text) else {
             return nil
         }
         return DetectionCandidate(
@@ -394,11 +467,8 @@ enum ContentAnalyzer {
     }
 
     private static func markdownCandidate(for text: String) -> DetectionCandidate? {
-        let blockSyntaxMatched = matches(
-            #"(?m)^(#{1,6}\s|[-*]\s|\d+\.\s|>\s|```)"#,
-            in: text
-        )
-        let linkSyntaxMatched = matches(#"\[[^\]]+\]\([^)]+\)"#, in: text)
+        let blockSyntaxMatched = matches(markdownBlockRegex, in: text)
+        let linkSyntaxMatched = matches(markdownLinkRegex, in: text)
         guard blockSyntaxMatched || linkSyntaxMatched else { return nil }
         return DetectionCandidate(
             kind: .markdown,
@@ -413,22 +483,27 @@ enum ContentAnalyzer {
         )
     }
 
-    private static func codeCandidate(for text: String) -> DetectionCandidate? {
+    private static func codeCandidate(
+        for text: String,
+        isXML: Bool,
+        isSQL: Bool,
+        isYAML: Bool
+    ) -> DetectionCandidate? {
         var traits: Set<ContentAnalysisTrait> = []
         var reasons: [String] = []
         var confidence = 0.0
 
-        if looksLikeXML(text) {
+        if isXML {
             traits.insert(.xml)
             appendUnique("XML-like tags matched", to: &reasons)
             confidence = max(confidence, 0.82)
         }
-        if looksLikeSQL(text) {
+        if isSQL {
             traits.insert(.sql)
             appendUnique("SQL statement keywords matched", to: &reasons)
             confidence = max(confidence, 0.8)
         }
-        if looksLikeYAML(text) {
+        if isYAML {
             traits.insert(.yaml)
             appendUnique("YAML-style key/value lines matched", to: &reasons)
             confidence = max(confidence, 0.68)
@@ -452,21 +527,26 @@ enum ContentAnalyzer {
         )
     }
 
-    private static func secondaryTraitMatches(in text: String) -> [TraitMatch] {
+    private static func secondaryTraitMatches(
+        in text: String,
+        isXML: Bool,
+        isSQL: Bool,
+        isYAML: Bool
+    ) -> [TraitMatch] {
         var traitMatches: [TraitMatch] = []
-        if looksLikeYAML(text) {
+        if isYAML {
             traitMatches.append(TraitMatch(
                 trait: .yaml,
                 reason: "YAML-style key/value lines matched"
             ))
         }
-        if looksLikeXML(text) {
+        if isXML {
             traitMatches.append(TraitMatch(
                 trait: .xml,
                 reason: "XML-like tags matched"
             ))
         }
-        if looksLikeSQL(text) {
+        if isSQL {
             traitMatches.append(TraitMatch(
                 trait: .sql,
                 reason: "SQL statement keywords matched"
@@ -484,30 +564,19 @@ enum ContentAnalyzer {
                 reason: "Natural language sentence structure matched"
             ))
         }
-        if matches(
-            #"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#,
-            in: text,
-            options: [.caseInsensitive]
-        ) {
+        if matches(emailRegex, in: text) {
             traitMatches.append(TraitMatch(
                 trait: .email,
                 reason: "Email address pattern matched"
             ))
         }
-        if matches(
-            #"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b"#,
-            in: text,
-            options: [.caseInsensitive]
-        ) {
+        if matches(uuidRegex, in: text) {
             traitMatches.append(TraitMatch(
                 trait: .uuid,
                 reason: "UUID pattern matched"
             ))
         }
-        if matches(
-            #"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"#,
-            in: text
-        ) {
+        if matches(jwtRegex, in: text) {
             traitMatches.append(TraitMatch(
                 trait: .jwt,
                 reason: "JWT token shape matched"
@@ -530,24 +599,17 @@ enum ContentAnalyzer {
             .filter { !$0.isEmpty && !$0.hasPrefix("#") }
         guard lines.count >= 2 else { return false }
         let keyValueCount = lines.filter {
-            matches(#"^[A-Za-z0-9_.-]+\s*:\s+.+$"#, in: $0)
+            matches(yamlKeyValueRegex, in: $0)
         }.count
         return keyValueCount >= 2
     }
 
     private static func looksLikeXML(_ text: String) -> Bool {
-        matches(#"^\s*<\?xml\b[\s\S]*\?>[\s\S]*<[/A-Za-z]"#, in: text)
-            || matches(
-                #"^\s*<([A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>[\s\S]*</\1>\s*$"#,
-                in: text
-            )
+        matches(xmlDeclarationRegex, in: text) || matches(xmlTagRegex, in: text)
     }
 
     private static func looksLikeSQL(_ text: String) -> Bool {
-        matches(
-            #"(?is)^\s*(SELECT|WITH|INSERT\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE)\b[\s\S]*(\bFROM\b|\bSET\b|\bVALUES\b|\bTABLE\b|;)"#,
-            in: text
-        )
+        matches(sqlRegex, in: text)
     }
 
     private static func looksLikeBase64(_ text: String) -> Bool {
@@ -561,7 +623,7 @@ enum ContentAnalyzer {
                 guard token.count >= 16,
                       token.count % 4 == 0,
                       token.contains("=") || token.contains("+") || token.contains("/"),
-                      matches(#"^[A-Za-z0-9+/]+={0,2}$"#, in: token),
+                      matches(base64TokenRegex, in: token),
                       Data(base64Encoded: token) != nil else {
                     return false
                 }
@@ -581,20 +643,14 @@ enum ContentAnalyzer {
             " this ", " that ", " is ", " are "
         ]
         return commonWords.contains(where: lowercased.contains)
-            || matches(#"[.!?]\s*$"#, in: text)
+            || matches(sentenceEndRegex, in: text)
     }
 
     private static func matches(
-        _ pattern: String,
-        in text: String,
-        options: NSRegularExpression.Options = []
+        _ regex: NSRegularExpression?,
+        in text: String
     ) -> Bool {
-        guard let regex = try? NSRegularExpression(
-            pattern: pattern,
-            options: options
-        ) else {
-            return false
-        }
+        guard let regex else { return false }
         let range = NSRange(text.startIndex..., in: text)
         return regex.firstMatch(in: text, range: range) != nil
     }

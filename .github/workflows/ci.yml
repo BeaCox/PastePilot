@@ -45,6 +45,9 @@ jobs:
           swift --version
           find /Applications /Library/Developer/CommandLineTools -path '*Testing.framework' -maxdepth 8 -print 2>/dev/null || true
 
+      - name: Check whitespace and diff formatting
+        run: git diff --check
+
       - name: Build debug executable
         run: make build
 
@@ -62,6 +65,9 @@ jobs:
           APP="dist/PastePilot-${ARCH}.app"
           test -x "$APP/Contents/MacOS/PastePilot"
           lipo "$APP/Contents/MacOS/PastePilot" -verify_arch "$ARCH"
+          test -x "$APP/Contents/MacOS/PastePilotCLI"
+          lipo "$APP/Contents/MacOS/PastePilotCLI" -verify_arch "$ARCH"
+          "$APP/Contents/MacOS/PastePilotCLI" --help >/dev/null
           codesign --verify --deep --strict --verbose=2 "$APP"
 
       - name: Build DMG

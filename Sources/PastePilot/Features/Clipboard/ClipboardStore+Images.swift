@@ -275,24 +275,85 @@ extension ClipboardStore {
         let recognitionMode = OCRRecognitionMode(rawValue: settings.ocrRecognitionMode)
             ?? .accurate
         guard recognitionMode != .off else { return }
+        let languageMode = OCRLanguageMode(rawValue: settings.ocrLanguageMode)
+            ?? .multilingual
         cancelAllOCRTasks()
         var didClearExistingText = false
+        var targets: [(id: UUID, url: URL)] = []
         for index in items.indices where items[index].isImage {
             if items[index].ocrText != nil {
                 items[index].ocrText = nil
                 didClearExistingText = true
             }
-            guard let image = image(for: items[index])?.cgImage(
-                forProposedRect: nil,
-                context: nil,
-                hints: nil
-            ) else {
-                continue
-            }
-            performOCR(on: image, itemID: items[index].id)
+            guard let fileName = items[index].imageFileName else { continue }
+            targets.append((items[index].id, imageStore.fileURL(fileName: fileName)))
         }
         if didClearExistingText {
             save()
         }
+        guard !targets.isEmpty else { return }
+
+        let ocrService = ocrService
+        batchOCRTask = Task { [weak self] in
+            let maxConcurrent = 3
+            await withTaskGroup(of: (UUID, String?).self) { group in
+                var iterator = targets.makeIterator()
+                for _ in 0..<maxConcurrent {
+                    guard let target = iterator.next() else { break }
+                    group.addTask {
+                        let text = await Self.recognizeOCRText(
+                            at: target.url,
+                            ocrService: ocrService,
+                            recognitionMode: recognitionMode,
+                            languageMode: languageMode
+                        )
+                        return (target.id, text)
+                    }
+                }
+                while let (itemID, text) = await group.next() {
+                    if Task.isCancelled {
+                        group.cancelAll()
+                        break
+                    }
+                    if let self,
+                       let text,
+                       let index = self.items.firstIndex(where: { $0.id == itemID }) {
+                        self.items[index].ocrText = text
+                        self.save()
+                    }
+                    if let nextTarget = iterator.next() {
+                        group.addTask {
+                            let text = await Self.recognizeOCRText(
+                                at: nextTarget.url,
+                                ocrService: ocrService,
+                                recognitionMode: recognitionMode,
+                                languageMode: languageMode
+                            )
+                            return (nextTarget.id, text)
+                        }
+                    }
+                }
+            }
+            if let self {
+                self.batchOCRTask = nil
+            }
+        }
+    }
+
+    nonisolated private static func recognizeOCRText(
+        at url: URL,
+        ocrService: any OCRService,
+        recognitionMode: OCRRecognitionMode,
+        languageMode: OCRLanguageMode
+    ) async -> String? {
+        guard !Task.isCancelled,
+              let cgImage = ClipboardImageStore.cgImage(at: url) else {
+            return nil
+        }
+        return await ocrService.recognizeText(
+            in: cgImage,
+            recognitionMode: recognitionMode,
+            languageMode: languageMode
+        )
     }
 }

@@ -406,14 +406,6 @@ struct IgnoredAppsSettingsPage: View {
             SettingsGroup {
                 IgnoredAppsEditor(settings: settings)
             }
-
-            SettingsGroup {
-                Label(
-                    "Ignore rules only affect new copies and won't delete existing history.".localized,
-                    systemImage: "info.circle"
-                )
-                .foregroundStyle(.secondary)
-            }
         }
     }
 }

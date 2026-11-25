@@ -4,8 +4,14 @@ import SwiftUI
 struct AboutView: View {
     @ObservedObject var settings: AppSettings
     let version: String
+    var build: String? = nil
     let openDataFolder: () -> Void
     let checkForUpdates: () -> Void
+
+    private var versionLabel: String {
+        guard let build, !build.isEmpty else { return version }
+        return "\(version) (\(build))"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +29,7 @@ struct AboutView: View {
                     Text("Smart Clipboard for Developers".localized)
                         .font(.headline)
                         .foregroundStyle(.secondary)
-                    Text("Version %@".localized(version))
+                    Text("Version %@".localized(versionLabel))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
